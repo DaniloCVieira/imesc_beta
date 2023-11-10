@@ -1,7 +1,7 @@
 
 
 ## Copyright © 2023 [Danilo Candido Vieira]
-## Licensed under the CC BY-NC-ND 4.0 license.
+## Licensed under thge CC BY-NC-ND 4.0 license.
 
 #' @export
 module_ui_knn <- function(id){
@@ -125,6 +125,9 @@ module_server_knn <- function (input, output, session,vals,df_colors,newcolhabs 
     }
     model_data<-pred_tab
     req(sum(colnames(pred_tab)%in%colnames(getdata_model(m)))==ncol(pred_tab))
+
+    pred_tab<-is_scaled_return_scaled(vals$saved_data[[input$data_knnX]],pred_tab)
+    print(attr(pred_tab,"scale"))
     pred_tab
 
   })
@@ -883,7 +886,7 @@ module_server_knn <- function (input, output, session,vals,df_colors,newcolhabs 
           if (!is.na(input$seedknn)) {set.seed(input$seedknn)}
 
 
-          knn<-train(x,y,'knn',
+          knn<-caret::train(x,y,'knn',
 
                      trControl=trainControl(
 
@@ -2028,7 +2031,7 @@ Please save your model to proceed with permutation importance analysis."))
                    min = 1,
                    max = 1,
                    {
-                     knn<-train(x,y,'knn',
+                     knn<-caret::train(x,y,'knn',
 
                                 trControl=trainControl(
 

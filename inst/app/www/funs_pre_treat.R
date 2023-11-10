@@ -54,14 +54,20 @@ EBNB<-function(abund, envi, PC=1)
   df <- sweep(abund, 2, apply(abund, 2, sum), "/")
   pa<-abund
   pa[pa>0]<-1
+  sds<-c()
+  ebs<-list()
   for(i in 1:ncol(abund))
   {
     NP <- sum(df[, i] * omi_scores)
-    sd <- sqrt(sum(df[, i] * (omi_scores - NP)^2))
+    sds[i]<-sd <- sqrt(sum(df[, i] * (omi_scores - NP)^2))
     NB<-abs(diff(c((NP+sd),(NP-sd) )))
-    EB<-abs(diff(range(omi_scores[pa[,i]>0])))
+    ebs[[i]]<-range(omi_scores[pa[,i]>0])
+    EB<-abs(diff(ebs[[i]]))
     EBNB.table[i,1:3]<-c(EB,NB,NP)}
   rownames(EBNB.table)<-colnames(abund)
+  attr(EBNB.table,"omi")<-omi
+  attr(EBNB.table,"sds")<-sds
+  attr(EBNB.table,"ebs")<-ebs
   return(EBNB.table)
 }
 
@@ -153,18 +159,27 @@ req(cur_data)
       data<-data[rownames(saved_data[[obs_match_datalist]]),,drop=F]
       data<-data[na.omit(rownames(data)),,drop=F]
     }
+    meansd_scale<-NULL
     remove_IDs<-which(rowSums(is.na(data))==ncol(data))
     if(length(remove_IDs)>0){
       data<-data[-remove_IDs,,drop=F]}
     if (length(transf) > 0) {
       if(isTRUE(scale)){
         if(isTRUE(center)){
-          data= data.frame(scale(data, center = T))
+          data_scaled<-scale(data, center = T)
+          data= data.frame(data_scaled)
+
         } else{
-          data = data.frame(scale(data, center = F))
+          data_scaled<- scale(data, center = F)
+          data = data.frame(data_scaled)
         }
+        center <- attr(data_scaled, "scaled:center")
+        scale <- attr(data_scaled, "scaled:scale")
+        meansd_scale<-list(center=center,scale=scale)
       }
     }
+
+
     if (length(transf) > 0) {
       if (transf == "log2") {data = decostand(data, "log", na.rm = T, logbase = 2)}
       if (transf == "log10") {data = decostand(data, "log", na.rm = T, logbase = 10)}
@@ -223,6 +238,7 @@ req(cur_data)
     attr(data,"factors")<-attr(data,"factors")[rownames(data),,drop=F]
     attr(data,"coords")<-attr(data,"coords")[rownames(data),,drop=F]
     factors<-attr(data,"factors")
+    attr(data,"scale")<-meansd_scale
   })
   return(data)
 }

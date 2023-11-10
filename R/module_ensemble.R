@@ -12,7 +12,7 @@ module_ui_comp2 <- function(id){
 
       div(
     # uiOutput(ns("bug")),
-  #inline( actionButton(ns("teste_comb"),"SAVE")),
+  inline( actionButton(ns("teste_comb"),"SAVE")),
         # inline(uiOutput(ns("teste_comb")))
       ),
       uiOutput(ns('COMB_comp2')))
@@ -3126,21 +3126,6 @@ module_server_comp2 <- function (input, output, session,vals,df_colors,newcolhab
 
   savereac<-reactive({
     tosave<-isolate(reactiveValuesToList(vals))
-    tosave<-tosave[-which(names(vals)%in%c("saved_data","newcolhabs",'colors_img'))]
-    tosave<-tosave[-which(unlist(lapply(tosave,function(x) object.size(x)))>1000)]
-    tosave$saved_data<-vals$saved_data
-    tosave$newcolhabs<-vals$newcolhabs
-    tosave$colors_img<-vals$colors_img
-    tosave$modellist0<-vals$modellist0
-    tosave$modellist2<-vals$modellist2
-    tosave$box_pool<-vals$box_pool
-    tosave$comb_down_errors_train<-vals$comb_down_errors_train
-    tosave$saved_ensemble<-vals$saved_ensemble
-    #tosave$ensemble_args<-getargs_root()
-    #tosave$ensemble_args_plot<-getargs_plot_scoreloss()
-
-
-
 
     saveRDS(tosave,"savepoint.rds")
     saveRDS(reactiveValuesToList(input),"input.rds")
@@ -3317,7 +3302,8 @@ module_server_comp2 <- function (input, output, session,vals,df_colors,newcolhab
     choices<-if( length(names(vals$en_Ydatalists))==0&input$use_partition=="New Data"){
       c(list("Training data"="training"))
     } else{
-      c(list('New data/validation set'="test"),
+      c(list('Internal validation'="iv"),
+        list('New data/validation set'="test"),
         list("Training data"="training"))
     }
     if(input$ensemble_predtype=="new_unkn"){
@@ -3971,7 +3957,6 @@ p(
     vals$saved_ensemble[[input$ensemble_models]]<-NULL
   })
 
-  wei_datatype='weitype'
 
   get_wei<-function(pred_tab,newdata,modelist,obc,en_method,wei_datatype){
 
@@ -4152,20 +4137,30 @@ p(
 
         use_model_data=c(ensemble_saved=NULL, use.names=T)
         modelist<-vals$modellist2<-get_modellist_0()
+
         if(input$ensemble_predtype=='new_unkn'|!length(names(vals$en_Ydatalists))>0){
           obc=NULL
           step5=c(obc=NULL, use.names=T)
-        } else{
+        }
+
+        if(input$ensemble_predtype=='new_val')
+        {
           obc= get_OBC()
           step5=c(obc=input$obc, use.names=T)
         }
+
 
         en_method=input$en_method
         weitype=input$wei_datatype
         predtab0<-predtab<-predcomb_table(modelist,newdata, progress=F)
 
         if(en_method!="non-weighted"){
-          weis<-get_wei(predtab,newdata,modelist,obc,en_method,weitype)
+          if(weitype=='iv'){
+            weis<-get_weighs_from_finalmodel_cv(modelist)
+          }else{
+            weis<-get_wei(predtab,newdata,modelist,obc,en_method,weitype)
+          }
+
         } else{
           weis<-rep(1,nrow(predtab))
           names(weis)<-colnames(predtab)
@@ -4187,11 +4182,12 @@ p(
           }
 
           withProgress(min=1,message=paste0("step 1/",n_steps),{
-            res<-ensemble_find(models_grid,modelist,weis,predtab,newdata,obc,  en_method,
+            res<-ensemble_find_new(models_grid,modelist,weis,predtab,newdata,obc,  en_method,
                                show_progress=T,
                                pararell=F,
-                               session=getDefaultReactiveDomain()
-                               #  session=MockShinySession$new()
+                               session=getDefaultReactiveDomain(),
+                               #  session=MockShinySession$new(),
+                               weitype = weitype
             )
           })
           df_pred<-data.frame(res, stringsAsFactors = T)
@@ -4208,7 +4204,7 @@ p(
             if(isTRUE(auc_go)) {
 
               withProgress(min=1,message=paste0("step 3/",n_steps),{
-                tabprob<-ensemble_find_probs(models_grid,modelist,weis,predtab,  show_progress=T, pararell=F, session=getDefaultReactiveDomain())
+                tabprob<-ensemble_find_probs_new(models_grid,modelist,weis,predtab,  show_progress=T, pararell=F, session=getDefaultReactiveDomain(), weitype = weitype)
               })
               withProgress(min=1,message=paste0("step 4/",n_steps),{
                 aucs<-ensemble_find_auc(df_pred,tabprob,obc, show_progress=T, pararell=F, session=getDefaultReactiveDomain())

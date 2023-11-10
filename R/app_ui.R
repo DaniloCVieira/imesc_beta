@@ -246,6 +246,15 @@ shinydashboardPlus::dashboardPage(
                                 span(class="span_menu","Ensemble")
                             ))
               ),
+              menuItem(tabName = "menu_keras",
+                       div(class="side_menu",
+                           span(class="side_img",
+                                img(src=sim_icon,height='20px',width='20px')),
+                           span(class="span_menu","Deep Learning")
+                       )),
+
+
+
               #menuItem(div(img(src=sim_icon,height='20',width='20'),"Simulate"),tabName ="menu_sim"),
               # menuItem(div("teste",style = "margin-left: -8px; color: white; font-size: 14px; margin-top: -2px;margin-bottom: -2px;"),tabName = "menu_teste"),
               # uiOutput("testet"),

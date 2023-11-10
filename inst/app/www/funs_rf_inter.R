@@ -50,6 +50,11 @@ regression_stats<-function(obs,pred){
   df
 }
 
+classification_stats<-function(obs,pred){
+  lev<-levels(c(obs,pred))
+  metrics<-multiClassSummary(data.frame(obs=obs,pred=pred), lev=lev)
+  as.data.frame(metrics)
+}
 
 
 #' @export

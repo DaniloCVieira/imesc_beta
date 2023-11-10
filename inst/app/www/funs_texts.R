@@ -601,7 +601,7 @@ ensemble_find_metrics<-function(modelist,df_pred,obc,  show_progress=T, pararell
   opts <- list(progress=prog)
   if(isTRUE(pararell)){
     metrics_caret<-foreach(x = df_pred, .combine = cbind, .packages ="shiny",.options.snow = opts) %do% {
-      get_metrics_ensemble(modelist,x,obc, fun=fun)
+      get_metrics_ensemble2(modelist,x,obc, fun=fun)
     }
     if(isTRUE(show_progress)){
       progress$close()
@@ -611,7 +611,7 @@ ensemble_find_metrics<-function(modelist,df_pred,obc,  show_progress=T, pararell
     withProgress(session=session,max=ncol(df_pred),message="Calculating metrics...",{
       metrics_caret<-sapply(df_pred,function(x){
         incProgress(1,session=session)
-        get_metrics_ensemble(modelist,x,obc, fun=fun)
+        get_metrics_ensemble2(modelist,x,obc, fun=fun)
       })
     })
   }
@@ -665,7 +665,7 @@ ensemble_find_probs<-function(models_grid,modelist,weis,predtab,  show_progress=
 
 
 
-get_metrics_ensemble<-function(modelist,pred,obs, fun='multiClassSummary'){
+get_metrics_ensemble2<-function(modelist,pred,obs, fun='multiClassSummary'){
   if(modelist[[1]]$modelType=="Classification"){
     pred_tab<-data.frame(pred=factor(pred,levels(obs)),obs=obs)
     metric<- if(fun=='multiClassSummary'){
@@ -4673,6 +4673,9 @@ tiphelp3<-function(title,text,placement ="bottom"){
     style="color: #3c8dbc;",
     title,tipify(icon("fas fa-question-circle"),text,placement =placement ))
 }
+tiphelp4<-function(text,placement ="bottom"){
+  tipify(a(icon("fas fa-question-circle")),text,placement =placement)
+}
 #' @export
 pophelp<-function(title,text, placement="right"){
   popify(a(icon(verify_fa = FALSE,name=NULL,class="fas fa-question-circle")),title,text, placement = placement, trigger="hover")
@@ -4828,6 +4831,7 @@ data_migrate0<-function(data,newdata, newname){
     attr(newdata, "nb")=attr(data, "nb")
     attr(newdata, "svm")=attr(data, "svm")
     attr(newdata, "som")=attr(data, "som")
+    attr(newdata, "scale")=attr(data, "scale")
     return(newdata)
   }
 }
@@ -4843,6 +4847,7 @@ data_migrate<-function(data,newdata, newname=NULL){
     attr(newdata, "base_shape")= attr(data,"base_shape")
     attr(newdata, "layer_shape")=attr(data,"layer_shape")
     attr(newdata, "extra_shape")=attr(data,"extra_shape")
+    scale_attr=attr(data,"scale")
     transf<-attr(data, "transf")
     if(!is.null(transf)){
       colnames(transf)<-paste("Change",1:ncol(transf))
@@ -4854,6 +4859,7 @@ data_migrate<-function(data,newdata, newname=NULL){
     #attr(newdata, "nb")=attr(data, "nb")
     #attr(newdata, "svm")=attr(data, "svm")
     #attr(newdata, "som")=attr(data, "som")
+    attr(newdata, "scale")=scale_attr
     return(newdata)
   }
 }
@@ -4883,6 +4889,7 @@ data_migrate2<-function(data,newdata, newname){
     attr(newdata, "transf")=transf
     attr(newdata, "nobs_ori")=attr(data, "nobs_ori")
     attr(newdata, "nvar_ori")=attr(data, "nvar_ori")
+    attr(newdata, "scale")=attr(data, "scale")
     # attr(newdata, "rf")=attr(data, "rf")
     #attr(newdata, "nb")=attr(data, "nb")
     #attr(newdata, "svm")=attr(data, "svm")

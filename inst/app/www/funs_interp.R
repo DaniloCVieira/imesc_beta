@@ -279,3 +279,14 @@ map_style<-function(data,get,coords, p,main="",subtitle="",cex.axes=13,cex.lab=1
   p
 
 }
+is_scaled_return_scaled<-function(data,newdata){
+  scale_attr<-attr(attr(data,"data"),"scale")
+  if(is.null(attr(newdata,"scale"))){
+    if(!is.null(scale_attr)){
+      req(length(scale_attr$center)==ncol(newdata))
+      newdata<-scale(newdata,center=scale_attr$center,scale=scale_attr$scale)
+      newdata<-data_migrate(datao,newdata,"")
+    }
+  }
+  newdata
+}

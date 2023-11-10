@@ -283,11 +283,11 @@ annotation_north_arrow<-function (mapping = NULL, data = NULL, ..., height = uni
 
 #' @export
 annotation_scale<-function (mapping = NULL, data = NULL, ..., plot_unit = NULL,
-                     bar_cols = c("black", "white"), line_width = 1,
-                     height = unit(0.25, "cm"), pad_x = unit(0.25, "cm"),
-                     pad_y = unit(0.25, "cm"), text_pad = unit(0.15, "cm"),
-                     text_cex = 0.7, text_face = NULL, text_family = "",
-                     tick_height = 0.6)
+                            bar_cols = c("black", "white"), line_width = 1,
+                            height = unit(0.25, "cm"), pad_x = unit(0.25, "cm"),
+                            pad_y = unit(0.25, "cm"), text_pad = unit(0.15, "cm"),
+                            text_cex = 0.7, text_face = NULL, text_family = "",
+                            tick_height = 0.6)
 {
   if (is.null(data)) {
     data <- data.frame(x = NA)
@@ -297,7 +297,7 @@ annotation_scale<-function (mapping = NULL, data = NULL, ..., plot_unit = NULL,
                  geom = GeomScaleBar, position = ggplot2::PositionIdentity,
                  show.legend = FALSE, inherit.aes = FALSE,
                  params = list(...,plot_unit = plot_unit, bar_cols = bar_cols, line_width = line_width,height = height, pad_x = pad_x, pad_y = pad_y, text_pad = text_pad,text_cex = text_cex, text_face = text_face, text_family = text_family,
-tick_height = tick_height))
+                               tick_height = tick_height))
 }
 
 
@@ -322,7 +322,7 @@ plotshape<-function(shape){
 
 
 map_discrete_variable<-function(data,get,coords,base_shape=NULL,layer_shape=NULL,main="",size=.14,cex.main=15,cex.axes=13,cex.lab=15,cex.sub=14,cex.leg=11,cex.pt=7,subtitle="",leg="", factors=NULL,showcoords=F, cex.coords=NULL, col.coords="firebrick",col.palette='turbo',col.fac="firebrick",symbol=15, scalesize_size=T,scalesize_color=T, points=T, cex.fac=4, as_factor=F,bmu=F,key.height=1, colored_by_factor=NULL,showguides=F, limits=NULL,layer_col="gray",lighten=0.5,base_col="white",base_lighten=1,newcolhabs, extralayers=NULL,  data_depth=if(!is.null(extralayers)){3+(length(extralayers$layers)*2)} else{NULL},breaks_len=5,mybreaks=NULL,cexmin.pt=0,layer_shape_border="Grey",base_shape_border="gray", keyscale=12,  width_hint=0.15,cex_scabar=0.7, pie=F,facpizza=NULL
-                               ){
+){
 
 
   {
@@ -436,7 +436,7 @@ map_discrete_variable<-function(data,get,coords,base_shape=NULL,layer_shape=NULL
       }
 
       }
-       else if(isFALSE(scalesize_color)&is.null(colored_by_factor))
+      else if(isFALSE(scalesize_color)&is.null(colored_by_factor))
       {   p <- p+geom_point( data=geopoint, aes(x=x, y=y, size=pop), pch=symbol,color=col_pts)+scale_radius(name=name.var, range=c(cexmin.pt,cex.pt),breaks=mybreaks)} else if(isFALSE(scalesize_color)&!is.null(colored_by_factor)){
         p <- p+geom_point( data=geopoint_fac, aes(x=x, y=y, size=pop, col=fac), pch=symbol)+ scale_color_manual(name=leg,labels =  colorFAC$prev_fac,values =  colorFAC$col_pts,drop=F )+scale_radius(name=name.var, range=c(cexmin.pt,cex.pt),breaks=mybreaks)
       }
@@ -476,7 +476,7 @@ map_discrete_variable<-function(data,get,coords,base_shape=NULL,layer_shape=NULL
 
 
               p <- p+geom_point( data=geopoint_fac, aes(x=x, y=y, col=fac), pch=symbol,size=cex.pt)+ scale_color_manual(name=leg,
-                                                                                                                       # labels =  colorFAC$prev_fac,
+                                                                                                                        # labels =  colorFAC$prev_fac,
                                                                                                                         values =  color_factors,drop=F)+scale_radius(name=name.var, range=c(cexmin.pt,cex.pt),guide="none",breaks=mybreaks)
             }} else {
               p<-   p+geom_point( data=geopoint, aes(x=x, y=y), pch=symbol,size=cex.pt, color=col_pts[rownames(geopoint)])+scale_radius(name=name.var, range=c(cexmin.pt,cex.pt),guide="none",breaks=mybreaks)
@@ -484,36 +484,36 @@ map_discrete_variable<-function(data,get,coords,base_shape=NULL,layer_shape=NULL
         }
     }
 
-if(is.numeric(geopoint$pop)){
-  if(isFALSE(scalesize_size)&isTRUE(pie)){
-    req(length(facpizza)>0)
-    #vals<-readRDS("savepoint.rds")
-    # facpizza<-attr(vals$saved_data$`nema_hellinger (1)`,"factors")[rownames(geopoint),'estacao']
-    geopoint$fac<-facpizza
-    require("scatterpie")
-    li<-split(geopoint,geopoint$fac)
-    x<-li[[7]]
-    lis<-lapply(li,function(x){
-      xx<-x$pop/length(x$pop)
+    if(is.numeric(geopoint$pop)){
+      if(isFALSE(scalesize_size)&isTRUE(pie)){
+        req(length(facpizza)>0)
+        #vals<-readRDS("savepoint.rds")
+        # facpizza<-attr(vals$saved_data$`nema_hellinger (1)`,"factors")[rownames(geopoint),'estacao']
+        geopoint$fac<-facpizza
+        require("scatterpie")
+        li<-split(geopoint,geopoint$fac)
+        x<-li[[7]]
+        lis<-lapply(li,function(x){
+          xx<-x$pop/length(x$pop)
 
-      c(x=mean(x$x),y=mean(x$y),group=NA,xx)
-    })
-    #max(unlist(lapply(lis,length)))
+          c(x=mean(x$x),y=mean(x$y),group=NA,xx)
+        })
+        #max(unlist(lapply(lis,length)))
 
-    newdf<-data.frame(do.call(rbind,lis))
-    newdf$group<-1:nrow(newdf)
-    colnames(newdf)[4:ncol(newdf)]<-paste0("obs",1:length(4:ncol(newdf)))
-    #newdf[is.na(newdf)]<-0
+        newdf<-data.frame(do.call(rbind,lis))
+        newdf$group<-1:nrow(newdf)
+        colnames(newdf)[4:ncol(newdf)]<-paste0("obs",1:length(4:ncol(newdf)))
+        #newdf[is.na(newdf)]<-0
 
 
-    p1<-p0+ geom_scatterpie(aes(x=x, y=y, group=group), data=newdf,
-                            cols=colnames(newdf)[4:ncol(newdf)],
-                            color=NA,
-                            alpha=.8)
+        p1<-p0+ geom_scatterpie(aes(x=x, y=y, group=group), data=newdf,
+                                cols=colnames(newdf)[4:ncol(newdf)],
+                                color=NA,
+                                alpha=.8)
 
-    p<-p1+ scale_fill_manual(name=leg,values =  newcolhabs[[col.palette]](length(4:ncol(newdf))),drop=F)
-  }
-}
+        p<-p1+ scale_fill_manual(name=leg,values =  newcolhabs[[col.palette]](length(4:ncol(newdf))),drop=F)
+      }
+    }
 
   }
   names( p$layers)[length( p$layers)]<-paste0('points')
@@ -534,7 +534,7 @@ if(is.numeric(geopoint$pop)){
         guides(size = guide_legend(override.aes = list(
           colour = as.list( scales::col_numeric(getcolhabs(newcolhabs,col.palette,100), domain = NULL)(mybreaks)),
           #range= range(geopoint$pop),
-         # size=scales::rescale(mybreaks,c(cexmin.pt,cex.pt)),
+          # size=scales::rescale(mybreaks,c(cexmin.pt,cex.pt)),
           breaks=mybreaks
         )))
 
@@ -546,12 +546,12 @@ if(is.numeric(geopoint$pop)){
 
   #p<-p  +  scale_size(name=name.var, range=c(0,cex.pt), breaks=mybreaks)
 
-if(isTRUE(showguides)){
-  xcoords<-pretty(coords[,1])
-  ycoords<-pretty(coords[,2])
-  p<-p+geom_hline(yintercept=ycoords,color = gray(.5), linetype = "dashed", size = .15)+
-    geom_vline(xintercept =xcoords,color = gray(.5), linetype = "dashed", size = .15)
-}
+  if(isTRUE(showguides)){
+    xcoords<-pretty(coords[,1])
+    ycoords<-pretty(coords[,2])
+    p<-p+geom_hline(yintercept=ycoords,color = gray(.5), linetype = "dashed", size = .15)+
+      geom_vline(xintercept =xcoords,color = gray(.5), linetype = "dashed", size = .15)
+  }
 
   if(any(names(p$layers)%in%"layer_shape")){
 
@@ -562,72 +562,72 @@ if(isTRUE(showguides)){
 
   }
   no<-north_arrow_fancy_orienteering(text_size=cex.axes)
-p<-p+
-  #guides( colour = guide_legend())+
+  p<-p+
+    #guides( colour = guide_legend())+
 
-  annotation_scale(location = "br", width_hint = width_hint,text_cex=cex_scabar,height  =unit(cex_scabar/4,"cm")) +
-  annotation_north_arrow(location = "tl",
-                         which_north = "true",
-                         width = unit(keyscale, "pt"),
-                         height  = unit(keyscale, "pt"),
-                         pad_x = unit(.1, "in"),
-                         pad_y = unit(0.1, "in"),
-                         style = no) +
-  coord_sf(xlim = c(bbox[1,]), ylim = c(bbox[2,]), expand = FALSE) +
-
-
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle(main, subtitle = subtitle) +
-  theme(panel.grid.major = element_blank(),
-        panel.background=element_rect(fill=NA, color="white"),
-        panel.border = element_rect(fill=NA,color="black", size=0.5, linetype="solid"),
-        #legend.key.size = unit(key.height, 'pt'),
-        axis.line=element_line(),
-        axis.text=element_text(size=cex.axes),
-        axis.title=element_text(size=cex.lab,face="bold"),
-        plot.title=element_text(size=cex.main),
-        plot.subtitle=element_text(size=cex.sub),
-        legend.text=element_text(size=cex.leg),
-        legend.title=element_text(size=cex.leg))
-if(!is.null(factors)){
-
-  geopoint0<-cbind(coords[rownames(data),],factors)
-  colnames(geopoint0)<-c("x","y","factors")
-  p<-p+  geom_text( data=geopoint0, aes(x=x, y=y, label=factors,),size=cex.fac,colour=colfac)
-}
-if(isTRUE(showcoords)){
-  geopoint0<-cbind(coords[rownames(data),],data[,get])
-  colnames(geopoint0)<-c("x","y","pop")
-  p<-p+geom_point( data=geopoint0, aes(x=x, y=y),  size=cex.coords, pch=3, colour=col.coords)
-
-}
+    annotation_scale(location = "br", width_hint = width_hint,text_cex=cex_scabar,height  =unit(cex_scabar/4,"cm")) +
+    annotation_north_arrow(location = "tl",
+                           which_north = "true",
+                           width = unit(keyscale, "pt"),
+                           height  = unit(keyscale, "pt"),
+                           pad_x = unit(.1, "in"),
+                           pad_y = unit(0.1, "in"),
+                           style = no) +
+    coord_sf(xlim = c(bbox[1,]), ylim = c(bbox[2,]), expand = FALSE) +
 
 
+    xlab("Longitude") +
+    ylab("Latitude") +
+    ggtitle(main, subtitle = subtitle) +
+    theme(panel.grid.major = element_blank(),
+          panel.background=element_rect(fill=NA, color="white"),
+          panel.border = element_rect(fill=NA,color="black", size=0.5, linetype="solid"),
+          #legend.key.size = unit(key.height, 'pt'),
+          axis.line=element_line(),
+          axis.text=element_text(size=cex.axes),
+          axis.title=element_text(size=cex.lab,face="bold"),
+          plot.title=element_text(size=cex.main),
+          plot.subtitle=element_text(size=cex.sub),
+          legend.text=element_text(size=cex.leg),
+          legend.title=element_text(size=cex.leg))
+  if(!is.null(factors)){
 
-
-if(!is.null(extralayers)){
-  if(!is.null(data_depth)){
-    point_layer<-p$layers[ grep("points",  names(p$layers))]
-    old_layer<-p$layers[-grep("points",  names(p$layers))]
-    new_p <- append(old_layer, point_layer, after=data_depth-1)
-    p$layers<-new_p
+    geopoint0<-cbind(coords[rownames(data),],factors)
+    colnames(geopoint0)<-c("x","y","factors")
+    p<-p+  geom_text( data=geopoint0, aes(x=x, y=y, label=factors,),size=cex.fac,colour=colfac)
+  }
+  if(isTRUE(showcoords)){
+    geopoint0<-cbind(coords[rownames(data),],data[,get])
+    colnames(geopoint0)<-c("x","y","pop")
+    p<-p+geom_point( data=geopoint0, aes(x=x, y=y),  size=cex.coords, pch=3, colour=col.coords)
 
   }
-  #saveRDS(p,"p.rds")
+
+
+
+
+  if(!is.null(extralayers)){
+    if(!is.null(data_depth)){
+      point_layer<-p$layers[ grep("points",  names(p$layers))]
+      old_layer<-p$layers[-grep("points",  names(p$layers))]
+      new_p <- append(old_layer, point_layer, after=data_depth-1)
+      p$layers<-new_p
+
+    }
+    #saveRDS(p,"p.rds")
 
 
 
 
 
 
-}
+  }
 
 
 
 
 
-p}
+  p}
 
 
 #' @export

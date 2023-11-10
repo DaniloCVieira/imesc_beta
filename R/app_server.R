@@ -83,7 +83,7 @@ app_server<-function(input, output, session) {
     x%in%c("menu_rf","menu_nb",'menu_svm','menu_knn','menu_sgboost','menu_som2')
   }
   is_toolmenu<-function(x){
-    x%in%c('menu_intro','menu_upload','menu_explore','menu_maps','menu_div')
+    x%in%c('menu_intro','menu_upload','menu_explore','menu_maps','menu_div',"menu_keras")
   }
 
 
@@ -4202,6 +4202,7 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
              'menu_explore'={"Descriptive tools"},
              'menu_nb'={"Naive Bayes"},
              'menu_svm'={"Support Vector Machine"},
+             'menu_keras'={"Deep Learning with Keras and TensorFlow"},
              'menu_som'={"Unsupervised Self-Organizing Maps"},
              'menu_som2'={"Supervised Self-Organizing Maps"},
              'menu_knn'={"K-Nearest Neighbor"},
@@ -4415,6 +4416,10 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
                },
                'menu_som'={
                  h4(strong("Unsupervised Self-Organizing Maps"),
+                    actionLink('somhelp',icon(verify_fa = FALSE,name=NULL,class="fas fa-info-circle")))
+               },
+               'menu_keras'={
+                 h4(strong("Deep Learning with Keras and Tensorflow"),
                     actionLink('somhelp',icon(verify_fa = FALSE,name=NULL,class="fas fa-info-circle")))
                },
                'menu_som2'={
@@ -6160,6 +6165,8 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
     )
   })
   observeEvent(ignoreInit = T,input$ddcogs1_rename_go,{
+    vals$cur_data<-1
+    updateTextInput(session,'view_datalist', value="data")
     req(input$ddcogs1_rename!="")
     pic<- which( colnames(vals$saved_data[[input$data_bank]])==input$ddcogs1_pick)
     colnames(vals$saved_data[[input$data_bank]])[pic]<-input$ddcogs1_rename
@@ -9622,6 +9629,7 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
 
   })
   coords<-reactive({
+    datao<-dataraw()
     if (input$up_or_ex == 'use example data') {
       coords <-data.frame(fread("inst/app/www/coords_araca.csv"))
       rownames(coords)<-coords[, 1]
@@ -9650,8 +9658,10 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
       } else{coords=NULL}}
 
     #coords<-read.csv("04_coords.csv",sep=";", row.names=1)
-    coords
+    coords[rownames(datao),]
   })
+
+
   base_shape<-reactive({
     if (input$up_or_ex == 'use example data') {
       get(gsub(" ","",capture.output(load("inst/app/www/base_shape_araca",verbose=T))[2]))
@@ -13399,7 +13409,7 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
 
   output$hist_d0<-renderUI({
     div(
-     # renderPrint(dim(data_cogs$df)),
+      renderPrint(attr(vals$saved_data[[input$data_upload]],"scale")),
       renderPrint({
         #req(is.data.frame(data_cogs$df))
         data=data_cogs$df
@@ -16063,6 +16073,8 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
                                     uiOutput('menu_upload_out')),
                             tabItem(tabName = "menu_som",
                                     column(12,uiOutput('menu_som_out'))),
+                            tabItem(tabName = "menu_keras",
+                                    column(12,uiOutput('menu_keras_out'))),
                             tabItem(tabName = "menu_som2",
                                     column(12,uiOutput('menu_som2_out'))),
                             tabItem(tabName = "menu_hc",
@@ -17206,16 +17218,28 @@ tipify(span('Breakpoints'), "The break points computed", placement = "right")
 
 
   })
-
-
   output$module_som_call<-renderUI({
     res<-  ui_supersom("som")
     mod_som<-callModule(server_supersom,"som",vals=vals, df_colors=vals$colors_img,newcolhabs=vals$newcolhabs)
     res
-
   })
 
 
+  output$menu_keras_out<-renderUI({
+    div(
+      div(
+        style="position: absolute; top: -30px; left: 350px",
+        # switchInput("callmodule_keras","module version",value=T,size="mini", inline=T,labelWidth="110px",handleWidth="30px",onLabel = "3.0",offLabel = "1.0")
+      ),
+      uiOutput("module_keras_call"))
+
+
+  })
+  output$module_keras_call<-renderUI({
+    res<-  ui_keras("keras")
+    mod_keras<-callModule(server_keras,"keras",vals=vals)
+    res
+  })
 
 
   output$menu_upload_out<-renderUI({
