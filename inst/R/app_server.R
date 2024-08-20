@@ -59,8 +59,7 @@ server<-app_server<-function(input, output, session) {
   # shiny app session ends. Otherwise, you end up with a zombie process
   # session$onSessionEnded(function() {    stopApp()  })
 
-
-  if (isRunningInBrowser()) {
+  if ( dir.exists("inst2")) {
     session$onSessionEnded(function() {
       stopApp()
     })
@@ -997,6 +996,4 @@ server<-app_server<-function(input, output, session) {
 }
 
 
-isRunningInBrowser <- function() {
-  dir.exists("inst2")
-}
+
