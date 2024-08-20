@@ -134,7 +134,7 @@ convertMenuItem<-function(mi, tabName) {
 unsup_icon<-base64enc::dataURI(file = "www/unsup_icon.png", mime = "image/png")
 sup_icon<-base64enc::dataURI(file = "www/sup_icon.png", mime = "image/png")
 sup_icon2<-base64enc::dataURI(file = "www/sup_icon2.png", mime = "image/png")
-imesc_icon<-base64enc::dataURI(file = "www/imesc_logo.png", mime = "image/png")
+imesc_name<-base64enc::dataURI(file = "www/imesc_name.png", mime = "image/png")
 #imesc_name<-base64enc::dataURI(file = "www/imesc_name.png", mime = "image/png")
 
 

@@ -48,7 +48,7 @@ ui<-app_ui<-function(request) {
                                 div(class="side_menu_imesc",
 
                                     span(class="span_menu_imesc",
-                                         img(src = imesc_icon,height = '20px',width = '70px'))
+                                         img(src = imesc_name,height = '20px',width = '70px'))
                                 )
                            )),
                   menuItem(tabName = "menu_upload",
