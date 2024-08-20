@@ -14,7 +14,7 @@ try({
 },silent = T)
 
 #shiny::runGitHub("iMESc","DaniloCVieira","main")
-shinyApp(app_ui,app_server)
+shinyApp(app_ui,app_server,options = list(launch.browser=T))
 #file.copy(paste0(getwd(),"/inst/R/app_ui.R"),'D:/R3/imesc2024/imesc_beta2/inst/R/app_ui.R',overwrite = T)
 #file.copy(paste0(getwd(),"/inst/R/app_server.R"),'D:/R3/imesc2024/imesc_beta2/inst/R/app_server.R',overwrite = T)
 
