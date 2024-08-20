@@ -58,14 +58,14 @@ server<-app_server<-function(input, output, session) {
   # this is needed to terminate the R process when the
   # shiny app session ends. Otherwise, you end up with a zombie process
   # session$onSessionEnded(function() {    stopApp()  })
-  observe({
 
-    if (isRunningInBrowser()) {
-      session$onSessionEnded(function() {
-        stopApp()
-      })
-    }
-  })
+
+  if (isRunningInBrowser()) {
+    session$onSessionEnded(function() {
+      stopApp()
+    })
+  }
+
   #server_init<-Sys.time()
 
   #ns_tab5<-NS('hc_tab5')
