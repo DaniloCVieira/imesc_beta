@@ -1,11 +1,9 @@
 check_version<-function(){
-  repo_url <- "https://api.github.com/repos/DaniloCVieira/iMESc/releases/latest"
-  current_version ="iMESc-1.0.3"
+  repo_url <- "https://api.github.com/repos/DaniloCVieira/iMESc-Desktop/releases/latest"
+  current_version =version
   # Send a GET request to the GitHub API
   response <- httr::GET(repo_url)
-  version_to_numeric <- function(version) {
-    as.numeric(unlist(strsplit(gsub("iMESc-", "", version), "\\.")))
-  }
+
   # Check if the request was successful
   if (httr::status_code(response) == 200) {
 
@@ -15,15 +13,16 @@ check_version<-function(){
 
     # Extract the tag name (version)
     latest_version <- release_info$tag_name
+    latest_version<-gsub("iMESc-Desktop-win-", "", latest_version)
 
-    current_version_numeric <- version_to_numeric('iMESc-1.0.4')
-    latest_version_numeric <- version_to_numeric(latest_version)
 
-    return(all(current_version_numeric >= latest_version_numeric))
+    result<-current_version!=latest_version
+    attr(result,"current")<-current_version
+    attr(result,"latest")<-latest_version
+    return(result)
   }
 
 
 
 
 }
-

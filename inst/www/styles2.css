@@ -820,10 +820,14 @@ padding-right: 20px;
 padding-left: 5px
 }
 .half-drop-inline .bootstrap-select>.dropdown-toggle{
-white-space: normal;
-height: fit-content
+#white-space: normal;
+#height: fit-content;
+#max-height: 80px;
            }
-
+.half-drop-inline .bootstrap-select .dropdown-toggle .filter-option {
+ # height: fit-content;
+ # max-height: 80px;
+}
 .picker_tip{
 z-index: 99999;
 padding-left: 10px;
