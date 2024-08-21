@@ -128,7 +128,7 @@ gg_circles<-function(p,rasterpoints,rst,newcolhabs,pal,fillOpacity,reverse_palet
 
 
     #plot(1,col=colors[length(colors)/2],pch=16,cex=15)
-    col_leg<-colorBin(colors,domain=rasterpoints$z)(breaks)
+    col_leg<-leaflet::colorBin(colors,domain=rasterpoints$z)(breaks)
 
     if(length(breaks)==1){
       colors<-col_leg

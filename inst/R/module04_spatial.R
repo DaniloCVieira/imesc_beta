@@ -4224,7 +4224,7 @@ div(style="display: flex",
 
 
 
-    output$plot_from_leaflet<-renderLeaflet({
+    output$plot_from_leaflet<-leaflet::renderLeaflet({
       validate(need(!inherits(args_map1()$rst,"try-error"),args_map1()$rst[1]))
       if(isTRUE(interp)){
         req(vals$interp_args)
@@ -4239,7 +4239,7 @@ div(style="display: flex",
       map_result1_final()
     })
 
-    output$plot_from_leaflet2<-renderLeaflet({
+    output$plot_from_leaflet2<-leaflet::renderLeaflet({
       #validate_data(vals$data_map)
       map_result1_final()
     })
@@ -4256,7 +4256,7 @@ div(style="display: flex",
         tags$div(id="modal_leaflet",class="zoom_leaflet",
                  modalDialog(
                    size ="xl",
-                   leafletOutput(ns("plot_from_leaflet2"), height  = 520, width='70vw'),
+                   leaflet::leafletOutput(ns("plot_from_leaflet2"), height  = 520, width='70vw'),
                    easyClose = T
                  )
         )

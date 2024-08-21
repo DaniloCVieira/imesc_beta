@@ -301,7 +301,7 @@ add_extraLL<-function(map,data,args_extra_shape){
             base_temp<-st_cast(extra[i,],"LINESTRING")
             for(j in 1:nrow(base_temp)){
               co<-st_coordinates(base_temp[j,])[,1:2]
-              map2<-map2 |> addPolylines(co[,1],co[,2],color =ei$colors ,opacity=1,weight =ei$sizes,group="extra_shape")
+              map2<-map2 |> leaflet::addPolylines(co[,1],co[,2],color =ei$colors ,opacity=1,weight =ei$sizes,group="extra_shape")
             }
           }
         }
@@ -781,7 +781,7 @@ add_base_shape<-function(map,data,shape_attr="base_shape",color="blue",fillOpaci
           base_temp<-st_cast(base_shape[i,],"POLYGON")
           for(j in 1:nrow(base_temp)){
             co<-st_coordinates(base_temp[j,])[,1:2]
-            map<-map |> addPolygons(co[,1],co[,2],fill=fill,color=color,opacity=1,fillOpacity =fillOpacity,stroke=stroke,weight =weight,group="base_shape")
+            map<-map |> leaflet::addPolygons(co[,1],co[,2],fill=fill,color=color,opacity=1,fillOpacity =fillOpacity,stroke=stroke,weight =weight,group="base_shape")
           }
         }
 
@@ -826,7 +826,7 @@ map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=
   if(is.factor(df[,3])){
     cols<-newcolhabs[[palette]](nlevels(df[,3]))
     cols<-cols[levels(df[,3])%in%df[,3]]
-    palette <- colorFactor(cols,domain = factor(df[,3]))
+    palette <- leaflet::colorFactor(cols,domain = factor(df[,3]))
     radius<-radius
   } else{
     radius<-if(isTRUE(scale_radius)){scales::rescale(df$z,c(min_radius,radius))}else{radius}
@@ -834,14 +834,14 @@ map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=
     custom_breaks<-as.numeric(custom_breaks)
     if(length(custom_breaks)<=2){
       custom_breaks=2
-      palette <- colorFactor(pal,domain = factor(df[,3]))
+      palette <- leaflet::colorFactor(pal,domain = factor(df[,3]))
     } else{
-      palette <- colorBin(pal,domain = df[,3], bins = custom_breaks)
+      palette <- leaflet::colorBin(pal,domain = df[,3], bins = custom_breaks)
     }
 
   }
 
-  map <- leaflet(df, options =leafletOptions(
+  map <- leaflet::leaflet(df, options =leaflet::leafletOptions(
     zoomSnap=zoomSnap,
     zoomControl =T,
     zoomDelta = 1
@@ -852,7 +852,7 @@ map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=
   #map<-add_extraLL(map,data,args_extra_shape)
 
   if(isTRUE(addCircles)){
-    map <- map |> addCircleMarkers(
+    map <- map |> leaflet::addCircleMarkers(
       lng = ~x,
       lat = ~y ,
       fillOpacity = fillOpacity,
@@ -868,15 +868,15 @@ map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=
   if(isTRUE(addMinicharts)){
     map<-add_pie_chart(map,data,factor_chart,buffer_zize,fun, min_radius,max_radius, pal,light)
   }
-  map <- map %>% addTiles() %>%
-    addProviderTiles(providers)
+  map <- map %>% leaflet::addTiles() %>%
+    leaflet::addProviderTiles(providers)
 
 
   map0<-map
   if(!is.null(rst)){
     if(!is.factor(df[,3])){
 
-      pal <- colorNumeric(pal,domain = df[,3], na.color ='#00000000')
+      pal <- leaflet::colorNumeric(pal,domain = df[,3], na.color ='#00000000')
 
 
     } else{
@@ -887,7 +887,7 @@ map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=
     }
 
 
-    map <- map |> addRasterImage(rst, colors = pal, opacity = fillOpacity, group="raster")
+    map <- map |> leaflet::addRasterImage(rst, colors = pal, opacity = fillOpacity, group="raster")
   }
 
 
@@ -897,10 +897,10 @@ map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=
       if(!is.null(args_labels$labels)){
       labels<-attr(data,"factors")[,args_labels$labels]
       map<- map |>
-        addLabelOnlyMarkers( lng = df$x,
+        leaflet::addLabelOnlyMarkers ( lng = df$x,
                              lat = df$y, label =  ~as.character(labels),
                              group="labels",
-                             labelOptions = labelOptions(
+                             labelOptions = leaflet::labelOptions(
                                style =list('color'=args_labels$col.fac),
                                direction = 'center',
 
@@ -912,14 +912,14 @@ map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=
 
 
   if(!isTRUE(addMinicharts)){
-    map <- map |> addLegend("bottomright",
+    map <- map |> leaflet::addLegend("bottomright",
                             pal = palette,
                             values = ~z,
                             title = var,
                             opacity = 1)
   }
   overlayGroups<-control_layers(addCircles,addMinicharts,rst,base_shape_args,layer_shape_args,args_labels)
-  map <- map |> addLayersControl(overlayGroups = overlayGroups)
+  map <- map |> leaflet::addLayersControl(overlayGroups = overlayGroups)
   map
 }
 gg_add_extra_shape<-function(p, rst,extra_shape_args  ){

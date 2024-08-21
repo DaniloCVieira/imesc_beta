@@ -1,10 +1,11 @@
-#' @import kohonen leaflet sf  ggplot2
+#' @import kohonen sf  ggplot2
 #' @import shiny viridis colorRamps wesanderson shinyTree sortable
 #' @import randomForestExplainer
 #' @importFrom readxl excel_sheets read_excel
 #' @importFrom ggforce geom_arc_bar
 #' @importFrom gplots heatmap.2
 #' @importFrom Metrics mae mape mse rmse
+#' @importFrom leaflet colorBin addCircleMarkers addLabelOnlyMarkers addLayersControl addLegend addPolygons addPolylines addProviderTiles addRasterImage addTiles colorBin colorFactor colorNumeric labelOptions leaflet
 #' @importFrom vegan ordiplot rda scores decostand vegdist metaMDS specnumber diversity rrarefy ordiArrowTextXY estimateR fisher.alpha
 #' @importFrom mice mice complete
 #' @importFrom colorspace darken
