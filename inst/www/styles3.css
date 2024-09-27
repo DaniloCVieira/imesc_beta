@@ -171,23 +171,23 @@ animation: change_anim3 600ms infinite;
 
 }
  .normal-checkbox{
-        padding-bottom: 10px;
-    }
+  padding-bottom: 10px;
+ }
 .normal-checkbox .shiny-options-group{
-    margin: 0px;
-    padding: 0px;
-    padding-left: 20px;
+ margin: 0px;
+ padding: 0px;
+ padding-left: 20px;
 
 
-    }
+ }
 .normal-checkbox .shiny-input-container {
 min-width: 100% !important;
-      display: inline-block;
+display: inline-block;
 
-    }
+ }
 .radio_search .form-group {
-       align-items: start;
-       height: 100% !important;
+ align-items: start;
+ height: 100% !important;
  }
 .nav_caret {
 margin-top: 10px;
@@ -207,9 +207,9 @@ font-size: 12px;
 }
 .nav_caret .tabbable > .nav > li[class=active]> a {
 box-shadow: inset 0 1px 2px #333;
-    border-bottom: 0px solid SeaGreen;
-    background: Grey;
-    font-weight: normal;
+ border-bottom: 0px solid SeaGreen;
+ background: Grey;
+ font-weight: normal;
 color: white
 }
 .nav_caret .tabbable > .nav > li > a:hover{
@@ -294,9 +294,9 @@ content: 'off'
 padding-top: 0px
 }
 .half-drop-inline .dataTables_wrapper .dataTables_paginate {
-    float: left;
-    text-align: left;
-    padding-top: .25em;
+ float: left;
+ text-align: left;
+ padding-top: .25em;
 }
 .p20 .input-group .btn,.p20 .input-group .form-control{
 height: 60px
@@ -304,19 +304,19 @@ height: 60px
 .form-group {margin-bottom: 5px}
 .navmap2  .navbar>.container-fluid .navbar-brand{border: 0px solid red; height: 100% !important}
 .rfexpainer .col-sm-1,
-    .rfexpainer .col-sm-2,
-    .rfexpainer .col-sm-3,
-    .rfexpainer .col-sm-4,
-    .rfexpainer .col-sm-5,
-    .rfexpainer .col-sm-6,
-    .rfexpainer .col-sm-7,
-    .rfexpainer .col-sm-8,
-    .rfexpainer .col-sm-9,
-    .rfexpainer .col-sm-10,
-    .rfexpainer .col-sm-11,
-    .rfexpainer .col-sm-12 {
-    margin: 0px;padding: 0px
-    }
+ .rfexpainer .col-sm-2,
+ .rfexpainer .col-sm-3,
+ .rfexpainer .col-sm-4,
+ .rfexpainer .col-sm-5,
+ .rfexpainer .col-sm-6,
+ .rfexpainer .col-sm-7,
+ .rfexpainer .col-sm-8,
+ .rfexpainer .col-sm-9,
+ .rfexpainer .col-sm-10,
+ .rfexpainer .col-sm-11,
+ .rfexpainer .col-sm-12 {
+ margin: 0px;padding: 0px
+ }
 
 
 .radio-btn-green .btn.active{
@@ -328,27 +328,27 @@ color: white
 .checktitle .form-group {max-height: 10px;padding: 0px;margin: 0px}
 
 .picker-before-x:before{
-             border: 1px solid red
-             padding-right: 5px; background: darkgray; text-align: center;height: 30px;padding: 5px;color:white;content:'X';margin-top: 20px;
-             position: flex;box-sizing: border-box;border-top: 1px solid #ccc;border-left: 1px solid #ccc;border-bottom: 1px solid #ccc;
-    }
-    .picker-before-y:before{
-             border: 1px solid red
-             padding-right: 5px; background: darkgray; text-align: center;height: 30px;padding: 5px;color:white;content:'Y';margin-top: 20px;
-             position: flex;box-sizing: border-box;border-top: 1px solid #ccc;border-left: 1px solid #ccc;border-bottom: 1px solid #ccc;
-    }
-    .picker-before-x {
+ border: 1px solid red
+ padding-right: 5px; background: darkgray; text-align: center;height: 30px;padding: 5px;color:white;content:'X';margin-top: 20px;
+ position: flex;box-sizing: border-box;border-top: 1px solid #ccc;border-left: 1px solid #ccc;border-bottom: 1px solid #ccc;
+ }
+ .picker-before-y:before{
+ border: 1px solid red
+ padding-right: 5px; background: darkgray; text-align: center;height: 30px;padding: 5px;color:white;content:'Y';margin-top: 20px;
+ position: flex;box-sizing: border-box;border-top: 1px solid #ccc;border-left: 1px solid #ccc;border-bottom: 1px solid #ccc;
+ }
+ .picker-before-x {
 display: flex;
 
 padding: 0px;
 
-    }
+ }
  .picker-before-y {
 display: flex;
 
 padding: 0px;
 
-    }
+ }
 
 
 .selectize-control.single .selectize-input:not(.no-arrow):after{
@@ -440,8 +440,8 @@ margin: 0px;padding 0px;
 
 }
 .inline_pickers  .checkbox, .inline_pickers  .radio {
-      margin-top: 3px;
-    margin-bottom: 3px;
+margin-top: 3px;
+ margin-bottom: 3px;
 }
 
 .inline_pickers .form-group{
@@ -469,7 +469,7 @@ width: fit-content
 display: block
 }
 .som_grid .bootstrap-select>.dropdown-toggle  {
-   width: fit-content
+width: fit-content
 }
 .som_grid .shiny-input-container{
 margin: 0px;
@@ -506,3 +506,323 @@ margin: 0px;
 padding: 0px;
 max-width: 180px;
 }
+.train_box{
+margin-left: 1px;
+}
+.checktitle .form-group {
+margin: 0px;
+margin-left: -30px;
+width: fit-content;
+min-width: fit-content;
+
+}
+.checktitle .form-group label{
+ width: fit-content;
+min-width: fit-content
+}
+.btn-title2 {
+margin-left: 10px
+}
+
+.box_title .btn-title2 .btn, .btn-title2  i {
+margin-top: -10px;
+ width: fit-content;
+font-size: 13px;
+color: #337ab7;
+  padding-left: 10px;
+padding-right: 10px;
+height: 20px;
+}
+.box_title .btn,.box_title .btn i {
+margin: 0px;
+margin-top:0px;
+box-sizing: content-box;
+border:0px solid;
+padding: 3px;
+height: 20px;
+font-size:8px;
+border-radius: 0px;
+color: white;
+}
+
+.navmap2 .navbar{
+width: fit-content
+}
+.navmap2 .container-fluid {
+margin-left: -130px;
+width: 120vh
+}
+
+.navmap2 .navbar, .navmap2  .navbar li,.navmap2  .navbar li a,.navmap2 ul {
+height: 26px;
+min-height: 26px;
+max-height: 26px;
+
+}
+.rank_grid .shiny-input-container{
+margin: 0px;
+padding: 0px
+}
+.rank_grid .rank-list-item{
+border: 1px dashed gray;
+height: 20px
+margin: 0px;
+padding: 0px
+}
+
+.stack_order .default-sortable div,.stack_order .rank-list-container{
+margin: 0px; padding: 0px;
+font-size:12px;
+height:24px
+}
+.sptools_plot{
+  overflow: scroll;
+height: calc(100vh - 260px);
+;width: 50vw;
+}
+
+.picker13 label{
+  font-size: 13px
+}
+.picker13 .btn{
+font-size: 12px;
+max-width: 200px
+}
+.picker13 .vscomp-wrapper {
+font-size: 12px
+}
+.picker13 .vscomp-toggle-button{
+
+min-width: 200px;
+max-width: 200px
+}
+.picker150 .picker13 .vscomp-toggle-button{
+
+min-width: 150px;
+max-width: 150px
+}
+.picker13 .vscomp-dropbox{
+
+width: fit-content
+}
+ .small_check .checkbox{
+margin-top: 0px;
+margin-bottom: 0px
+ }
+  .small_check input[type=checkbox]{
+
+  margin: 0px;
+  margin-left: -15px
+}
+.small_check label {
+font-size: 10px
+}
+
+.picker13 .picker_fit label{
+font-size: 12px
+}
+.picker13 .picker_fit .vscomp-toggle-button {
+min-width: fit-content;
+max-width: 200px;
+height: 24px
+}
+ .bs-searchbox .form-control{
+border-radius:0px;
+height: 24px;
+padding: 3px
+
+}
+.open>.dropdown-toggle.btn-default, .open>.dropdown-toggle.btn-default.focus, .open>.dropdown-toggle.btn-default:focus{
+background: #ffffe6
+}
+ .bank_attr .btn, .bank_attr i{
+color: #333
+}
+.picker25 .bootstrap-select>.dropdown-toggle,.picker25 .form-control, .half-drop-inline .picker25 .form-group {
+height: 20px;
+padding:2px
+margin: 0px
+}
+.picker25 .form-control {
+margin-bottom: 5px
+}
+.dataTables_wrapper .dataTables_filter input {
+border: 1px solid #aaa;
+border-radius: 0px;
+padding: 2px;
+background-color: transparent;
+color: inherit;
+margin-left: 1px;
+height: 25px;
+}
+.tip-80 .tooltip-inner {
+ position: absolute;
+ top: 3px;
+ left: 0px;
+ min-width: 150px
+}
+
+.label_none label{display: none}
+
+.picker_table .btn {
+font-size: 14px;
+text-align: left;
+box-sizing: border-box;
+display: flex;
+flex-wrap: wrap;
+padding: 0 15px;
+height: 24px;
+}
+
+.picker_table .dropdown-menu .open {
+
+}
+.picker_table .form-group{
+margin: 0px
+}
+.picker_table{
+margin-top: 35px;
+
+}
+.picker_loop .vscomp-option {
+border-bottom: 1px solid
+}
+.picker_fake{
+padding: 0 15px;
+height: 24px;
+border-bottom: 1px solid;
+  font-size: 14px;
+box-sizing: border-box;
+}
+
+.picker_loop .form-control {
+#max-height: 24px;
+border-radius: 0px;
+}
+
+.picker_loop .vscomp-options-container{
+max-height: 100% !important
+
+}
+
+.choices_tip{
+width: 100%;
+
+
+position: relative
+}
+.data_x ul {
+  position: absolute;
+
+
+}
+.choices_tip_show{
+display: none
+}
+.dropdown-menu>.active>a .picker_tip{
+display: block;
+color: yellow
+}
+.picker_tip{
+z-index: 99999;
+padding-left: 10px;
+font-size: 11px;
+color: SeaGreen;
+font-style: italic;
+
+}
+
+.data_x .filter-option-inner-inner .picker_tip{
+display: none
+}
+.data_x .open>.dropdown-menu {
+max-height: 300px;
+min-width: 200px}
+.data_x span.text{
+width: 100%
+}
+
+.popover-title {
+
+padding: 0px;
+padding-left: 15px;
+margin: 0;
+font-size: 13px;
+cursor: default;
+}
+.popover-title label {
+cursor: default
+
+}
+.popover-title a{
+font-weight: normal;
+font-style: italic
+}
+.popover-title input[type=checkbox]{
+cursor: pointer
+}
+.button.close{
+display: none;
+cursor: none
+}
+.setup_box .dropdown-menu .open{
+max-height: 350px;
+overflow-y: auto;
+
+}
+
+.model_subtext{
+color: darkgreen; font-size: 11px
+}
+.model_tag{
+color: gray; font-size: 10px; font-style: italic;
+
+}
+.dropdown-menu>.active>a >i{
+color: white
+}
+ .dropdown-menu>.active>a .model_subtext{
+color: WhiteSmoke
+ }
+ .dropdown-menu>.active>a .model_ico i {color:lightgray}
+.model_ico i {color:#05668D}
+
+.dropdown-menu>.active>a .model_tag{
+
+color: yellow
+}
+.train_button .btn{
+border-radius: 4px;
+border: 0px;
+ box-shadow: 0px 1px 3px 0px black  ;
+box-sizing: border-box;
+background:  #05668D; color: white; margin: 0px; font-size: 16px; position: absolute;right: 0px; margin-top: 8px;z-index: 999
+}
+
+.picker-tip .text-muted{color: SeaGreen; font-style: italic}
+.virtual12 .vscomp-dropbox{font-size: 11px}
+
+.virtual12 .vscomp-wrapper,  .virtual12 .vscomp-search-input {
+font-size: 11px
+}
+
+.small_radio .btn{
+padding-left: 7px;
+ padding-right: 7px;
+font-size: 12px
+}
+ .radiobox_title{
+ display: flex;
+
+ margin-left: 5px;
+ margin-right: 5px
+ }
+  .box_comp_results .box_title{
+ display: flex;
+
+
+  } .box_comp_results .radio12 .btn{
+ color: #333;
+ font-size: 12px;
+
+ }

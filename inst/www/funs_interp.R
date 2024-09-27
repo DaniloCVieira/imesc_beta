@@ -53,6 +53,7 @@ get_shapes<-function(base_shape,layer_shape,coords,crs.info="+proj=longlat +datu
   return(list(base_shape=base_shape, layer_shape=layer_shape,base_shape_int=base_shape_int,crs.info=crs.info))
 
 }
+
 #' @export
 get_grid<-function(coords,limits,crs.info,res){
   newgrid<- as.data.frame(spsample(to_spatial(rbind(coords, limits)), "regular", n=res))

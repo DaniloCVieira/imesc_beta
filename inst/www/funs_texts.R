@@ -20,13 +20,12 @@ getdata_model<-function(m,which="train"){
 }
 
 #' @export
-get_feature_data_plot<-function(df,m,newdata,obc, npic){
+get_feature_data_plot<-function(df,m, npic){
   colnames(df)[2]<-"Metric"
   req(is.data.frame(df))
 
-  metric<-ifelse(m$modelType=='Regression','Rsquared','Accuracy')
-  value<-caret::postResample(predict(m,newdata),obc)[metric]
-  df[,2]<-value-df[,2]
+
+  df[,2]<-df$actual_metric-df[,2]
   df<-df[which(df$var%in%names(sort(sapply(split(df,df$var),function(x) mean(x$Metric)),decreasing=T)[1:npic])),]
 }
 
@@ -130,39 +129,7 @@ permute_importance_foreach_progress<-function(m,newdata,obc, rep, seed=seed, sho
 
 
 
-#' @export
-permimp_metric<-function(predtable, metric="Accuracy", class=NULL,m, newdata,obc){
-  actual<-NULL
-  if(!is.null(class)){
-    rands_lis<-split(predtable,predtable$obs)
-    predtable<- rands_lis[[class]]
-    df_pred<-data.frame(pred=predict(m,as.matrix(newdata)),obs=obc)
-    actual<-sapply(split(df_pred,df_pred$obs), function(x) postResample(x$pred,x$obs))[metric,class]
 
-
-  }
-
-  rands_lis<-split(predtable,predtable$rep)
-  x<-names(rands_lis)[1]
-  remetric<-lapply(names(rands_lis),function(x){
-    lis0<-split(rands_lis[[x]],rands_lis[[x]]$var)
-    df0<-data.frame(metric=sapply(lis0,function(xx){
-      c(postResample(xx$pred,xx$obs)[metric])
-    }))
-    df0$var<-names(lis0)
-    rownames(df0)<-NULL
-    df0[metric]<-df0$metric
-    df0$metric<-NULL
-    df0$rep<-x
-    df0
-
-  })
-
-  metrics<-data.frame(do.call(rbind,remetric))
-  if(!is.null(actual)){
-  metrics$Accuracy<-(actual*metrics$Accuracy)/ max(metrics$Accuracy)}
-  metrics
-}
 #' @export
 sig_feature<-function(rands, m,newdata,obc,sig_level){
   metric<-ifelse(m$modelType=='Regression','Rsquared','Accuracy')
@@ -548,6 +515,8 @@ tiphelp3<-function(title,text,placement ="bottom"){
     style="color: #3c8dbc;",
     title,tipify(icon("fas fa-question-circle"),text,placement =placement ))
 }
+
+
 #' @export
 tiphelp4<-function(text,placement ="bottom"){
   tipify(a(icon("fas fa-question-circle")),text,placement =placement)
@@ -698,22 +667,53 @@ datalist_render<-function(datalist=NULL,bagdata=F,width="90px"){
   )
 
 }
+reshape_names<-function(names){
+  names<-  make.names(names, unique = TRUE)
+  names <- gsub("\\.+", ".", names)
+  names
+}
+
+reshape_colnames<-function(data){
+  colnames(data)<-  make.names(colnames(data), unique = TRUE)
+  colnames(data) <- gsub("\\.+", ".", colnames(data))
+  data
+}
+
+reshape_datalist_colnames<-function(data){
+  datas<-list(factors=attr(data,"factors"),coords=attr(data,"coords"))
+  newdata<-reshape_colnames(data)
+  datas<-datas[sapply(datas,length)>0]
+  defdata<-lapply(datas,reshape_colnames)
+  attr(newdata,"factors")<-defdata$factors
+  attr(newdata,"coords")<-defdata$coords
+  newdata
+}
+
+
 
 #' @export
 data_migrate<-function(data,newdata, newname=NULL){
   {
+    #newdata<-reshape_datalist_colnames(newdata)
+   # data<-reshape_datalist_colnames(data)
     attr(newdata, "datalist_root")=attr(data, "datalist_root")
     #attr(newdata, "data.factor")=attr(data,"data.factor")[rownames(newdata),]
     attr(newdata, "datalist")=attr(data, "datalist")
+
+
+
     attr(newdata, "filename")=attr(data, "filename")
     factors<-attr(data, "factors")[rownames(newdata), , drop=FALSE]
     fac2<-data.frame(lapply(factors,function(x){
       factor(x,levels=levels(x)[levels(x)%in%x])
     }))
-
+    rownames(fac2)<-rownames(newdata)
     colnames(fac2)<-colnames(factors)
     attr(newdata, "factors")=fac2
     attr(newdata, "coords")= attr(data,"coords")[rownames(newdata), , drop=FALSE]
+
+    reshape_colnames(data)
+
     attr(newdata, "base_shape")= attr(data,"base_shape")
     attr(newdata, "layer_shape")=attr(data,"layer_shape")
     attr(newdata, "extra_shape")=attr(data,"extra_shape")
@@ -2063,3 +2063,17 @@ plot_ridges<-functiondataplot_ridges<-function(data,fac,palette,newcolhabs,ncol=
 
 }
 
+virtualPicker_unique<-function(id,label,choices,selected=NULL,search=T,multiple=F,allOptionsSelectedText="All",alwaysShowSelectedOptionsCount=F,width=NULL){
+  div(class="picker13",
+      shinyWidgets::virtualSelectInput(
+        id,
+
+        label,choices=choices,selected=selected,multiple = multiple,  search =search,
+        alwaysShowSelectedOptionsCount=alwaysShowSelectedOptionsCount,
+        allOptionsSelectedText=allOptionsSelectedText,
+
+        optionHeight='24px',position="bottom",
+        width=width
+      )
+  )
+}

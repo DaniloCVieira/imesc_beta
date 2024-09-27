@@ -1,6 +1,4 @@
 
-
-
 module_save_changes<-list()
 module_save_changes$ui<-function(id,vals=NULL){
   ns<-NS(id)
@@ -34,8 +32,7 @@ module_save_changes$ui<-function(id,vals=NULL){
     )
   )
 }
-module_save_changes$server<-function(id,vals,update_tab1=NULL,tab1=NULL,
-                                     update_tab2=NULL,tab2=NULL,message=NULL){
+module_save_changes$server<-function(id,vals,update_tab1=NULL,tab1=NULL,update_tab2=NULL,tab2=NULL,message=NULL){
   moduleServer(id,function(input,output,session){
     ns<-session$ns
 
@@ -45,7 +42,9 @@ module_save_changes$server<-function(id,vals,update_tab1=NULL,tab1=NULL,
 
     newdata<-reactive({
       req(vals$newdatalist)
-      vals$newdatalist
+      data<-vals$newdatalist
+      attr(data,"datalist")<-datalist()
+      data
     })
 
     name0<-reactive({
@@ -122,7 +121,7 @@ reshape_args<-function(x,y,sl_formals,sl_ctl_formals,model){
 }
 model_control<-list()
 model_control$ui<-function(id,vals){
-
+  vals$cur_model_params<-NULL
 
   x<-vals$cur_xtrain
   y<-vals$cur_var_y[,1]
@@ -1113,8 +1112,18 @@ model_control$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
 
 
+    observeEvent(vals$cur_model_params,{
+      for(i in names(vals$cur_model_params)){
+        updateTextInput(session,i,value= vals$cur_model_params[[i]])
+      }
 
+    })
+    observe({
+      for(i in names(input)){
+        vals$cur_model_params[[i]]<-input[[i]]
+      }
 
+    })
 
     args0<-reactive({
       req(vals$trainSL_args)
@@ -1479,20 +1488,7 @@ msp_xyf$server<-function(id,model,vals){
 
       div(
 
-        tags$style(HTML("
-       h2 {
-      font-size: 20px;
-      font-weight: bold;
-      }
-      h3 {
-      font-size: 20px;
-      font-weight: lighter;
-      }
-      code {
-      color: blue;
-      }
 
-    ")),
 
     div(
       column(12,
@@ -2499,6 +2495,233 @@ panel_box_caret4$server<-function(id,vals){
 
   })
 }
+
+
+
+get_cm_impact<-function(predtable,var){
+  req(is.data.frame(predtable))
+  req(nrow(predtable)>1)
+
+  rands_lis<-split(predtable,predtable$var)
+  res<-rands_lis[[var]]
+  dft<-table(res$pred,res$obs)
+  dft
+}
+
+
+
+rf_oob_pred_prob <- function(forest, X) {
+
+  # Get individual predictions
+  preds = predict(forest, X, predict.all = TRUE)
+
+  # Identify OOB samples
+  oob = forest$inbag == 0
+  predind <- preds$individual
+  predind[!oob] <- NA
+
+  # Calculate class probabilities
+  class_levels <- levels(forest$y)
+  prob_matrix <- matrix(NA, nrow = nrow(X), ncol = length(class_levels))
+  colnames(prob_matrix) <- class_levels
+
+  for (i in seq_along(class_levels)) {
+    class <- class_levels[i]
+    prob_matrix[, i] <- rowMeans(predind == class, na.rm = TRUE)
+  }
+
+  return(prob_matrix)
+}
+
+rf_oob_pred<-function(forest, X) {
+  if(is.null(forest$inbag)){
+    return(predict(forest, X))
+  }
+  if(forest$problemType=="Classification"){
+    preds = predict(forest, X, predict.all=TRUE)
+    oob = forest$inbag==0
+    predind<-  preds$individual
+    predind[which(!oob)]<-NA
+    res<-apply(predind,1,function(x){
+      names(which.max(table(x[!is.na(x)])))
+    })
+    return(res)
+  } else{
+    preds = predict(forest, X, predict.all=TRUE)
+    oob = forest$inbag==0
+    oob[which(!oob)] = NA
+    preds.oob = oob*preds$individual
+    preds.oob
+  }
+
+}
+permutation_importance3<-function(model, n_permutations = 99, num_cores = 1,session=MockShinySession$new(),seed=NA,replace=F) {
+  if (num_cores < 1) {
+    stop("num_cores deve ser um número inteiro positivo.")
+  }
+  if(is.na(seed)){seed=NULL}
+
+  data <- model$trainingData
+  predictors <- colnames(data)[colnames(data) != ".outcome"]
+  obs <- data[,".outcome"]
+  train <- data[predictors]
+  var_metrics <- vector("list", length(predictors))
+  max <- length(predictors)*n_permutations
+  start <- 1
+  set.seed(seed) # Setting seed for reproducibility
+  seeds<-runif(length(predictors)*n_permutations,min=min(.Random.seed),max=max(.Random.seed))
+  seeds<-split(seeds,rep(seq_along(predictors),each=length(n_permutations)))
+
+
+  if(inherits(model$finalModel,"randomForest")){
+    pred_train <- rf_oob_pred(model$finalModel, train)
+  } else{
+    pred_train <- predict(model, train)
+  }
+
+  withProgress(min=1,max=max,message="Running... ",session =session ,{
+    var_metrics<-list()
+    for (i in seq_along(predictors)) {
+
+      var <- predictors[i]
+      metrics <- vector("list", n_permutations)
+
+      rj<-list()
+      for(j in seq_len(n_permutations)){
+        incProgress(1,paste0("Randomizing...",var),session =session )
+        newdata <- train
+        set.seed(seeds[[i]][j])
+        newdata[, var] <- sample(train[, var],replace=replace)
+        if(inherits(model$finalModel,"randomForest")){
+          pred <- rf_oob_pred(model$finalModel, newdata)
+        } else{
+          pred <- predict(model, newdata)
+        }
+        df<-data.frame(var = var, pred = pred, obs = obs, rep = j,pred_train=pred_train)
+        rj[[j]]<-df
+      }
+
+      var_metrics[[i]] <- do.call(rbind,rj)
+    }
+  })
+
+
+  predtable<-do.call(rbind, var_metrics)
+  predtable
+}
+permimp_metric<-function(predtable, m,metric="Accuracy", class=F, newdata,obc,session=MockShinySession$new()){
+  actual<-NULL
+  metric<-ifelse(m$modelType=='Regression','Rsquared','Accuracy')
+
+  if(!'pred_train'%in%colnames(predtable)){
+    train<-getdata_model(m)
+    if(inherits(m$finalModel,"randomForest")){
+      pred_train <- rf_oob_pred(m$finalModel, train)
+    } else{
+      pred_train <- predict(m, train)
+    }
+    predtable$pred_train<-rep(rep(pred_train,max(predtable$rep)),ncol(train))
+  }
+
+
+  if(isFALSE(class)){
+    to_split<-predtable[c("var",'rep')]
+  } else{
+    to_split<-predtable[c("var",'obs','rep')]
+  }
+  rands_lis<-split(predtable,to_split)
+  withProgress(
+    min=1,
+    max=length(rands_lis),
+    session=session,
+    message="Calculating metrics...",{
+      remetric<-list()
+      for(i in seq_along(rands_lis)){
+
+        incProgress(1,   session=session)
+        print(paste0(i,"/",length(rands_lis)))
+        xx<-rands_lis[[i]]
+        pred_metric=as.vector(c(postResample(xx$pred,xx$obs)[metric]))
+        var=xx$var
+        rep=xx$rep
+        obs=xx$obs
+        pred_train=xx$pred_train
+        actual_metric<-as.vector(c(postResample(pred_train,obs)[metric]))
+        remetric[[i]]<-data.frame(var,pred_metric,actual_metric,rep,obs,pred_train)
+
+
+      }
+
+    })
+
+  metrics<-data.frame(do.call(rbind,remetric))
+
+
+
+  metrics
+}
+sig_feature<-function(permimp,m){
+  metric<-ifelse(m$modelType=='Regression','Rsquared','Accuracy')
+  obs<- getdata_model(m,"test")
+  testdata<-attr(m,"test")
+
+  if(!'pred_train'%in%colnames(permimp)){
+    train<-getdata_model(m)
+    if(inherits(m$finalModel,"randomForest")){
+      pred_train <- rf_oob_pred(m$finalModel, train)
+    } else{
+      pred_train <- predict(m, train)
+    }
+    permimp$pred_train<-rep(rep(pred_train,max(permimp$rep)),ncol(train))
+  }
+  colnames(permimp)[2]<-metric
+
+  lis<-perfs<-split(permimp,permimp$var)
+
+  res<-list()
+  for(i in seq_along(lis)){
+    x<-lis[[i]]
+    permuted_values<-x[,metric]
+    actual_value<-unique(x$actual_metric)
+    p_value<-pnorm(actual_value,mean=mean(permuted_values), sd=sd(permuted_values), lower.tail = F)
+    p_result<-p_value
+    p_result
+    xmean<-mean(permuted_values)
+    res[[i]]<-data.frame(var=x$var[1],
+                         actual_value=actual_value,
+                         mean=xmean,
+                         sd=sd(permuted_values),
+                         dff=actual_value-xmean,
+                         p_value=p_result)
+
+
+  }
+
+  #res<-sapply(lis,function(x){})
+  perm_summary<-data.frame(do.call(rbind,res))
+
+  colnames(perm_summary)<-c(
+    "var",
+    'obs_metric',
+    paste0("mean_perm_",metric),
+    paste0("sd_perm",metric),
+    paste0("obs_metric - ",paste0("mean_perm",metric)),
+    "p_value")
+
+  perm_summary
+
+}
+perm_add_sig<-function(perm_summary,sig,sig_value){
+  perm_summary$sig<-""
+
+  sigs<-which(perm_summary$p_value<sig_value)
+  if(length(sigs)>0){
+    perm_summary$sig[sigs]<-"*"
+  }
+  perm_summary
+}
+
+
 permutation_importance<-list()
 permutation_importance$ui<-function(id){
   ns<-NS(id)
@@ -2508,45 +2731,68 @@ permutation_importance$ui<-function(id){
     strong("Permutation importance", tipify(actionLink(ns("feaimp_help"),icon("fas fa-question-circle")),"Click for more details", "right")),
     div(style="display: flex",class="inline_pickers well3 color_box",
         div(style="width: 20px;heigth: 20px;background:#c3cc74ff;display:inline-block;margin-top: -5px;margin-left: -5px"),
-        numericInput(ns("feat_rep"),span("+ Iterations:",tipright("Number of iterations for randomizing each variable")), value=99, step=1
+        numericInput(ns("feat_rep"),span("+ Iterations:",tipright("Number of iterations for randomizing each variable")), value=99, step=1,width='200px'
         ),
-        numericInput(ns("feat_seed"),span("+ Seed:",tipright("seed for genereating reproducible results")), value=1, step=1),
+        numericInput(ns("feat_seed"),span("+ Seed:",tipright("seed for genereating reproducible results")), value=1, step=1,width='180px'),
+
         div(id=ns('run_btn'),actionButton(ns("run_feat_shuf"),"RUN"),class="save_changes")
+
     ),
+
     tabsetPanel(
       id=ns("pi_result"),
       tabPanel(
         "4.1. Feature Importance",value="tab1",
-        column(4,class="mp0",
-               box_caret(ns("18"),
-                         title="Options",
-                         color="#c3cc74ff",
-                         div(
-                           numericInput(ns("feat_npic"),span("+ nvars:",tipright("Number of variables to display")), value=20,  step=1),
-                           numericInput(ns("sig_feature"),span("+ Sig",tipright("Significance level")), value=0.05,  step=0.05),
-                           pickerInput_fromtop(inputId = ns("pal_feature"),
-                                               label = "+ Palette",
-                                               choices =    NULL,
-                                               options=shinyWidgets::pickerOptions(windowPadding="top")),
-                           numericInput(ns("feaimp_cex.axes"),"+ Axes size",
-                                        value=13, step=1),
-                           numericInput(ns("feaimp_cex.lab"),"+ Label size",
-                                        value=14, step=1),
-                           numericInput(ns("feaimp_cex.leg"),"+ Label size",
-                                        value=13, step=1)
+        column(
+          4,class="mp0",
+          box_caret(
+            ns("18"),
+            title="Options",
+            color="#c3cc74ff",
+            div(
+              numericInput(ns("feat_npic"),span("+ nvars:",tipright("Number of variables to display")), value=20,  step=1),
+              div(
+                id=ns("feat_wrap_inputs"),
+
+                uiOutput(ns('feat_class')),
+                numericInput(ns("feat_wrap_nrow"),"nrows",
+                             value=2, step=1),
+
+
+              ),
+
+
+              numericInput(ns("sig_feature"),span("+ Sig",tipright("Significance level")), value=0.05,  step=0.05),
+              pickerInput_fromtop(inputId = ns("pal_feature"),
+                                  label = "+ Palette",
+                                  choices =    NULL,
+                                  options=shinyWidgets::pickerOptions(windowPadding="top")),
+              textInput(ns("feat_title"),"+ Title",NULL),
+
+              numericInput(ns("cex.title.panel"),"+ Title size",
+                           value=12, step=1),
+              numericInput(ns("feaimp_cex.axes"),"+ Axes size",
+                           value=13, step=1),
+              numericInput(ns("feaimp_cex.lab"),"+ Label size",
+                           value=14, step=1)
 
 
 
-                         )
+            )
 
-               )
+
+          )
+
         ),
         column(7,class="mp0",
                box_caret(ns("19"),
                          title="Plot",
                          button_title=
                            actionLink(ns('caret_varImp_plot'),'Download',icon("download")),
-                         uiOutput(ns("feature_importance_plot"))
+                         div(
+                           uiOutput(ns("feature_importance_plot")),
+                           uiOutput(ns("feature_importance_plot_wrap"))
+                         )
                )
         )
 
@@ -2604,10 +2850,54 @@ permutation_importance$ui<-function(id){
   )
 }
 box21_help_content <- "Confusion Matrix after randomizing the selected variable"
+
+
+
 permutation_importance$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
 
+
+    observeEvent(input$feat_wrap,{
+      value="Feature Shuffling Impact"
+      value=paste0(value,"- Group ",input$feat_wrap)
+      updateTextInput(session,'feat_title',value=value)
+    })
+
+
+
+
     ns<-session$ns
+    m<-reactive({
+      m<-vals$cur_caret_model
+      req(inherits(m,"train"))
+      m
+    })
+    data_x<-reactive({
+      attr(m(),"Datalist")
+    })
+    model_name<-reactive({
+      attr(m(),"model_name")
+    })
+    model_type<-reactive({})
+    output$feat_class<-renderUI({
+      choices<-m()$levels
+      pickerInput_fromtop(ns('feat_wrap'),"Group:",choices=c("All",choices))
+    })
+    observe({
+      shinyjs::toggle('feat_wrap_inputs',
+                      condition=m()$modelType=="Classification")    })
+
+    observed_train<-reactive({
+      req(m()$modelType=="Classification")
+      obs<-getdata_model(m(),"test")
+      obs
+    })
+
+    observeEvent(observed_train(),{
+      req(m()$modelType=="Classification")
+      obs<-observed_train()
+      updateNumericInput(session,'feat_wrap_nrow',value=nlevels(obs))
+    })
 
 
 
@@ -2617,8 +2907,8 @@ permutation_importance$server<-function(id,vals){
     })
 
 
-    observeEvent(model,{
-      updateSelectInput(session,'var_feature_cm',choices= colnames(getdata_model(m)))
+    observeEvent(m(),{
+      updateSelectInput(session,'var_feature_cm',choices= colnames(getdata_model(m())))
     })
     box_caret_server("18")
     box_caret_server("19")
@@ -2626,68 +2916,193 @@ permutation_importance$server<-function(id,vals){
     box_caret_server("21")
     box_caret_server("22")
     box_caret_server("23")
-    m<-model<-vals$cur_caret_model
-    data_x<-attr(m,"Datalist")
-    model_name<-attr(m,"model_name")
+
+
     observe({
-      req(model)
+      req(m())
       req(vals$cmodel)
-      predtable<-attr(vals$saved_data[[data_x]],vals$cmodel)[[model_name]]$feature_rands
+      predtable<-attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$feature_rands
       shinyjs::toggleClass("run_btn",class="save_changes",condition=is.null(predtable))
     })
 
 
-    permutation_importance3 <- function(model, n_permutations = 300, num_cores = 1,session=MockShinySession$new(),seed=NULL) {
-      if (num_cores < 1) {
-        stop("num_cores deve ser um número inteiro positivo.")
-      }
-      if(is.na(seed)){seed=NULL}
 
-      data <- model$trainingData
-      predictors <- colnames(data)[colnames(data) != ".outcome"]
-      obs <- data[,".outcome"]
-      train <- data[predictors]
-      var_metrics <- vector("list", length(predictors))
-      max <- length(predictors)
-      start <- 1
-
-      withProgress(min=1,max=max,message="Running... ",session =session ,{
-        for (i in seq_along(predictors)) {
-          var <- predictors[i]
-          metrics <- vector("list", n_permutations)
-          newdata <- train
-
-          set.seed(seed) # Setting seed for reproducibility
-          incProgress(1,paste0("Randomizing...",var),session =session )
-
-          result <- parallel::mclapply(seq_len(n_permutations), function(j) {
-
-            newdata[, var] <- sample(train[, var])
-            pred <- predict(model, newdata)
-            data.frame(var = var, pred = pred, obs = obs, rep = j)
-          }, mc.cores = num_cores)
-
-          var_metrics[[i]] <- do.call(rbind, result)
-        }
-      })
-
-
-      do.call(rbind, var_metrics)
-    }
     observeEvent(input$run_feat_shuf,ignoreInit = T,{
-
-      newdata<-getdata_model(m)
-      obc<-getdata_model(m,"test")
+      attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$feature_rands<-NULL
+      attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics<-NULL
+      attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics_class<-NULL
+      newdata<-getdata_model(m())
+      obc<-getdata_model(m(),"test")
       rep=input$feat_rep
       seed=input$feat_seed
-      predtable<-permutation_importance3(model,rep,session=getDefaultReactiveDomain(),seed=seed)
+      attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$perm_summary<-NULL
+      predtable<-permutation_importance3(
+        m(),rep,
+        session=getDefaultReactiveDomain(),
+        seed=seed
+      )
+      attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$feature_rands<-predtable
 
-      attr(vals$saved_data[[data_x]],vals$cmodel)[[model_name]]$feature_rands<-predtable
+    })
+    #' @export
 
+    observe({
 
+      req(input$feat_wrap)
+      req(input$feat_wrap=="All")
+      req(input$pal_feature)
+      req(data_x())
+      req(model_name())
+      req(length(m())>0)
+      req(input$feat_npic)
+      predtable<-df<-attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$feature_rands
+      req(predtable)
+      validate(need(length(df)>0,"Analyses pending"))
+      req(is.null(attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics))
+      permimp<-permimp_metric(
+        predtable,metric=metric,  m(),newdata,obc,
+        session=getDefaultReactiveDomain(),
+        class=F
+      )
+
+      attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics<-permimp
     })
 
 
+    observe({
+      req(m()$modelType=="Classification")
+      req(input$feat_wrap)
+      req(input$feat_wrap!="All")
+      req(input$pal_feature)
+      req(data_x())
+      req(model_name())
+      req(length(m())>0)
+      req(input$feat_npic)
+      predtable<-df<-attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$feature_rands
+      req(predtable)
+      validate(need(length(df)>0,"Analyses pending"))
+      req(is.null(attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics_class))
+      permimp<-permimp_metric(
+        predtable,metric=metric,  m(),newdata,obc,
+        session=getDefaultReactiveDomain(),
+        class=T
+      )
+
+      attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics_class<-permimp
+    })
+
+    get_sig_feature<-reactive({
+      if(input$feat_wrap=="All"){
+        permimp<-attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics
+        req(permimp)
+        perm_summary<-sig_feature(permimp,m())
+        req(perm_summary)
+
+      } else{
+
+        pmc<-attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics_class
+        pmc_obs<-split(pmc,pmc$obs)
+        perm_summary_obs<-lapply(pmc_obs,function(x){
+          perm_summary_obs<-sig_feature(x,m())
+          perm_summary_obs
+        })
+        perm_summary<-do.call(rbind,perm_summary_obs)
+        req(perm_summary)
+
+      }
+      perm_summary
+
+    })
+    get_summary_permute_importance<-reactive({
+      perm_summary<-get_sig_feature()
+      perm_sigs<-perm_add_sig(perm_summary,sig_value=input$sig_feature) #input$sig_feature
+      vals$caret_varImp<-perm_sigs
+      perm_sigs
+    })
+
+    get_permimp_metrics<-reactive({
+      if(input$feat_wrap=="All"){
+        attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics
+      } else{
+        attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$permimp_metrics_class
+      }
+    })
+    feature_data<-reactive({
+      permimp<-get_permimp_metrics()
+      req(permimp)
+      perm_summary<-get_summary_permute_importance()
+
+      sig_names<-perm_summary$var[perm_summary$sig=="*"]
+      df<-get_feature_data_plot(permimp,m(), npic=input$feat_npic)
+      req(input$pal_feature)
+
+      req(nrow(df)>1)
+      df$sig<-"non_sig"
+      df$sig[    df$var%in%sig_names    ]<-"sig"
+      df$var[ which( df$var%in%sig_names)]<-paste0("*",df$var[  which( df$var%in%sig_names)])
+      df
+    })
+    feature_data_list<-reactive({
+      df<-feature_data()
+      split(df,df$obs)
+    })
+    output$feature_importance_plot<-renderUI({
+
+      req(input$feat_wrap=="All")
+
+
+      df<-feature_data()
+
+      req(length(df)>0)
+      renderPlot({
+        df<-df
+        col<-vals$newcolhabs[[input$pal_feature]](2)
+        p<-ggplot(df, aes(reorder(var,Metric), Metric)) +
+          geom_boxplot(aes(fill=sig))+coord_flip()+labs(x="Variables", y='Performance decay')+scale_fill_manual(values=col)+theme(
+            axis.text=element_text(size=input$feaimp_cex.axes),
+            plot.title=element_text(size=input$cex.title.panel)
+
+
+          )+ggtitle(input$feat_title)
+
+
+
+
+
+        vals$caret_varImp_plot<-p
+        vals$caret_varImp_plot
+
+      })
+    })
+
+
+    output$feature_importance_plot_wrap<-renderUI({
+      req(input$feat_wrap!="All")
+      df<-feature_data_list()
+      #saveRDS(df,"df.rds")
+      col<-vals$newcolhabs[[input$pal_feature]](2)
+
+
+      df<-df[[input$feat_wrap]]
+      req(length(df)>0)
+      renderPlot({
+        df<-df
+
+        p<-ggplot(df, aes(reorder(var,Metric), Metric)) +
+          geom_boxplot(aes(fill=sig))+coord_flip()+labs(x="Variables", y='Performance decay')+scale_fill_manual(values=col)+theme(
+            axis.text=element_text(size=input$feaimp_cex.axes),
+            plot.title=element_text(size=input$cex.title.panel)
+
+
+          )+ggtitle(input$feat_title)
+
+
+
+        vals$caret_varImp_plot<-p
+        vals$caret_varImp_plot
+
+      })
+    })
 
 
     observeEvent(ignoreInit = T,input$feaimp_help,{
@@ -2761,7 +3176,7 @@ permutation_importance$server<-function(id,vals){
       vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
       name<-"perm_imp_results"
-      data<-get_sumamry_permute_importance()
+      data<-get_summary_permute_importance()
       mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Permutation Importance Results",data=data, name=name)
     })
 
@@ -2773,23 +3188,17 @@ permutation_importance$server<-function(id,vals){
       module_ui_figs("downfigs")
       mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals, file=input$var_feature_cm)
     })
-    get_cm_impact<-function(predtable,var){
-      req(is.data.frame(predtable))
-      req(nrow(predtable)>1)
 
-      rands_lis<-split(predtable,predtable$var)
-      res<-rands_lis[[var]]
-      dft<-table(res$pred,res$obs)
-      dft
-    }
 
     observeEvent(ignoreInit = T,input$var_feature_cm,{
       vals$var_feature_cm<-input$var_feature_cm
     })
+
+
     output$feature_cm_plot<-renderUI({
       uiOutput(ns("feature_cm_plot"))
-      req(length(model)>0)
-      predtable<-attr(vals$saved_data[[data_x]],vals$cmodel)[[model_name]]$feature_rands
+      req(length(m())>0)
+      predtable<-attr(vals$saved_data[[data_x()]],vals$cmodel)[[model_name()]]$feature_rands
       req(predtable)
       dft<-get_cm_impact(predtable, var=input$var_feature_cm)
 
@@ -2799,29 +3208,12 @@ permutation_importance$server<-function(id,vals){
       })
     })
     getmetric<-reactive({
-      metric<-ifelse(m$modelType=='Regression','Rsquared','Accuracy')
+      metric<-ifelse(m()$modelType=='Regression','Rsquared','Accuracy')
       metric
     })
-    get_sumamry_permute_importance<-reactive({
-      req(input$sig_feature)
 
-      sig_level<-input$sig_feature
-      req(length(model)>0)
-      predtable<-df<-attr(vals$saved_data[[data_x]],vals$cmodel)[[model_name]]$feature_rands
-      req(predtable)
-
-      newdata<-getdata_model(m)
-      obc<-getdata_model(m,"test")
-      df<-permimp_metric(df,metric=m$metric, class=NULL,m, newdata,obc)
-
-      req(length(df)>0)
-      req(is.data.frame(df))
-
-      vals$caret_varImp<-perm_summary<-sig_feature(predtable,m, sig_level)
-      perm_summary
-    })
     output$feature_results<-renderUI({
-      table<-get_sumamry_permute_importance()
+      table<-get_summary_permute_importance()
       req(table)
       table[1:5]<-round( table[1:5],input$round_feat)
       div(class="half-drop-inline",
@@ -2843,91 +3235,9 @@ permutation_importance$server<-function(id,vals){
       )
     })
 
-    sig_feature<-function(predtable,m,sig_level){
-      metric<-m$metric
-
-      li<-split(predtable,predtable$var)
-      perfs<-lapply(li,function(x){
-        do.call(rbind,lapply(split(x,x$rep),function(xx){
-          postResample(xx$pred,xx$obs)
-        }))
-
-      })
-      lis<-perfs
-      obs<- m$trainingData[,".outcome"]
-      actual_value<-caret::postResample(predict(m), obs)[metric]
-      length(lis)
-      res<-sapply(lis,function(x){
-        permuted_values<-x[,metric]
-        #distribuicao<-qnorm(permuted_values,mean=mean(permuted_values), sd=sd(permuted_values))
-        p_value<-pnorm(actual_value,mean=mean(permuted_values), sd=sd(permuted_values), lower.tail = F)
-        p_result<-p_value
-        p_result
-        xmean<-mean(permuted_values)
-        c(actual_value=actual_value,mean=xmean,sd=sd(permuted_values),dff=actual_value-xmean,p_value=p_result)
-
-      })
-      perm_summary<-data.frame(t(res))
-      colnames(perm_summary)<-c(
-        'actual_value',
-        paste0("mean_",metric,"(rand)"),
-        paste0("sd",metric,"(rand)"),
-        paste0("actual_value - ",paste0("mean_",metric,"(rand)")),
-        "p_value")
-
-      perm_summary$sig<-""
-      sigs<-which(perm_summary$p_value<sig_level)
-      if(length(sigs)>0){
-        perm_summary$sig[sigs]<-"*"
-      }
 
 
-      perm_summary
-    }
 
-    output$feature_importance_plot<-renderUI({
-
-
-      req(data_x)
-      req(model_name)
-
-      req(length(model)>0)
-      req(input$feat_npic)
-      sig_level<-input$sig_feature
-
-      req(length(model)>0)
-      predtable<-df<-attr(vals$saved_data[[data_x]],vals$cmodel)[[model_name]]$feature_rands
-      validate(need(length(df)>0,"Analyses pending"))
-
-      newdata<-getdata_model(m)
-      obc<-getdata_model(m,"test")
-      metric<-m$metric
-      sig_level=0.05
-      df<-permimp_metric(predtable,metric=metric, class=NULL, m,newdata,obc)
-
-      perm_summary<-sig_feature(predtable,m, sig_level)
-      sig_names<-rownames(perm_summary)[perm_summary$sig=="*"]
-      df<-get_feature_data_plot(df,m,newdata,obc, npic=input$feat_npic)
-      col<-vals$newcolhabs[[input$pal_feature]](2)
-      req(nrow(df)>1)
-      df$sig<-"non_sig"
-      df$sig[    df$var%in%sig_names    ]<-"sig"
-      df$var[ which( df$var%in%sig_names)]<-paste0("*",df$var[  which( df$var%in%sig_names)])
-      req(length(df)>0)
-      renderPlot({
-        df<-df
-
-        p<-ggplot(df, aes(reorder(var,Metric), Metric)) +
-          geom_boxplot(aes(fill=sig))+coord_flip()+labs(x="Variables", y='Performance decay')+ggtitle("Feature Shuffling Impact")+scale_fill_manual(values=col)+theme(
-            axis.text=element_text(size=input$feaimp_cex.axes),
-            axis.title=element_text(size=input$feaimp_cex.lab)
-          )
-
-        vals$caret_varImp_plot<-p
-        vals$caret_varImp_plot
-
-      })
-    })
 
     ##
   })
@@ -3130,9 +3440,9 @@ pd$ui<-function(id){
                        div(class="radio_search radio-btn-green",
                            radioGroupButtons(ns("rf_useinter"), span(tipright("<li> <code> Custom Variables</code>: custom defining x and y ;</li> <li> <code> Interaction Frame </code>: only available for Random Forest after running Interactions (randomFlorestExplainer). Allow use a list ranked by most frequent interactions; </li>"),"Use:"), choices=c("Interaction Frame","Custom Variables"))),
 
-                       pickerInput(ns("rf_interaction"), "Interaction:", choices=NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
-                       pickerInput(ns("rf_grid_var1"), "Variable 1", choices=NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
-                       pickerInput(ns("rf_grid_var2"), "Variable 2", choices=NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
+                       pickerInput_fromtop_live(ns("rf_interaction"), "Interaction:", choices=NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
+                       pickerInput_fromtop_live(ns("rf_grid_var1"), "Variable 1", choices=NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
+                       pickerInput_fromtop_live(ns("rf_grid_var2"), "Variable 2", choices=NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
 
                        pickerInput_fromtop(ns("rf_biplotclass"), "+ Class", choices=NULL,multiple = T,
                                            options=shinyWidgets::pickerOptions(windowPadding="top")),
@@ -3204,7 +3514,7 @@ pd$server<-function(id,model,vals){
     m<-model
 
     observe({
-     value<- if(m$modelType=="Regression"){"Value"} else{"Prob"}
+      value<- if(m$modelType=="Regression"){"Value"} else{"Prob"}
       updateTextInput(session,"legend_pd",value=value)
     })
 
@@ -3821,9 +4131,9 @@ model_results$ui<-function(id){
                                     color="#c3cc74ff",
 
                                     div(
-                                      div(id=ns('run_btn'),class="save_changes",
+                                      div(id=ns('run_feature_btn'),class="save_changes",
 
-                                          align="right",actionButton(ns('run'),"RUN >>",style="height: 20px;font-size: 11px;padding: 2px")),
+                                          align="right",actionButton(ns('run_feature'),"RUN >>",style="height: 20px;font-size: 11px;padding: 2px")),
                                       div(class="radio_search",
                                           radioGroupButtons(ns("useModel"), span("Use Model:",tipright(paste0("Use a model based technique for measuring variable importance?. TRUE is only available for ", code('rf','gbm','glm','cforest', 'avNNet','nnet','rpart')))), choices = FALSE)
                                       ),
@@ -3834,8 +4144,12 @@ model_results$ui<-function(id){
                                                           options=shinyWidgets::pickerOptions(windowPadding="top")),
                                       numericInput(ns("feat_size"),'+ size', value=12,  step=1),
                                       numericInput(ns("feat_barhei"),'+ bar height', value=.95,  step=.1),
-                                      hidden(checkboxInput(ns("stack"),"+ Stack",F)),
+                                      checkboxInput(ns("stack"),"+ Multi-Importance",F),
+                                      checkboxInput(ns("influence"),span("+ Influence Score",tipright("The influence score, reflecting both positive and negative impacts, is calculated by multiplying variable importance by the correlation coefficient between the data and class probabilities.")),F),
                                       uiOutput(ns("xvar_out")),
+                                      textInput(ns("title"),"Title", value=NULL),
+                                      numericInput(ns("title_size"),"Title size", value=12),
+
                                       textInput(ns("xlab"),"+ xlab", value=NULL),
                                       textInput(ns('ylab'),"+ ylab", "Variables"),
                                       numericInput(ns("width"), span("Plot width",tipright("in pixels or empty for auto width")),350),
@@ -3850,7 +4164,12 @@ model_results$ui<-function(id){
                                button_title=actionLink(ns('down_plot_feat'),
                                                        "Download",
                                                        icon('download')),
-                               uiOutput(ns('importance_plot'))),
+                               div(style="width: 100vh; overflow-x: auto",
+                                   div(style="position: absolute; right: 0px; top: 30px",
+                                       actionLink(ns("create_from_feature"),"Create Datalist",icon("fas fa-file-signature"))
+                                   ),
+                                   uiOutput(ns('importance_plot'))
+                               )),
                      box_caret(ns('17'),
                                title="Table",
                                button_title=actionLink(ns('down_table_feat'),"Download",icon('download')),
@@ -3891,13 +4210,30 @@ model_results$ui<-function(id){
 model_results$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
     ns<-session$ns
-
+    observe({
+      vals$update_tab_results<-'t1'
+    },autoDestroy = T)
     model<-reactive({
       model<-vals$cur_caret_model
       req(model)
       model
     })
 
+
+
+    observeEvent(model()$modelType,{
+      req(model()$modelType)
+      if(model()$modelType=="Classification"){
+
+      } else{
+        updateCheckboxInput(session,"stack",value=F)
+
+      }
+    })
+    observe({
+      shinyjs::toggle("influence",condition=isTRUE(input$stack)&model()$modelType=="Classification")
+      shinyjs::toggle("stack",condition=model()$modelType=="Classification")
+    })
 
     output$cm_training<-renderUI({
       confusion_module$server('cm_training', vals)
@@ -3914,13 +4250,20 @@ model_results$server<-function(id,vals){
 
 
 
-    observeEvent(model()$modelType,{
-      req(model()$modelType)
-      if(model()$modelType=="Classification"){
-        shinyjs::show("stack")
+
+
+
+
+
+    observeEvent(list(input$stack,input$xvar),{
+      if(isFALSE(input$stack)){
+        updateNumericInput(session,"width",value=350)
       } else{
-        shinyjs::hide("stack")
+        req(input$xvar)
+        updateNumericInput(session,"width",value=(300*length(input$xvar)))
       }
+
+
     })
 
 
@@ -3933,11 +4276,7 @@ model_results$server<-function(id,vals){
 
     observeEvent(input$stack,{
 
-      if(isTRUE(input$stack)){
-        selected='viridis'
-      } else{
-        selected='midnight'
-      }
+      selected='midnight'
       updatePickerInput(session,'feat_palette',
                         selected=selected,
                         choices =     vals$colors_img$val,
@@ -3985,9 +4324,6 @@ model_results$server<-function(id,vals){
 
     })
 
-    observeEvent(get_imp(),{
-      updateTextInput(session,"xlab",value=colnames(get_imp()))
-    })
     importance_plot<-reactiveVal()
     observeEvent(ignoreInit = T,input$down_plot_feat,{
       vals$hand_plot<-"generic_gg"
@@ -4004,53 +4340,102 @@ model_results$server<-function(id,vals){
       mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Variable Importance",data=data, name=name)
     })
 
+    rf_impotance2<-function(rf,npic,influence=T,scale=T,positive=T,relative=F,only_sign=T,classes=rf$levels){
+
+
+
+      traindata<-getdata_model(rf)
+      hc<-getdata_model(rf,"y")
+      prob_matrix <-  predict(rf$finalModel,type="prob")
+      #colnames(prob_matrix)<-rf$levels
+
+      imp0<-caret::varImp(rf,scale=scale)$importance
+      imp0<-imp0[,classes,drop=F]
+      prob_matrix<-prob_matrix[,classes,drop=F]
+      if(isTRUE(relative))
+        imp0<-decostand(imp0,"total")
+      influences<-do.call(rbind,lapply(colnames(traindata),function(var){
+
+        inf=1
+        if(isTRUE(influence)){
+          inf<-sapply(classes,function(i){
+            cor(traindata[,var], prob_matrix[,i], use = "complete.obs")
+          } )
+          if(isTRUE(only_sign))
+            inf<-   sapply(inf,function(x) ifelse(x>0,1,-1))
+        }
+
+
+        imp0[var,]*inf
+
+      }))
+      rownames(influences)<-colnames(traindata)
+      imp_inf<-data.frame(influences)
+      res<-lapply(imp_inf,function(x){
+        vec<-x
+        if(isFALSE(positive)){
+          vec<-sqrt(x^2)
+        }
+
+        ord<-order(vec,decreasing=T)[1:npic]
+        data.frame(var=rownames(imp_inf)[ord],inf=x[ord])
+      })
+      names(res)<-classes
+      indicators<-do.call(c,lapply(names(res),function(i){
+        vec<-rep(i,each=npic)
+        names(vec)<-res[[i]]$var
+        vec
+      }))
+      re<-reshape::melt(res)[c(1,3,4)]
+      colnames(re)[3]<-"group"
+      attr(re,"indicators")<-indicators
+      attr(re,"influences")<-influences
+      re
+    }
+
+
+
+    cur_vars_feature<-reactiveVal()
+    multimp_importance<-reactive({
+      m<-rf<- model()
+      rfimp0<-rfimp<-rf_impotance2(rf,positive=!input$influence,scale=T,npic=input$nvars,only_sign=F, classes=input$xvar)
+      cur_vars_feature(unique(rfimp0$var))
+      rfimp0<-na.omit(rfimp0)
+      impdf<-rfimp<-rfimp0
+      impdf<-do.call(rbind,lapply(split(impdf,impdf$group),function(x){
+        x$var2<-paste0(x$group,"_",x$var)
+        x
+      }))
+
+      impdf$class2<-factor(reorder(impdf$group,impdf$value),levels=rf$levels)
+      impdf$var2<-reorder(impdf$var2,impdf$value)
+      vars0<-as.character(impdf$var)
+      vars2<-as.character(impdf$var2)
+      names(vars0)<-vars2
+      fill=vals$newcolhabs[[input$feat_palette]](1)
+      p<-ggplot(impdf,aes(x=value,y=var2))+geom_bar(stat="identity",show.legend = F,fill=fill)
+
+      p<-p+facet_wrap(vars(class2),scales="free",ncol=length(m$levels)) +ylab("Variables")+xlab("Influence score")
+      p+ scale_y_discrete(labels=impdf$var,breaks=impdf$var2)
+    })
+
     output$xvar_out<-renderUI({
-      choices<-colnames(get_imp0())
-      multiple=F
-      selected<-choices[1]
-      if(isTRUE(input$stack)){
-        choices<-choices[choices%in%model()$levels]
-        multiple=T
-        selected=choices
+      if(!isTRUE(input$stack)){
+        choices<-colnames(get_imp0())
+        multiple=F
+        selected<-choices[1]
+      } else{
+        choices<-selected<-model()$levels
+        multiple<-T
       }
+
+
       pickerInput_fromtop(ns("xvar"),"+ X", choices=choices,selected=selected,multiple =multiple,options=shinyWidgets::pickerOptions(windowPadding="top",liveSearch = T))
     })
 
 
 
-    get_imp0<-eventReactive(input$run,ignoreInit = T,{
 
-      shinyjs::removeClass("run_btn","save_changes")
-      req(model())
-
-      imp<-varImp(model(),useModel=as.logical(input$useModel))
-      m<-model()
-      req(vals$cmodel)
-
-      if(vals$cmodel=="rf"){
-        if(isTRUE(as.logical(input$useModel))){
-          mimp<-randomForest::importance(model()$finalModel)
-          imp<-data.frame(mimp)
-          colnames(imp)<-colnames(mimp)
-          imp<-imp[rev(colnames(imp))]
-          return(imp)
-        }
-
-      }
-      req(model()$modelType)
-
-      if(model()$modelType=="Classification"){
-        mean_imp<-apply(imp$importance, 1, mean)
-        imp<-data.frame(mean_importance=mean_imp,imp$importance)
-      } else{
-
-        imp<-data.frame(imp$importance)
-      }
-
-
-
-      imp
-    })
 
     get_imp<-reactive({
       req(input$xvar)
@@ -4144,7 +4529,7 @@ model_results$server<-function(id,vals){
       removeTab('tab2',"msp_monmlp")
       removeTab('tab2',"msp_rpart")
       removeTab('tab2',"msp_cforest")
-
+      req(length(model()$finalModel)>0)
 
       if(inherits(model()$finalModel,"NaiveBayes")){
         insertTab('tab2',
@@ -4268,11 +4653,27 @@ model_results$server<-function(id,vals){
       NULL
     })
 
+
+    model_training_metrics<-function(m){
+      req(length(m$modelType)>0)
+      metric<-if(m$modelType=="Classification"){
+        c( "Accuracy","Kappa")
+
+      } else{
+        c( "Rsquared","RMSE")
+      }
+      metric<-data.frame(
+        metric=metric,
+        value=unlist(m$results[rownames(m$bestTune),metric])
+      )
+    }
     output$prin_model_args<-renderUI({
       model<-vals$cur_caret_model
       req(model)
       param<-model$finalModel
-      acc<-model$results[rownames(model$bestTune),model$metric]
+      # acc<-model$results[rownames(model$bestTune),model$metric]
+      metric<-model_training_metrics(model)
+
       div(
         div(style="font-size: 11px",
 
@@ -4282,10 +4683,18 @@ model_results$server<-function(id,vals){
 
 
         ),
-        div(
+        div(style="display: flex; gap: 3px; font-size: 11px",
 
-          strong_forest(paste0("Final model ",model$metric,":")),
-          em(round(acc,4))
+            div(strong_forest(paste0("Final model - "))),
+            div(style="display: flex; gap: 6px",
+
+                emgray(paste0(metric$metric[1],':')),
+                strong(round(metric$value[1],4)),
+                emgray(paste0(metric$metric[2],':')),
+                strong(round(metric$value[2],4))
+
+            )
+
 
 
 
@@ -4368,6 +4777,7 @@ model_results$server<-function(id,vals){
     })
 
     output$importance_table<-renderUI({
+      req(importance_plot())
       validate(need(inherits(model(),"train"),"No trained  models found"))
       table<-get_imp()
       div(class="half-drop-inline",
@@ -4377,55 +4787,34 @@ model_results$server<-function(id,vals){
             extensions = c("FixedHeader"))))
     })
 
-
-    get_varImp_plot<-reactive({
-
-      max<-input$nvars
-      req(max)
-      if(max>nrow(imp)){
-        max=nrow(imp)
-      }
-
-      fill=vals$newcolhabs[[input$feat_palette]](100)
-
-
-      plot_hei<-50+(max*20)
-      req(length(input$stack)>0)
-
-      if(input$stack){
-
-        impall<-reshape2::melt(data.frame(var=rownames(imp),imp),"var")
-        impall<-impall[order(impall$variable),]
-        fill<-vals$newcolhabs[[input$feat_palette]](length(unique(impall$variable)))
-        p<-ggplot(impall,aes(x=value,y=reorder(var,value),fill=variable))+geom_bar(position="stack",stat="identity",width=input$feat_barhei)
-
-      } else{
-        fill=vals$newcolhabs[[input$feat_palette]](1)
-        imp<-imp[order(imp[,1], decreasing=T),,drop=F][1:max,1, drop=F]
-        colnames(imp)<-"value"
-        imp<-data.frame(var=rownames(imp),imp)
-        p<-ggplot(imp,aes(x=value,y=reorder(var,value)))+geom_bar(stat="identity",fill=fill,width=input$feat_barhei)
-
-      }
-
-
-      p<-p+xlab(input$xlab)+ylab(input$ylab)+theme(
-        panel.grid.major = element_blank(),
-        panel.background=element_rect(fill=NA, color="white"),
-        panel.border = element_rect(fill=NA,color="black", size=0.5, linetype="solid"),
-
-        axis.line=element_line(),
-        axis.text=element_text(size=input$feat_size),
-        axis.title=element_text(size=input$feat_size),
-        plot.title=element_text(size=input$feat_size),
-        plot.subtitle=element_text(size=input$feat_size),
-        legend.text=element_text(size=input$feat_size),
-        legend.title=element_text(size=input$feat_size)
-
+    observe({
+      print(cur_vars_feature())
+      shinyjs::toggle('create_from_feature',
+                      condition=!is.null(cur_vars_feature())
       )
-      p
-
     })
+    observeEvent(input$create_from_feature,ignoreInit = T,{
+      m<-model()
+      data_x<-attr(m,"Datalist")
+      data_o<-data<-vals$saved_data[[data_x]]
+      data<-data[cur_vars_feature()]
+      data<-data_migrate(data_o,data)
+
+      bag<-attr(m,'model_name')
+      if(is.null(bag)){
+        bag<-attr(m,"model_tag")
+      }
+      bag<-paste0(bag,"_top_feature")
+      newnames<-make.unique(c(names(vals$saved_data),bag))
+      bag<-newnames[length(newnames)]
+      attr(data,'bag')<-bag
+      vals$newdatalist<-data
+      module_save_changes$ui(session$ns("feature_create"),vals)
+    })
+
+    module_save_changes$server("feature_create",vals)
+
+
 
     observe({
       imp<-get_imp()
@@ -4438,53 +4827,188 @@ model_results$server<-function(id,vals){
       updateNumericInput(session,"height",value=plot_hei)
     })
 
-    output$importance_plot<-renderUI({
-      validate(need(inherits(model(),"train"),"No trained  models found"))
-      imp<-get_imp()
-      max<-input$nvars
+
+    observe({
+      if(!isTRUE(input$stack)){
+        updateTextInput(session,"xlab",value=colnames(get_imp()))}else{
+          updateTextInput(session,"xlab",value='Influence Score')
+        }
+    })
+
+    args_feature<-reactive({
+      args<-list(m=model(),
+                 useModel=input$useModel,
+                 nvars=input$nvars,
+                 stack=input$stack,
+                 feat_palette=input$feat_palette,
+                 feat_barhei=input$feat_barhei,
+                 title=input$title,
+                 title_size=input$title_size,
+                 xlab=input$xlab,
+                 ylab=input$ylab,
+                 feat_size=input$feat_size,
+                 influence=input$influence,
+                 xvar=input$xvar,
+                 newcolhabs=vals$newcolhabs
+      )
+      args
+    })
+
+    observeEvent(args_feature(),{
+      shinyjs::addClass("run_feature_btn","save_changes")
+      importance_plot(NULL)
+      cur_vars_feature(NULL)
+    })
+
+
+
+
+    get_importance_0<-function(m,useModel){
+
+      model_tag<-attr(m,'model_tag')
+      if(model_tag=="rf"){
+        if(isTRUE(as.logical(useModel))){
+          mimp<-randomForest::importance(m$finalModel)
+          imp<-data.frame(mimp)
+          colnames(imp)<-colnames(mimp)
+          imp<-imp[rev(colnames(imp))]
+          return(imp)
+        }
+
+      }
+
+      imp<-varImp(m,useModel=as.logical(useModel))
+      req(m$modelType)
+      if(m$modelType=="Classification"){
+        mean_imp<-apply(imp$importance, 1, mean)
+        imp<-data.frame(mean_importance=mean_imp,imp$importance)
+      } else{
+        imp<-data.frame(imp$importance)
+      }
+      imp
+    }
+
+
+    gg_feature<-function(m,useModel=T,nvars=5,stack=F,feat_palette="turbo",newcolhabs=list(turbo=viridis::turbo),feat_barhei=.95,title="",title_size=12,xlab="",ylab="",feat_size=12,influence=F,xvar=m$levels){
+      validate(need(inherits(m,"train"),"No trained  models found"))
+      imp<-get_importance_0(m,useModel)
+      max<-nvars
       req(max)
       req(imp)
       if(max>nrow(imp)){
         max=nrow(imp)
       }
+      if(isTRUE(stack)){
+        print("yes")
 
-      #validate(need(length(model$modelInfo$varImp)>0,paste("Variable Importance based on",vals$cmodel,"models are not available")))
+        m<-rf<- model()
+        rfimp0<-rfimp<-rf_impotance2(rf,positive=!influence,scale=T,npic=nvars,only_sign=F, classes=xvar)
+        top_vars<-unique(rfimp0$var)
+        rfimp0<-na.omit(rfimp0)
+        impdf<-rfimp<-rfimp0
+        impdf<-do.call(rbind,lapply(split(impdf,impdf$group),function(x){
+          x$var2<-paste0(x$group,"_",x$var)
+          x
+        }))
 
+        impdf$class2<-factor(reorder(impdf$group,impdf$value),levels=rf$levels)
+        impdf$var2<-reorder(impdf$var2,impdf$value)
+        vars0<-as.character(impdf$var)
+        vars2<-as.character(impdf$var2)
+        names(vars0)<-vars2
+        fill=newcolhabs[[feat_palette]](1)
+        p<-ggplot(impdf,aes(x=value,y=var2))+geom_bar(stat="identity",show.legend = F,fill=fill)
 
-
-
-      if(input$stack){
-
-        impall<-reshape2::melt(data.frame(var=rownames(imp),imp),"var")
-        impall<-impall[order(impall$variable),]
-        fill<-vals$newcolhabs[[input$feat_palette]](length(unique(impall$variable)))
-        p<-ggplot(impall,aes(x=value,y=reorder(var,value),fill=variable))+geom_bar(position="stack",stat="identity",width=input$feat_barhei)+scale_fill_manual(values=fill)
+        p<-p+facet_wrap(vars(class2),scales="free",ncol=length(m$levels)) +ylab("Variables")+xlab("Influence score")
+        p<-p+ scale_y_discrete(labels=impdf$var,breaks=impdf$var2)
 
       } else{
-        fill=vals$newcolhabs[[input$feat_palette]](1)
+        fill=newcolhabs[[feat_palette]](1)
         imp<-imp[order(imp[,1], decreasing=T),,drop=F][1:max,1, drop=F]
         colnames(imp)<-"value"
         imp<-data.frame(var=rownames(imp),imp)
-        p<-ggplot(imp,aes(x=value,y=reorder(var,value)))+geom_bar(stat="identity",fill=fill,width=input$feat_barhei)
+        top_vars<-unique(imp$var)
+
+        p<-ggplot(imp,aes(x=value,y=reorder(var,value)))+geom_bar(stat="identity",fill=fill,width=feat_barhei)+ggtitle(title)
+
 
       }
 
 
-      p<-p+xlab(input$xlab)+ylab(input$ylab)+theme(
+      cex.label_panel<-title_size
+      p<-p+xlab(xlab)+ylab(ylab)+theme(
         panel.grid.major = element_blank(),
         panel.background=element_rect(fill=NA, color="white"),
         panel.border = element_rect(fill=NA,color="black", size=0.5, linetype="solid"),
-
+        strip.text.x = element_text(size = title_size),
         axis.line=element_line(),
-        axis.text=element_text(size=input$feat_size),
-        axis.title=element_text(size=input$feat_size),
-        plot.title=element_text(size=input$feat_size),
-        plot.subtitle=element_text(size=input$feat_size),
-        legend.text=element_text(size=input$feat_size),
-        legend.title=element_text(size=input$feat_size)
+        axis.text=element_text(size=feat_size),
+        axis.title=element_text(size=feat_size),
+        plot.title=element_text(size=title_size),
+        plot.subtitle=element_text(size=feat_size),
+        legend.text=element_text(size=feat_size),
+        legend.title=element_text(size=feat_size)
 
       )
+
+
+      attr(p,'top_vars')<-top_vars
+      p
+
+
+
+
+    }
+
+
+
+    get_gg_feature<-eventReactive(input$run_feature,{
+
+      args<-args_feature()
+      p<-do.call(gg_feature,args)
       importance_plot(p)
+      cur_vars_feature(attr(p,'top_vars'))
+      shinyjs::removeClass("run_feature_btn","save_changes")
+      p
+    })
+
+    get_imp0<-reactive({
+
+      req(model())
+
+      imp<-varImp(model(),useModel=as.logical(input$useModel))
+      m<-model()
+      req(vals$cmodel)
+
+      if(vals$cmodel=="rf"){
+        if(isTRUE(as.logical(input$useModel))){
+          mimp<-randomForest::importance(model()$finalModel)
+          imp<-data.frame(mimp)
+          colnames(imp)<-colnames(mimp)
+          imp<-imp[rev(colnames(imp))]
+          return(imp)
+        }
+
+      }
+      req(model()$modelType)
+
+      if(model()$modelType=="Classification"){
+        mean_imp<-apply(imp$importance, 1, mean)
+        imp<-data.frame(mean_importance=mean_imp,imp$importance)
+      } else{
+
+        imp<-data.frame(imp$importance)
+      }
+
+
+
+      imp
+    })
+    output$importance_plot<-renderUI({
+
+      p<-get_gg_feature()
+
+
       width=input$width
       height=input$height
       if(is.na(width)){
@@ -4495,7 +5019,6 @@ model_results$server<-function(id,vals){
       }
 
       renderPlot(p,height =height,width=width)
-
 
     })
     output$down_caret_results <-{
@@ -4555,90 +5078,127 @@ model_predic$ui<-function(id){
 
 
 
-  div(
-
-    div(class="inline_pickers well3 color_box",
-        div(style="display: flex;align-items: flex-start ",
-            div(style="width: 20px;heigth: 20px;background:DarkGoldenRod;display:inline-block;margin-top: -5px;margin-left: -5px"),
-            div(class="radio_search radio_yellow",
-                radioGroupButtons(ns("svmpred_which"), span("New data (X):",tiphelp(("Data to generate predictions"))), choices = c("Partition","Datalist"))
-            ),
-
-            div(class="inline_pickers",style=" margin-left: 10px",
-                uiOutput(ns('newdata_datalist')),
-                uiOutput(ns('out_predsvm_newY'))
-
-            ))
-
-    ),
-    tabsetPanel(
-      id=ns("predsvm_tab"),
-      tabPanel(
-        "3.1. Results",
-
-        column(12,class='mp0',
-               column(6,class='mp0',
-                      box_caret(
-                        ns("25"),
-                        title="Metrics",
-                        button_title = actionLink(ns("down_metrics"),"Download",icon('download')),
-                        div(
-                          numericInput(ns("round_metric"),"+ Round",3,step=1),
-                          uiOutput(ns('predict_metrics')))
-                      )),
-
-               column(6,class='mp0',
-                      box_caret(
-                        ns("26"),
-                        title="Predictions",
-                        button_title = actionLink(ns("down_svm_tab3_1"),"Download",icon('download')),
-                        div(
-                          div(tipify(actionLink(ns('svm_create_predictions'),span("+ Create Datalist")), "Create a datalist with the svm predictions", "right")),
-                          uiOutput(ns('svmtab_pred'))
-                        )
-                      )),
 
 
-        )
+  column(12,class="mp0",
+         column(4,class="mp0",
+                box_caret(ns("box_predsetup"),
+                          color="#c3cc74ff",
+                          show_tittle=F,
+                          title="Setup",
+                          div(
+                            div(class="radio_search radio_yellow",
+                                #tags$labe(),
+                                radioGroupButtons(
+                                  ns("svmpred_which"), NULL,
+                                  choices = c("Partition"='Partition',
+                                              "Training"='Training',
+                                              "New Data"="Datalist")
+                                )
+                            ),
 
-      ),
-      tabPanel(
-        "3.2. Confusion Matrix",
-        column(12,class='mp0',style="background: white",
+                            div(class="inline_pickers",style=" margin-left: 10px",
+                                pickerInput_fromtop_live(ns('predSL_new'),"->",choices=NULL,selected=NULL),
 
 
-               column(4,class="mp0",
-                      box_caret(ns("27"),
-                                title="Options",
-                                color="#c3cc74ff",
+
+                            ),
+                            div(style="position: absolute; top: 0px; right: 0px",
+                                id=ns("run_pred_btn"),
+                                actionButton(ns("run_pred"),"RUN>>")
+                            )
+                          )
+
+                ),
+                div(id=ns("pred_options"),
+                    box_caret(ns("27"),
+                              title="Options",
+                              color="#c3cc74ff",
+                              div(
+                                uiOutput(ns('sl_observed')),
+                                uiOutput(ns('out_predSL_newY'),
+
+                                ),
                                 div(
-
-                                  uiOutput(ns('svm_pred_pal')),
-                                  numericInput(ns("round_pred_svm"),"+ Round",3,step=1),
+                                  id=ns("cm_options"),
+                                  uiOutput(ns('sl_pred_pal')),
+                                  numericInput(ns("round_predictionSL"),"+ Round",3,step=1),
                                   div(id=ns('down_cm_btn'),
-                                      div(actionLink(ns("dowcenter_cmsvm_pred"),span("+ Download Table",icon("fas fa-table")))),
+                                      div(actionLink(ns("dowcenter_cmsl_pred"),span("+ Download Table",icon("fas fa-table")))),
                                       div(
                                       )
                                   ),
 
 
-                                )
+                                ),
+                                div(id=ns("metric_options"),
+                                    numericInput(ns("round_metric"),"+ Round",3,step=1),)
+                              )
 
-                      )),
-               column(8,class='mp0',
-                      box_caret(ns("28"),
-                                title="Plot",
-                                button_title = actionLink(ns("downp_cmsvm_pred"),"Download",icon('download')),
-                                div(
-                                  uiOutput(ns("confusion_svm_pred")),
-                                  verbatimTextOutput(ns("confusion_svm2_pred"))
-                                )
-                      ))
+                    )
+                )
+
+         ),
+         column(
+           8,
+           class='mp0',
+           box_caret(
+             ns("box_prediction_results"),
+             title="Results",
+             button_title=div(
+               actionLink(ns("down_metrics"),"Download",icon('download')),
+               actionLink(ns("down_svm_tab3_1"),"Download",icon('download')),
+               actionLink(ns("downp_cmsl_pred"),"Download",icon('download'))
+             ),
+             button_title2 =radioGroupButtons(
+               ns("radio_pred"),
+               choiceNames=c("3.1. Metrics",
+                             "3.2 Predictions",
+                             "3.3. Confusion Matrix"),
+               choiceValues=c("tab_metric","tab_pred","tab_cm")
+             ) ,
+             div(
+               tabsetPanel(
+                 id=ns("predSL_tab"),
+                 type="hidden",
+                 tabPanel(
+                   "3.1. Metrics",
+                   value="tab_metric",
+                   uiOutput(ns('predict_metrics'))
+                 ),
+                 tabPanel("3.2 Predictions",value='tab_pred',
+                          uiOutput(ns('svmtab_pred'))
+                 ),
+                 tabPanel(
+                   "3.3. Confusion Matrix",value="tab_cm",
+
+                   uiOutput(ns("confusion_sl_pred")),
+                   verbatimTextOutput(ns("confusion_svm2_pred"))
+
+                 )
+
+               ),
 
 
-        )
-      )
-    )
+               div(
+                 div(style="position: absolute; right: 5px;top: 30px",align="right",
+                     div(
+                       actionLink(ns('svm_create_predictions'),span("Create Datalist"),icon("fas fa-file-signature"))
+                     ),
+                     div(style="display: flex;gap:3px",
+                         id=ns("pred_loop_btn"),
+                         uiOutput(ns("tip_pred")),
+                         actionLink(ns("pred_loop"),"Predict all",icon("fas fa-file-signature"))
+                     )
+                 )
+
+               )
+             )
+
+           )
+         )
+
+
   )
 }
 model_predic$server<-function(id,vals){
@@ -4647,12 +5207,62 @@ model_predic$server<-function(id,vals){
     ns<-session$ns
     model<-vals$cur_caret_model
 
+    observeEvent(vals$cur_caret_model,{
+      m<-vals$cur_caret_model
+
+      updateActionLink(session,"pred_loop",paste("Predict all",attr(m,"model_tag"),"models"))
+
+    })
+    output$tip_pred<-renderUI({
+      m<-vals$cur_caret_model
+      model_tag<-attr(m,"model_tag")
+      tiphelp(paste0(
+        "<p>Run predictions for all <code>",model_tag,"</code> models saved in the training Datalist and combine the results into a single Datalist.</p>"
+      ))
+    })
+
+    observeEvent(input$radio_pred,{
+
+      updateTabsetPanel(session,'predSL_tab',selected=input$radio_pred)
+    })
+
+
+
+    observe({
+
+
+      shinyjs::toggle("predSL_new",condition=input$svmpred_which=="Datalist")
+      shinyjs::toggle("down_metrics",condition=input$predSL_tab=="tab_metric")
+      shinyjs::toggle("down_svm_tab3_1",condition=input$predSL_tab=="tab_pred")
+      shinyjs::toggle("svm_create_predictions",condition=input$predSL_tab=="tab_pred")
+      shinyjs::toggle("pred_loop_btn",condition=input$predSL_tab=="tab_pred")
+      shinyjs::toggle("downp_cmsl_pred",condition=input$predSL_tab=="tab_cm")
+
+    })
     observeEvent(attr(model,'test'),{
-      choices=if(length(attr(model,'test'))==1){c("Datalist")
-      } else{c("Partition","Datalist")}
+      choices=if(length(attr(model,'test'))==1){c(
+        "Training"='Training',
+        "New Data"="Datalist"
+      )
+      } else{c("Partition"='Partition',
+               "Training"='Training',
+               "New Data"="Datalist")}
       updateRadioGroupButtons(session,"svmpred_which",choices=choices)
 
     })
+
+
+
+    observe({
+      shinyjs::toggle('cm_options',condition=input$predSL_tab=="tab_cm")
+      shinyjs::toggle('metric_options',condition=input$predSL_tab=="tab_metric")
+      shinyjs::toggle('pred_options',condition=input$predSL_tab!="tab_pred")
+
+
+
+
+    })
+
 
     box_caret_server('25')
     box_caret_server('26')
@@ -4668,14 +5278,14 @@ model_predic$server<-function(id,vals){
     })
 
 
-    observeEvent(ignoreInit = T,input$dowcenter_cmsvm_pred,{
+    observeEvent(ignoreInit = T,input$dowcenter_cmsl_pred,{
       vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
       name<-paste(attr(model,"model_tag"),"_","obs_perform")
       data<-vals$svm_cm_test
       mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Observation Performace",data=data, name=name)
     })
-    observeEvent(ignoreInit = T,input$downp_cmsvm_pred,{
+    observeEvent(ignoreInit = T,input$downp_cmsl_pred,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=vals$svm_cm_pred
@@ -4694,19 +5304,20 @@ model_predic$server<-function(id,vals){
     })
     get_cm_pred<-reactive({
 
-      obs<-get_svm_prederrors()$obs
-      pred<-get_svm_prederrors()$pred
+      obs<-SL_predobs()$obs
+      pred<-SL_predobs()$pred
       conf<-table(obs, pred)
       conf
     })
-    output$confusion_svm_pred<-renderUI({
+    output$confusion_sl_pred<-renderUI({
       req(model)
       req(model$modelType=="Classification")
 
+      req(input$svmpalette_pred)
       conf<-get_cm_pred()
       div(
         renderPlot({
-          res<-plotCM(conf/sum(conf)*100, input$svmpalette_pred,  newcolhabs=vals$newcolhabs,round_cm=input$round_pred_svm,title=input$svm_cmpred_title)
+          res<-plotCM(conf/sum(conf)*100, input$svmpalette_pred,  newcolhabs=vals$newcolhabs,round_cm=input$round_predictionSL,title=input$svm_cmpred_title)
           vals$svm_cm_pred<-res
           res
         })
@@ -4714,28 +5325,31 @@ model_predic$server<-function(id,vals){
 
     })
 
-    get_svm_prederrors<-reactive({
+
+
+    SL_predobs<-reactive({
+      req(predictionSL())
       req(length(input$svmpred_which)>0)
 
       m<-model
       req(m)
-      pred<-pred_svm()[,1]
+      pred<-predictionSL()[,1]
       # x_t<-attr(m,"test")
-      obs<-if(input$svmpred_which=="Partition"){
-        attr(m,"sup_test")} else{
-          req(length(input$predsvm_newY)>0)
-
-          if(m$modelType=="Classification"){
-            req(length(attr(m,"supervisor"))>0)
-            req(length(input$predsvm_newY)>0)
-            req(input$predsvm_newY%in%names(vals$saved_data))
-            sup<-attr(m,"supervisor")
-            factors<-attr(vals$saved_data[[input$predsvm_newY]],"factors")
-            req(sup%in%colnames(factors))
-            factors[,sup]} else{
-              vals$saved_data[[input$predsvm_newY]][,attr(m,"supervisor")]
-            }
+      if(input$svmpred_which=="Partition"){
+        obs<-attr(m,"sup_test")
+      } else if(input$svmpred_which=="Datalist"){
+        req(length(input$predSL_newY)>0)
+        if(m$modelType=="Classification"){
+          sup<-attr(m,"supervisor")
+          factors<-attr(vals$saved_data[[input$predSL_newY]],"factors")
+          req(sup%in%colnames(factors))
+          obs<-factors[,sup]
+        } else{
+          obs<-vals$saved_data[[input$predSL_newY]][,attr(m,"supervisor")]
         }
+      } else if(input$svmpred_which=="Training"){
+        obs<-getdata_model(m,"test")
+      }
 
       return(
         list(
@@ -4744,9 +5358,9 @@ model_predic$server<-function(id,vals){
         )
       )
     })
-    pred_test_svm<-reactive({
-      obs<-get_svm_prederrors()$obs
-      pred<-get_svm_prederrors()$pred
+    errors_predictionSL<-reactive({
+      obs<-SL_predobs()$obs
+      pred<-SL_predobs()$pred
 
       m<-model
 
@@ -4757,14 +5371,20 @@ model_predic$server<-function(id,vals){
     })
 
     output$predict_metrics<-renderUI({
+      if(input$svmpred_which=="Datalist"){
+        req(input$predSL_newY!="None")
+      }
       validate(need(inherits(model,"train"),"No trained  models found"))
 
-      vals$sup_metrics<-table<-pred_test_svm()
-      div(class="half-drop-inline",
-          inline(renderTable(table,digits=input$round_metric, rownames = T)))
+      vals$sup_metrics<-table<-errors_predictionSL()
+      div(
+        div(class="half-drop-inline",
+            inline(renderTable(table,digits=input$round_metric, rownames = T))),
+        renderPrint(str(predictionSL()))
+      )
 
     })
-    output$svm_pred_pal<-renderUI({
+    output$sl_pred_pal<-renderUI({
       req(model)
       req(model$modelType=="Classification")
       lab2<-span("+",tipify(icon("fas fa-question-circle"),"Confusion Matrix Palette"),"Palette", "right")
@@ -4783,7 +5403,10 @@ model_predic$server<-function(id,vals){
 
     gettile_cmpred<-reactive({
       req(input$svmpred_which)
-      ifelse(input$svmpred_which=="Partition","Test","Confusion Matrix")
+      switch(input$svmpred_which,
+             "Partition"="Test",
+             "Datalist"=input$predSL_new,
+             "Training"="Training")
     })
 
 
@@ -4808,24 +5431,38 @@ model_predic$server<-function(id,vals){
     })
 
 
-    output$out_predsvm_newY<-renderUI({
+    output$sl_observed<-renderUI({
+      sup_test<-attr(model,"supervisor")
+      from<-paste0(" ",input$svmpred_which)
+      if(input$svmpred_which=="Datalist"){
+        from=span(emgreen("Datalist: "),tipright(
+          paste0("<p>Data containing <code>",sup_test,"</code> column to be compared with predicted values</p>")
+        ))
+      }
+
+
+      lab<-span(tags$label("Observed:"),emgreen(sup_test),tags$label(span("from",from)))
+      lab
+
+    })
+
+    output$out_predSL_newY<-renderUI({
       req(input$svmpred_which)
       req(input$svmpred_which=="Datalist")
       req(getobssvm()%in%names(vals$saved_data))
-      choices<-names(vals$saved_data[getobssvm()])
+      choices<-c(names(vals$saved_data[getobssvm()]))
       sup_test<-attr(model,"supervisor")
-      supname<-paste0("Observed (Y)")
-      lab1<-span(tiphelp("Data containing observed values to be compared with predicted values"),
-                 span(supname))
+      div(
+        style="margin-left: 70px",
+        pickerInput_fromtop_live(ns("predSL_newY"),NULL,choices),
 
-      div(style="display: flex;margin-left: -92px",
-          selectInput(ns("predsvm_newY"),lab1,choices),
-          div(style="height: 25px; margin-top: 5px; color: Grey;",
-              div('::',em(sup_test),style="padding-top: 3px")
-          )
       )
 
+
+
     })
+
+
     getnewdatasvm<-reactive({
       req(input$svmpred_which )
       req(input$svmpred_which =='Datalist')
@@ -4849,12 +5486,16 @@ model_predic$server<-function(id,vals){
       names(datalist[res0==T])
     })
 
-    output$newdata_datalist<-renderUI({
-      req(getnewdatasvm())
-      req(getnewdatasvm()%in%names(vals$saved_data))
+
+
+
+    observeEvent(getnewdatasvm(),{
       choices<-names(vals$saved_data[getnewdatasvm()])
-      selectInput(ns('predsvm_new'),"->",choices=choices,selected=vals$cur_data_sl)
+      selected=vals$cur_data_sl
+      selected=get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'predSL_new',choices=choices,selected=selected)
     })
+
 
     observeEvent(input$svmpred_which ,ignoreInit = T,{
       shinyjs::toggle('newdata_datalist',condition=input$svmpred_which=="Datalist")
@@ -4862,39 +5503,84 @@ model_predic$server<-function(id,vals){
 
 
 
-    test_svm<-reactive({
+    get_new_data<-reactive({
 
       req(input$svmpred_which)
       m<-model
+      data_o<-vals$saved_data[[vals$cur_data_sl]]
       req(model)
-      pred_tab<-if(input$svmpred_which=="Partition"){attr(m,"test")} else if(input$svmpred_which=="Datalist"){
-        req(input$predsvm_new)
-        pred_tab<-vals$saved_data[[input$predsvm_new]]
+      if(input$svmpred_which=="Partition"){
+        newdata<-attr(m,"test")
+        newdata<-data_migrate(data_o,newdata)
+      } else if(input$svmpred_which=="Datalist"){
+
+        req(input$predSL_new)
+        data_o<-newdata<-vals$saved_data[[input$predSL_new]]
+
+
+      } else if(input$svmpred_which=="Training"){
+        newdata<-getdata_model(m)
+        newdata<-data_migrate(data_o,newdata)
+
       }
-      model_data<-pred_tab
-
       model_vars<-colnames(getdata_model(m))
-      new_vars<-colnames(pred_tab)
+      new_vars<-colnames(newdata)
       req(all(model_vars%in%new_vars))
-      pred_tab<-pred_tab[,model_vars,drop=F]
-      #req(sum(colnames(pred_tab)%in%colnames(getdata_model(m)))==ncol(pred_tab))
-      pred_tab
+      newdata<-newdata[,model_vars,drop=F]
+
+      newdata<-data_migrate3.0(data_o,newdata)
+      newdata
 
     })
+    data_migrate3.0<-function(data,newdata){
 
-    pred_svm<-reactive({
 
-      validate(need(!anyNA(test_svm()),"NAs not allowed in the prediction Datalist"))
+      attr(newdata,"factors")<-attr(data,"factors")
+      attr(newdata,"coords")<-attr(data,"coords")
+      attr(newdata,"base_shape")<-attr(data,"base_shape")
+      attr(newdata,"layer_shape")<-attr(data,"layer_shape")
+      attr(newdata,"extra_shape")<-attr(data,"extra_shape")
+      newdata
+    }
+    predictionSL<-reactiveVal()
+    observeEvent(input$run_pred,ignoreInit = T,{
+
+      validate(need(!anyNA(get_new_data()),"NAs not allowed in the prediction Datalist"))
       m<-model
-      svm_pred <- predict(m,newdata = test_svm())
-      res<-data.frame(Predictions= svm_pred)
-      rownames(res)<-rownames(test_svm())
-      res
+      sl_pred <- predict(m,newdata = get_new_data())
+      res<-data.frame(Predictions= sl_pred)
+
+
+      rownames(res)<-rownames(get_new_data())
+      shinyjs::removeClass('run_pred_btn',"save_changes")
+      predictionSL(res)
     })
+
+    observeEvent(input$svmpred_which,{
+      predictionSL(NULL)
+
+    })
+
+
+    args_pred<-reactive({
+      list(
+        input$svmpred_which,
+        input$predSL_new,
+        input$predSL_newY
+      )
+    })
+
+    observeEvent(args_pred(),{
+      shinyjs::addClass('run_pred_btn',"save_changes")
+    })
+
+
+
+
     output$svmtab_pred<-renderUI({
       validate(need(inherits(model,"train"),"No trained  models found"))
 
-      table<-vals$svmtab_pred<-pred_svm()
+      table<-vals$svmtab_pred<-predictionSL()
       div(class="half-drop-inline",
           inline(fixed_dt(
             table,pageLength = 20,dom="ltp",
@@ -4903,31 +5589,171 @@ model_predic$server<-function(id,vals){
     })
 
 
+
+
+
+
+    output$pred_model_inputs<-renderUI({
+      m<-model
+
+      datalist<-attr(m,"Datalist")
+      model_tag<-attr(m,"model_tag")
+      models<-attr(vals$saved_data[[datalist]],model_tag)
+      choices<-names(models)
+      selected=choices
+      div(style="display: flex",
+          div(class="picker_open",
+              virtualPicker(
+                id = ns("pred_model_loop"),
+                label="Saved Models",
+                "Models selected",
+                choices=choices,
+
+                selected=selected
+              )
+
+          )
+      )
+    })
+
+    modal_pred_loop<-reactive({
+      modalDialog(
+        title="Combine prediction for several models",
+        uiOutput(ns("pred_model_inputs")),
+        div(align="right",
+            actionButton(ns("run_loop_pred"),"RUN & Create >>")
+        ),
+        easyClose = T
+      )
+    })
+
+    observeEvent(input$run_loop_pred,ignoreInit = T,{
+      model_names=input$pred_model_loop
+      removeModal()
+      try({
+        withProgress(min=0,max=length(model_names),message="Creating predictions....",{
+
+
+
+          m<-model
+          data_x<-attr(m,"Datalist")
+
+
+          # print(model_names)
+          data<-vals$saved_data[[data_x]]
+
+          newdata= get_new_data()
+          req(newdata)
+
+          models<-lapply(model_names,function(name){
+            attr(data,"rf")[[name]]$m
+          })
+          #print(models)
+          preds_list<-list()
+
+
+          for(i in seq_along(model_names) ) {
+            incProgress(0,message=paste0('Prediction ',i,"/",length(model_names),':',model_names[[i]]))
+
+            m<-models[[i]]
+            x<-m$trainingData
+            preds<-predict(m,newdata=newdata)
+            var=attr(m,"supervisor")
+            if(m$modelType=="Classification"){
+              preds<-factor(preds,levels=m$levels)
+            }
+            preds<-data.frame(preds)
+            colnames(preds)<-var
+
+            preds_list[[i]]<-preds
+            incProgress(1)
+          }
+
+          predtable<-data.frame(preds_list)
+
+
+          rownames(predtable)<-rownames(newdata)
+          facs<-names(which(sapply(predtable, is.factor)))
+          nums<-names(which(sapply(predtable, is.numeric)))
+          if(!length(nums)>0){
+            preds_num<-newdata
+          } else{
+            preds_num<-predtable[nums]
+            rownames(predtable)
+
+            preds_num<-data_migrate3.0(data=newdata,newdata=preds_num)
+          }
+
+          if(length(facs)>0){
+            preds_fac<-predtable[facs]
+            attr(preds_num,"factors")<-cbind(attr(preds_num,"factors"),preds_fac)
+          }
+
+          data<-preds_num
+
+
+          bag<-paste0(data_x,"-Predictions")
+          newnames<-make.unique(c(names(vals$saved_data),bag))
+          bag<-newnames[length(newnames)]
+          attr(data,'bag')<-bag
+          vals$newdatalist<-data
+          module_save_changes$ui(session$ns("caret_predictions_loop"),vals)
+
+
+        })
+
+
+      })
+    })
+    module_save_changes$server("caret_predictions_loop",vals,"update_tab_caret",'tab3')
+
+    observeEvent(input$pred_loop,{
+      showModal(
+        modal_pred_loop()
+      )
+    })
+
     observeEvent(input$svm_create_predictions,ignoreInit = T,{
 
+
+      req(predictionSL())
       req(input$svmpred_which)
       m<-model
-      data<-vals$svmtab_pred
-      data_x<-if(input$svmpred_which=="Datalist"){
-        input$predsvm_new
+      data<-predictionSL()
+      supervisor<-attr(m,"supervisor")
+      model_tag<-attr(m,"model_tag")
+      model_name<-attr(m,'model_name')
+      if(input$svmpred_which=="Datalist"){
+        data_x<- input$predSL_new
+        tag<-data_x
       } else{
-        attr(m,"Datalist")
+        data_x<-vals$cur_data_sl
+        tag<-"test"
       }
+      model_names<-names(attr(vals$saved_data[[vals$cur_data_sl]],model_tag))
+      model_num<-which(model_names==model_name)
+      bag<-paste0(model_name,"-",tag,"-predictions")
+
+      data_o<-vals$saved_data[[data_x]]
       req(data_x)
-
-      data<-data_migrate(vals$saved_data[[data_x]],data)
-
-      bag<-attr(m,'model_name')
-      if(is.null(bag)){
-        bag<-attr(m,"model_tag")
+      factors<-data.frame(id=rownames(data))
+      rownames(factors)<-factors$id
+      if(is.factor(data[,1])){
+        factors[supervisor]<-data[,1]
+        data<-data_o[rownames(data),]
       }
-      bag<-paste0(bag,"_predictions")
+      data<-data_migrate(data_o,data)
+      attr(data,"factors")<-factors
       newnames<-make.unique(c(names(vals$saved_data),bag))
       bag<-newnames[length(newnames)]
       attr(data,'bag')<-bag
+      print(str(data))
+      print(str(attr(data,"coords")))
+      print(str(attr(data,"factors")))
       vals$newdatalist<-data
       module_save_changes$ui(session$ns("caret_predictions"),vals)
     })
+
     module_save_changes$server("caret_predictions",vals,"update_tab_caret",'tab3')
 
 
@@ -5346,15 +6172,7 @@ caret_models$ui<-function(id){
         fs$ui(ns("fsga")),
         uiOutput(ns("fsout"))
     ),
-    tags$style(HTML(".train_button .btn{
-border-radius: 4px;
-border: 0px;
- box-shadow: 0px 1px 3px 0px black  ;
-box-sizing: border-box;
-background:  #05668D; color: white; margin: 0px; font-size: 16px; position: absolute;right: 0px; margin-top: 8px;z-index: 999
-}
 
-")),
 
 column(12,class="mp0 nav_caret",
        tabsetPanel(NULL,id=ns("tab"),
@@ -5459,6 +6277,27 @@ caret_models$server<-function(id,vals){
 
 
 
+    observeEvent(names(vals$saved_data),{
+      for(k in 1:length(vals$saved_data)){
+        model_names<-names(attr(vals$saved_data[[k]],"rf"))
+        if(length(model_names)>0)
+          for(i in 1:length(model_names)){
+            m<-attr(vals$saved_data[[k]],"rf")[[i]]$m
+            attr(m,"Datalist")<-names(vals$saved_data)[k]
+
+            attr(vals$saved_data[[k]],"rf")[[i]]$m<-m
+          }
+        if(length(model_names)>0)
+          for(i in 1:length(model_names)){
+            m<-attr(vals$saved_data[[k]],"rf")[[i]]$m
+            attr(m,"model_name")<-model_names[i]
+
+            attr(vals$saved_data[[k]],"rf")[[i]]$m<-m
+          }
+
+
+      }
+    })
     output$print_train<-renderUI({
 
       req(vals$cur_xtrain)
@@ -5505,9 +6344,7 @@ caret_models$server<-function(id,vals){
         req(ncol(x)>0)
         req(nrow(y)>0)
         req(ncol(y)>0)
-        # args<-list(x=x,y=y,model=model, len=vals$box_caret1_args$tuneLength)
-        #saveRDS(args,"args.rds")
-        #print(args)
+
         res<-run_gridcaret(x,y,model, len=vals$box_caret1_args$tuneLength)
         param<-res$param
       }
@@ -5881,7 +6718,7 @@ caret_models$server<-function(id,vals){
         if(vals$cmodel=="rf"){
           args_train$localImp = TRUE
           args_train$keep.forest=TRUE
-         # args_train$keep.inbag=T
+          args_train$keep.inbag=T
         }
         withProgress(
           message = paste("Running",vals$cmodel),
@@ -6259,10 +7096,6 @@ caret_train$server<-function(id,vals=NULL){
 
     ns<-session$ns
 
-    #vals<-readRDS("savepoint.rds")
-    #input<-list()
-    #input$data_y<-'Div_results 1'
-    #ns<-NS("id")
 
     output$loop_part<-renderUI({
       req(input$data_y)
@@ -6278,45 +7111,7 @@ caret_train$server<-function(id,vals=NULL){
       names(value_partition)<-label_partition
       yon<-input$yloop
       req(length(yon)>0)
-      div(tags$style(HTML(
-        ".picker_table .btn {
-       font-size: 14px;
-text-align: left;
-box-sizing: border-box;
-display: flex;
-flex-wrap: wrap;
-padding: 0 15px;
-height: 24px;
-        }
-
-.picker_table .dropdown-menu .open {
-
-}
-.picker_table .form-group{
-margin: 0px
-}
-.picker_table{
-margin-top: 35px;
-
-}
-.picker_loop .vscomp-option {
-border-bottom: 1px solid
-}
-.picker_fake{
-padding: 0 15px;
-height: 24px;
-border-bottom: 1px solid;
-  font-size: 14px;
-box-sizing: border-box;
-}
-
-.picker_loop .form-control {
-#max-height: 24px;
-border-radius: 0px;
-}
-
-"
-      )),
+      div(
 div(
   div(class="half-drop-inline",style="margin-top: 30px",
       pickerInput_fromtop(
@@ -6356,7 +7151,7 @@ div(
       req(input$yloop_partition=="Custom")
       y<-vals$saved_data[[input$data_y]]
       factors<-attr(y,"factors")
-
+      req(input$model_type)
       if(input$model_type== 'Classification'){y<-factors}
       part_cols<-colnames(factors)[grepl("Partition_",colnames(factors))]
       yon<-input$yloop
@@ -6388,22 +7183,25 @@ div(
       req(input$yloop_partition=="Custom")
       y<-vals$saved_data[[input$data_y]]
       factors<-attr(y,"factors")
+      req(input$model_type)
       if(input$model_type== 'Classification'){y<-factors}
       yon<-input$yloop
       req(length(yon)>0)
-      lapply(1:ncol(y), function(i){
-        var<-colnames(y)[i]
-        col<-input[[paste0("part_loop_",i)]]
+      try({
+        lapply(1:ncol(y), function(i){
+          var<-colnames(y)[i]
+          col<-input[[paste0("part_loop_",i)]]
 
-        if(length(col)>0)
-          if(col%in%colnames(factors)){
-            fac<-factors[,col]
-            output[[paste0("part_loop_test_out",i)]]<-renderUI({
-              pickerInput_fromtop(ns(paste0("part_loop_test",i)),NULL,choices=levels(fac), options=shinyWidgets::pickerOptions(liveSearch =T,windowPadding="top"))})
+          if(length(col)>0)
+            if(col%in%colnames(factors)){
+              fac<-factors[,col]
+              output[[paste0("part_loop_test_out",i)]]<-renderUI({
+                pickerInput_fromtop(ns(paste0("part_loop_test",i)),NULL,choices=levels(fac), options=shinyWidgets::pickerOptions(liveSearch =T,windowPadding="top"))})
 
-          } else{
-            output[[paste0("part_loop_test_out",i)]]<-renderUI({ NULL})
-          }
+            } else{
+              output[[paste0("part_loop_test_out",i)]]<-renderUI({ NULL})
+            }
+        })
       })
 
     })
@@ -6414,7 +7212,7 @@ div(
     output$loop_vars<-renderUI({
       y<-vals$saved_data[[input$data_y]]
       factors<-attr(y,"factors")
-
+      req(input$model_type)
       if(input$model_type== 'Classification'){y<-factors}
 
       choices<-colnames(y)
@@ -6449,12 +7247,7 @@ div(
           title=div("Train multiple models"),
           easyClose=T,
           column(12,class="mp0 picker_loop",style="height: 340px; overflow-y: auto;",
-                 tags$style(HTML(
-                   ".picker_loop .vscomp-options-container{
-                   max-height: 100% !important
 
-                   }"
-                 )),
                  div(id=ns("yloop_page1"),
                      column(6,class="mp0",style="",
                             uiOutput(ns('loop_vars'))),
@@ -6476,6 +7269,7 @@ div(
     })
     partition_df<-reactive({
       y<-vals$saved_data[[input$data_y]]
+      req(input$model_type)
       factors<-attr(y,"factors")
       train_ids<-rownames(factors)
       test_ids<-rownames(factors)
@@ -6582,6 +7376,7 @@ div(
     })
 
     yloop_vars<-reactive({
+      req(input$model_type)
       y<-vals$saved_data[[input$data_y]]
       factors<-attr(y,"factors")
       if(input$model_type== 'Classification'){y<-factors}
@@ -6709,13 +7504,18 @@ div(
     })
 
     observe({
-      data<-data_x()
-      filter<-colnames(data)
-      if(length(input$filter)>0){
-        filter<-input$filter
-      }
-      req(filter%in%colnames(data))
-      vals$cur_datax<-data[,filter,drop=F]
+      res<-try({
+        data<-data_x()
+        filter<-colnames(data)
+        if(length(input$filter)>0){
+          filter<-input$filter
+        }
+        req(filter%in%colnames(data))
+        data[,filter,drop=F]
+      })
+      req(!inherits(res,"try-error"))
+
+      vals$cur_datax<-res
     })
 
     x_train<-reactive({
@@ -6954,7 +7754,7 @@ div(
       choices<-names(available_models())
 
       selected<-get_selected_from_choices(vals$cur_model_name,choices)
-      pickerInput(ns("model_name"),span("Custom Name",tipright("Select the name of the saved model corresponding to the chosen dataset and method, if available. Only models from the selected Training Datalist and Method will be displayed.")),choices =choices,selected=selected)
+      pickerInput_fromtop_live(ns("model_name"),span("Custom Name",tipright("Select the name of the saved model corresponding to the chosen dataset and method, if available. Only models from the selected Training Datalist and Method will be displayed.")),choices =choices,selected=selected)
     })
 
 
@@ -6997,7 +7797,7 @@ div(
 
 
     output$data_y<-renderUI({
-      pickerInput(ns("data_y"),span("Datalist",tipright("Select the Datalist containing the response variable (Y)")),choices =names(vals$saved_data),selected=vals$cur_data_sl_y)
+      pickerInput_fromtop_live(ns("data_y"),span("Datalist",tipright("Select the Datalist containing the response variable (Y)")),choices =names(vals$saved_data),selected=vals$cur_data_sl_y)
     })
 
 
@@ -7010,16 +7810,11 @@ div(
     })
 
 
-    output$data_x_active<-renderUI({
-      tags$style(HTML(
-        "
 
-        "
-      ))
-    })
 
 
     get_dfmodels<-function(){
+      req(length(vals$saved_data)>0)
       dfmodels<-sapply(names(vals$saved_data),function(data_x){
         dx<-vals$saved_data[[data_x]]
         as.character(lapply(c(models,"rfGA"),function(attr) {
@@ -7058,86 +7853,30 @@ div(
       tips<-lapply(dflist, function(x) HTML(paste0(x)))
 
       choices<-names(vals$saved_data)
-      div(     tags$style(HTML(
-
-        "
-        .choices_tip{
-width: 100%;
-
-
-position: relative
-        }
-.choices_tip_show{
-display: none
-}
-.dropdown-menu>.active>a .picker_tip{
-display: block;
-color: yellow
-}
-.picker_tip{
-z-index: 99999;
-padding-left: 10px;
-font-size: 12px;
-color: SeaGreen;
-font-style: italic;
-
-}
-
-.data_x .open>.dropdown-menu {
-        max-height: 300px;
-        overflow-y: auto;
-
-        }
-.data_x span.text{
-width: 100%
-}
-
-.popover-title {
-
-padding: 0px;
-    padding-left: 15px;
-    margin: 0;
-    font-size: 13px;
-cursor: default;
-}
-.popover-title label {
-cursor: default
-
-}
-.popover-title a{
-font-weight: normal;
-font-style: italic
-}
-.popover-title input[type=checkbox]{
-cursor: pointer
-}
-.button.close{
-display: none;
-cursor: none
-}
-
-
-                "
-      )),
+      div(
 
 div(class="data_x",
     uiOutput(ns("data_x_active")),
-    pickerInput(ns("data_x"),
-                span("~ Training Datalist",tiphelp("Choose the Datalist containing your independent variables (X).")),
-                selected=vals$cur_data_sl,
-                choices=choices,
-                choicesOpt  =list(
-                  content=tips
-                ),
-                options=shinyWidgets::pickerOptions(
-                  header=checkboxInput(ns("show_nmodels"),actionLink(ns('show_nmodels_label'),span("Show trained models",tipright("Displays the number of saved models in each Datalist"))),value=F)
-                )
+    pickerInput_fromtop_live(ns("data_x"),
+                             span("~ Training Datalist",tiphelp("Choose the Datalist containing your independent variables (X).")),
+                             selected=vals$cur_data_sl,
+                             choices=choices,
+                             choicesOpt  =list(
+                               content=tips
+                             ),
+                             options=shinyWidgets::pickerOptions(
+                               header=uiOutput(ns("sho_saved_models"))
+                             )
 
 
 
     )
 )
       )
+    })
+
+    output$sho_saved_models<-renderUI({
+      checkboxInput(ns("show_nmodels"),actionLink(ns('show_nmodels_label'),span("Show trained models",tipright("Displays the number of saved models in each Datalist"))),value=F)
     })
 
     observeEvent(input$show_nmodels_label,{
@@ -7164,9 +7903,9 @@ div(class="data_x",
 
       selected<-get_selected_from_choices(vals$cur_response,choices)
 
-      pickerInput(ns("var_y"),
-                  span("Variable",tipright("Choose the response Variable (Y)")),
-                  choices = choices,selected=selected)
+      pickerInput_fromtop_live(ns("var_y"),
+                               span("Variable",tipright("Choose the response Variable (Y)")),
+                               choices = choices,selected=selected)
     })
 
     output$partition<-renderUI({
@@ -7176,7 +7915,7 @@ div(class="data_x",
       selected<-get_selected_from_choices(vals$cur_test_partition,choices)
 
 
-      pickerInput(ns("partition"),span("Partition",tipright("Select a factor to use as a reference for partitioning the data into training and testing sets")), choices=choices,selected=selected)
+      pickerInput_fromtop_live(ns("partition"),span("Partition",tipright("Select a factor to use as a reference for partitioning the data into training and testing sets")), choices=choices,selected=selected)
     })
 
     output$partition_ref_out<-renderUI({
@@ -7184,7 +7923,7 @@ div(class="data_x",
       data<-y_factors()
       choices<-levels(data[,input$partition])
       selected<-get_selected_from_choices(vals$cur_testdata,choices)
-      pickerInput(ns("partition_ref"),span("Test reference:",tipright("Choose the level of the selected factor to serve as a reference for the test data. Data corresponding to this level will be excluded from the training set and can be used later for model evaluation or prediction generation")), choices=choices, selected=selected)
+      pickerInput_fromtop_live(ns("partition_ref"),span("Test reference:",tipright("Choose the level of the selected factor to serve as a reference for the test data. Data corresponding to this level will be excluded from the training set and can be used later for model evaluation or prediction generation")), choices=choices, selected=selected)
     })
 
 
@@ -7228,38 +7967,7 @@ caret_model$server<-function(id,vals){
     ns<-session$ns
     output$model<-renderUI({
 
-      div(tags$style(HTML(
-        "
-        .setup_box .dropdown-menu .open{
-        max-height: 350px;
-        overflow-y: auto;
-
-        }
-
-        .model_subtext{
-        color: darkgreen; font-size: 11px
-        }
-        .model_tag{
-        color: gray; font-size: 10px; font-style: italic;
-
-        }
-.dropdown-menu>.active>a >i{
-color: white
-}
- .dropdown-menu>.active>a .model_subtext{
-color: WhiteSmoke
- }
- .dropdown-menu>.active>a .model_ico i {color:lightgray}
-.model_ico i {color:#05668D}
-
-        .dropdown-menu>.active>a .model_tag{
-
-   color: yellow
-}
-
-
-        "
-      )),
+      div(
 pickerInput_fromtop(ns("model"),span("Model",tipright("Select the machine learning algorithm for model training. If there are saved models corresponding to the selected Training Datalist, they will be displayed in the Custom Name dropdown")),
                     options=shinyWidgets::pickerOptions(liveSearch =T,windowPadding="top"),
                     choices =grupos_modelos(),
@@ -7345,3 +8053,5 @@ pickerInput_fromtop(ns("model"),span("Model",tipright("Select the machine learni
 
   })
 }
+
+

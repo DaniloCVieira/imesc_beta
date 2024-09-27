@@ -1,3 +1,4 @@
+
 box35_help_content<-"Plot two measures of importance of variables in a random forest"
 explainer_ggpair<-list()
 explainer_ggpair$ui<-function(id,title=NULL,tip=NULL){
@@ -115,6 +116,8 @@ rf_explainer$ui<-function(id){
       class="rfexpainer nav_caret",
       tabsetPanel(
         id=ns('rftab2_3'),
+        selected="tab1",
+        #selected="tab6",
         tabPanel("1. Measures",value="tab1",
                  div(
                    column(4,class="mp0",
@@ -124,7 +127,9 @@ rf_explainer$ui<-function(id){
                                       div(class="normal-checkbox",
                                           checkboxGroupInput(ns('rf_measures'),span(tipright(" the measures of importance to be used"),'measures:'),choices=c("mean_min_depth",
                                                                                                                                                               "accuracy_decrease","gini_decrease" ,"no_of_nodes","times_a_root"),selected=c("mean_min_depth","accuracy_decrease","gini_decrease" ,"no_of_nodes","times_a_root"))
-                                      ))
+                                      ),
+                                      checkboxInput(ns("loop_measures"),span("Calculate for all saved models"))
+                                      )
 
                           )),
                    column(8,class="mp0",
@@ -134,6 +139,7 @@ rf_explainer$ui<-function(id){
                                     div(
                                       div(
                                         actionLink(ns('run_measures'),span("Click to Measure Importance ",icon("fas fa-arrow-circle-right")), style = "animation: glowing3 1000ms infinite;")
+
                                       ),
                                       uiOutput(ns("rf_measure_out"))
                                     )
@@ -182,8 +188,8 @@ rf_explainer$ui<-function(id){
 
                               numericInput(ns("size_mmd"),"Text-in size:", value=4),
                               div(
-                                  numericInput(ns('plot_height'),"Plot height", 300),
-                                  numericInput(ns('plot_width'),"Plot width", 400),
+                                numericInput(ns('plot_height'),"Plot height", 300),
+                                numericInput(ns('plot_width'),"Plot width", 400),
                               )
 
                             ))
@@ -307,7 +313,7 @@ rf_explainer$ui<-function(id){
                   uiOutput(ns('inter_palette')),
 
                   textInput(ns("inter_title"),strong("Title:"),NULL),
-                    div(style="padding-left: 40px",
+                  div(style="padding-left: 40px",
                       numericInput(ns("int_cex.title"),'Size',13),
                       pickerInput_fromtop(ns("int_font.title"),'Font:',c("plain", "bold", "italic", "bold.italic")),
 
@@ -375,6 +381,7 @@ rf_explainer$ui<-function(id){
                 div(
                   tabsetPanel(
                     id=ns("sankey_tab"),
+                    selected="ggplot",
                     header=span(actionButton(ns('run_sankey_ploly'),"RUN >>",style="height: 20px;font-size: 11px;padding: 2px"),actionButton(ns('run_sankey_gg'),"RUN >>",style="height: 20px;font-size: 11px;padding: 2px")),
                     tabPanel("plotly",
                              uiOutput(ns("sankey_plotly"))
@@ -400,6 +407,329 @@ rf_explainer$ui<-function(id){
 }
 
 
+add_color_ggsankey<-function(df,value_names,pal_y,pal_end,pal_middle,ggsankey_colorY="model_metric",var_type=NULL,newcolhabs){
+
+
+
+  df1<-data.frame(df)
+
+
+
+  Yids<-df1$x%in%'Y'
+  Vids<-df1$x%in%'variable'
+  if(ggsankey_colorY=="model_metric"){
+    if(is.numeric(unlist(df1[Yids,"metric"])))
+      #fac_Y<-as.factor(unlist(df1[Yids,"node"]))
+      fac_Y<-cut(unlist(df1[Yids,"metric"]),sort(unique(df1[Yids,"metric"])),include.lowest = T)else{
+
+        fac_Y<-as.factor(unlist(df1[Yids,"node"]))
+
+      }
+
+
+  }
+
+
+  if(is.null(var_type)){
+    fac_V<-as.factor(unlist(df1[Vids,"node"]))
+
+    df1$fac_col[Yids]<-as.character(fac_Y)
+    df1$fac_col[Vids]<-as.character(fac_V)
+  } else{
+    fac_V<-as.factor(unlist(df1[Vids,"var_type"]))
+    df1$fac_col[Yids]<-as.character(fac_Y)
+    df1$fac_col[Vids]<-as.character(fac_V)
+  }
+  df1$fac_col<-factor(df1$fac_col,levels=c(levels(fac_Y),levels(fac_V)))
+  pals<-list(
+    py=pal_y(nlevels(fac_Y)),
+    pe=pal_end(nlevels(fac_V))
+  )
+
+  if(length(value_names)>1){
+    Mids<-df1$x%in%value_names[[2]]
+    fac_M<-as.factor(unlist(df1[Mids,"node"]))
+
+    df1$fac_col<-as.character(df1$fac_col)
+    df1$fac_col[Mids]<-as.character(fac_M)
+
+    df1$fac_col<-factor(as.character(df1$fac_col),
+                        levels=c(levels(fac_Y),
+                                 levels(fac_V),
+                                 levels(fac_M)
+                        ))
+    pals$pm<-pal_middle(nlevels(fac_M))
+    pals<-pals[c("py","pm","pe")]
+  }
+  newpals<-unique(unlist(pals))
+  df1$color<-unlist(pals)[df1$fac_col]
+  df1$color<-factor( df1$color,levels=newpals)
+  attr(df1,"colors")<-  pals
+  df1
+
+}
+
+gg_sankey_plot<-function(gdf,sy,sankey_values,sankey_values2,sankey_palette,sankey_paletteY,sankey_palette_middle,sankey_size,sankey_showlegend,sankey_legsize, sankey_title,color_var=NULL,ggsankey_colorY='model_metric',var_type=NULL,newcolhabs,node_width=0.3,labels_in=F,hjust0=-0.085,hjust1=0.08,custom_var_labels=NULL,custom_y_labels=NULL,sankey_size2=3,...){
+
+  if(is.null(var_type)){
+    levs<-levels(gdf$variable)
+    var_type<-levels(gdf$variable)
+    names(var_type)<-var_type
+  }
+
+  {
+
+    #sankey_values2<-"no_of_trees"
+
+    value_names<-sankey_values
+    colnames<-c("Y","variable")
+    if(sankey_values2!="None"){
+      colnames<-c("Y",sankey_values2,"variable")
+      value_names<-c(sankey_values,sankey_values2)
+    }
+
+    pal_link<-newcolhabs[["Greens"]]
+    pal_end<-newcolhabs[[sankey_palette]]
+    pal_y<-newcolhabs[[sankey_paletteY]]
+    pal_middle<-newcolhabs[[sankey_palette_middle]]
+
+    metric_node<-sankey_values
+    metric_node<-gdf[,c(sankey_values)]
+    names(metric_node)<-unique(factor(paste0(gdf$Y,"_",gdf$variable)))
+
+    # df <- md %>%make_long(c(colnames))
+    {
+
+
+
+
+      ggdf<-data.frame(gdf[1:3],lapply(gdf[-c(1:3)],function(x) round(scales::rescale(x,c(1,100)))))
+
+      ggdf<-ggdf[c("Y","variable",value_names)]
+
+
+
+      ggdf2<-data.frame(Y=unlist(sapply(seq_along(ggdf$Y),function(i) rep(ggdf$Y[i],ggdf[,value_names[1]][i]) )),
+                        variable=unlist(sapply(seq_along(ggdf$Y),function(i) rep(ggdf$variable[i],ggdf[,value_names[1]][i]) )))
+
+
+      names_fac<-paste0(ggdf$Y,"-",ggdf$variable)
+      if(length(value_names)>1){
+        second_var<-ggdf[,value_names[2]]
+        names(second_var)<-names_fac
+        ggdf2[,value_names[2]]<-second_var[paste0(ggdf2$Y,"-",ggdf2$variable)]
+        ggdf2<-ggdf2[,c(1,3,2)]
+      }
+
+
+
+      gdf4<-ggdf2<-data.frame(lapply(ggdf2,as.character))
+      gdf4$model_name<-paste0(gdf4$Y,"-",gdf4$variable)
+      gdf4$model_rev<-paste0(gdf4$variable,"-",gdf4$Y)
+
+      ggdf3 <- ggdf2 %>%
+        make_long(colnames(ggdf2))
+      ggdf5 <- gdf4 %>%
+        make_long(colnames(gdf4)[c(3:4)])
+      ggdf3$model_name<-ggdf5$node
+      df<-ggdf3
+
+
+
+
+    }
+
+    {
+      df$color<-NA
+      df$metric<-NA
+
+      mean_var<-tapply(gdf[,sankey_values],gdf$variable,mean)
+      first_var<-ggdf[,"variable"]
+
+      sy_metric_value<-sy$metric_value
+      if(is.factor(sy_metric_value)){
+        sy_metric_value<-as.character(sy_metric_value)
+      }
+
+      names(sy_metric_value)<-sy$Y
+      sy_metric_value<-list(mean_var,sy_metric_value)
+
+
+      df$metric<-   unlist(sy_metric_value)[df$node]
+
+
+    }
+  }
+
+  df_temp<-df
+  {
+    if(!is.null(var_type)){
+      names(var_type)<-levels(gdf$variable)
+      df_temp$var_type<-NA
+      varin<-unique(df$node[df$x%in%"variable"])
+
+      df_temp$var_type[df$x%in%"variable"]<-    as.character(factor(df$node[df$x%in%"variable"],labels=      var_type[varin]))
+    }
+
+    df1<-add_color_ggsankey(df_temp,value_names,pal_y,pal_end,pal_middle,var_type=var_type,newcolhabs=newcolhabs)
+
+    pals<-attr(df1,"colors")
+
+    df1$splitY<-df1$next_node
+    df1$splitY[!is.na(df1$next_node)]<-  df1$node[!is.na(df1$next_node)]
+    df1$splitY[is.na(df1$splitY)]<-  df1$node[!is.na(df1$next_x)]
+
+    df1$splitY<-factor(df1$splitY  , levels=levels(gdf$Y))
+
+
+
+    if(!is.factor(gdf$Y))
+      gdf$Y<-factor(gdf$Y)
+
+    df1<-do.call(rbind,lapply(split(df1,df1$node),function(x){
+      x$nrow<-nrow(x)
+      x
+    }))
+    levr<-unique(factor(df1$nrow))
+    df1$nrow<-as.numeric(factor(df1$nrow,levels=levr ,labels=1:length(levr)))
+    splitvar<-   factor(var_type[gsub("-","",gsub(paste0(paste0(levels(gdf$Y)),collapse="|"),"",df1$model_name))])
+    splitV<-   factor(gsub("-","",gsub(paste0(paste0(levels(gdf$Y)),collapse="|"),"",df1$model_name)),levels=levels(gdf$variable))
+
+    df1$splitV<-splitV
+    df1$model_name2<-paste0(df1$splitY,"-",df1$splitV)
+    nvars=as.numeric(table(names(splitvar)))
+
+    dl<-data.frame(
+      var=levels(gdf$variable),
+      nvars=as.numeric(table(names(splitvar))),
+      vartype=as.numeric(factor(var_type[levels(gdf$variable)]))
+    )
+    dl<-do.call(rbind,lapply(split(dl,dl$vartype),function(x){
+      x[order(x$nvars,decreasing=F),]
+    }))
+
+
+    dl$nvars<-1:nrow(dl)
+
+    for(i in 1:nrow(dl)){
+      df1$nrow[which(df1$splitV%in%dl$var[i])]<-dl$nvars[i]
+    }
+
+    df1$nrow[df1$x=="Y"]<-NA
+
+    {
+
+      p<-p<-ggplot(
+        df1, aes(x = x,
+                 next_x = next_x,
+                 node = reorder(node,nrow),
+                 next_node = next_node,
+                 label = node,
+                 fill = fac_col)
+      )
+
+      p<-p +
+        geom_sankey(flow.alpha = 0.5,width=node_width)+
+        theme_sankey(base_size = 16)+
+        guides(fill="none",color="none")
+
+
+      if(isFALSE(labels_in)){
+        p<-p+geom_sankey_text(size = sankey_size, color = 1,show.legend =F)
+
+      } else{
+        {
+          dfy<-df1[df1$x%in%"Y",]
+          dfy$label<-dfy$node
+          if(!is.null(custom_y_labels)){
+            dfy$label<-factor(dfy$label,labels=custom_y_labels)
+
+
+          }
+          p2<-p+geom_sankey_text(data=dfy,mapping=aes(
+            x = x,
+            next_x = next_x,
+            node = reorder(node,nrow),
+            next_node = next_node,
+            label = label,
+            fill = fac_col
+          ),size = sankey_size2, color = 1,
+          hjust=0,
+          show.legend =F,inherit.aes = F,
+          position = position_nudge(x=hjust0))
+        }
+
+
+        {
+
+          dfy<-df1[df1$x%in%"variable",]
+          dfy$label<-dfy$node
+          if(!is.null(custom_var_labels)){
+            dfy$label<-factor(dfy$label,labels=custom_var_labels)
+
+
+          }
+          p2<-p2+geom_sankey_text(data=dfy,mapping=aes(
+            x = x,
+            next_x = next_x,
+            node = reorder(node,nrow),
+            next_node = next_node,
+            label = label,
+            fill = fac_col
+          )  , type="alluvial",size = sankey_size, color = 1,show.legend =F,inherit.aes = T,space=33,hjust=0,
+          position = position_nudge(x=hjust1,y=-1266))
+        }
+        p<-p2
+      }
+      #+  geom_sankey_text(size = sankey_size, color = 1,show.legend =F)
+
+
+
+
+    }
+
+    breaks<-NULL
+    labels<-NULL
+    if(isTRUE(sankey_showlegend)){
+      breaks=sort(unique(df1$fac_col[df1$x=="Y"]))
+      breaks<-breaks[quantile(1:length(breaks))]
+      yrange=layer_scales(p)$y$range$range
+      xrange<-seq_along(layer_scales(p)$x$range$range)
+      y_ann<-scales::rescale(seq_along(round(mean_var,2)),c(yrange[1],yrange[2]))
+      y_ann<-c((max(y_ann)+(y_ann[2]-y_ann[1]))*1.1,y_ann)
+      lab0<-gsub("mean_mean_","mean_",paste0("mean_",sankey_values))
+      label=c(lab0, round(mean_var,2))
+      p<-p + annotate("text", x = xrange[2]*1.1, y = y_ann,label =label, parse = TRUE,size=sankey_legsize)
+      labels=sort(round(df1$metric[breaks],2))
+
+    }
+
+
+    p<-p+
+      scale_fill_discrete(
+        name=sy$metrics_name[1],
+        type=list(colorRampPalette(unlist(pals))(length(unique(df1$fac_col)))),
+        breaks=breaks,
+        labels=   labels
+      )
+
+
+
+  }
+  #pal_middle<-colorRampPalette(c("black","gray70"))
+  {
+    p+xlab("")+ylab("")+
+      theme(
+        legend.text = element_text(size=10),
+        legend.key.size = unit(sankey_legsize, 'mm'),
+        legend.title=element_text(size=unit(sankey_legsize*3, 'mm'))
+      )+ggtitle(sankey_title)
+  }
+}
+
+
+
+
 rf_explainer$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
     ns<-session$ns
@@ -415,119 +745,43 @@ rf_explainer$server<-function(id,vals){
         }))
     })
 
+
+
+
+
+
     gg_sankey<-eventReactive(input$run_sankey_gg,ignoreInit = T,{
-
-      req(input$sankey_tab=="ggplot")
-      colnames<-c("Y","variable")
-      value_names<-input$sankey_values
-
-      if(input$sankey_values2!="None"){
-        colnames<-c("Y",input$sankey_values2,"variable")
-        value_names<-c(input$sankey_values,input$sankey_values2)
-      }
-      md<-get_mdf()[,colnames,drop=F]
-
-
-
-
-
       gdf<- get_mdf()
-
-
-      if(length(value_names)>1){
-        md<-md[order(gdf[,'Y'],gdf[,'variable'],gdf[,value_names[1]],value_names[2]),]
-      } else{
-        md<-md[order(gdf[,'Y'],gdf[,'variable'],gdf[,value_names[1]]),]
-      }
-
-
-      pal_end<-vals$newcolhabs[[input$sankey_palette]]
-      pal_y<-vals$newcolhabs[[input$sankey_paletteY]]
-      pal_middle<-vals$newcolhabs[[input$sankey_var2]](1)
-      pal_links<-vals$newcolhabs[[input$sankey_palette_links]]
-
-
-      df <- md %>%make_long(colnames)
       sy<-get_sankey_Y()
-      cols_y<-pal_y(100)[cut(sy$metric_value,100)]
-      plot(1:length(cols_y),pch=16,col=cols_y)
-      sy$color<-cols_y
-      df$color<-NA
-      df$metric<-NA
+      args<-list(
 
-      mean_var<-tapply(get_mdf()[,input$sankey_values],get_mdf()$variable,mean)
+        gdf=gdf,
+        sy=sy,
+        sankey_values=input$sankey_values,
+        sankey_values2=input$sankey_values2,
+        sankey_palette=input$sankey_palette,
+        sankey_paletteY=input$sankey_paletteY,
+        sankey_palette_middle=input$sankey_palette_middle,
+        sankey_size=input$sankey_size,
+        sankey_showlegend=T,
+        sankey_legsize=input$sankey_legsize,
+        sankey_title=input$sankey_title,
+        color_var=NULL,
+        ggsankey_colorY='model_metric',
+        var_type=NULL,
+        newcolhabs=vals$newcolhabs,
+        node_width=0.3,
+        labels_in=F,
+        hjust0=-0.085,
+        hjust1=0.08,
+        custom_var_labels=NULL,
+        custom_y_labels=NULL,
+        sankey_size2=3
 
-      cols_end<-pal_end(10)[cut(mean_var,10)]
+      )
 
-
-      df$color[df$node%in%names(mean_var)]<-"transparent"
-      df$color[df$node%in%sy$Y]<-cols_y[as.factor(df$node[df$node%in%sy$Y])]
-
-
-      df$metric[df$node%in%names(mean_var)]<-mean_var
-      df$metric[df$node%in%sy$Y]<-sy$metric_value
-
-      #df$color[is.na(df$next_node)]<-"gray"
-
-      cols<-df$color[which(df$node%in%sy$Y)]
-
-      plot(seq_along(cols),pch=16,col=cols)
-
-
-
-
-
-
-      df0<-df
-
-
-      {
-
-        df0$node<-factor(df$node,levels=c(unique(sy$Y,md$variable)))
-        #df0$color[1:736]<-"#F1CA3AFF"
-
-
-        p<-ggplot(df, aes(x = x,
-                          group=x,
-                          next_x = next_x,
-                          node = node,
-                          next_node = next_node,
-                          label = node,
-                          fill = factor(color))) +
-          geom_sankey(flow.alpha = 0.5)+
-          theme_sankey(base_size = 16) +
-          scale_fill_manual(guide="none",values=c(pal_y(length(unique(df$color)))),aesthetics='fill',labels = c(paste0(sort(round(sy$metric_value,2))),""))+
-          geom_sankey_label(size = input$sankey_size, color = 1,
-
-                            fill=c(cols_y,cols_end),show.legend =F)
-
-        p
-        yrange=layer_scales(p)$y$range$range
-        xrange<-seq_along(layer_scales(p)$x$range$range)
-        y_ann<-scales::rescale(seq_along(round(mean_var,2)),c(yrange[1],yrange[2]))
-        y_ann<-c((max(y_ann)+(y_ann[2]-y_ann[1]))*1.1,y_ann)
-        lab0<-gsub("mean_mean_","mean_",paste0("mean_",input$sankey_values))
-        label=c(lab0, round(mean_var,2))
-
-
-        if(isTRUE(input$sankey_showlegend)){
-          p<-p + annotate("text", x = xrange[2]*1.1, y = y_ann,label =label, parse = TRUE,size=input$sankey_legsize)+
-            guides(fill = guide_legend(
-              title = unique(sy$metrics_name)[1]
-
-            ))
-
-
-        }
-        #override.aes = list(fill=c(pal_y(length(sy$metric_value)),"transparent"),labels=c(sort(sy$metric_value),""))
-        p+xlab("")+ylab("")+
-          theme(
-            legend.text = element_text(size=10),
-            legend.key.size = unit(input$sankey_legsize, 'mm'),
-            legend.title=element_text(size=unit(input$sankey_legsize*3, 'mm'))
-          )+ggtitle(input$sankey_title)
-      }
-
+      p<-do.call(gg_sankey_plot,args)
+      p
 
 
 
@@ -554,14 +808,14 @@ rf_explainer$server<-function(id,vals){
     })
 
 
-    get_rfs<-reactive({
+    get_rfs<-function(){
       data_x<-vals$cur_data_sl
       req(data_x)
       rfs<-attr(vals$saved_data[[data_x]],"rf")
 
       rfs
-    })
-    get_all_mdd<-reactive({
+    }
+    get_all_mdd<-function(){
       rfs<-get_rfs()
       md<-lapply(rfs,function(x){
         data.frame(attr(x[[1]],'mindepth')[[2]])
@@ -570,7 +824,7 @@ rf_explainer$server<-function(id,vals){
       md<-md[sapply(md,nrow)>0]
       md
 
-    })
+    }
     get_sankey_Y<-function(){
 
       rfs<-get_rfs()
@@ -587,13 +841,24 @@ rf_explainer$server<-function(id,vals){
       mdd_true<-which(sapply(rfs,function(x){length(attr(x[[1]],'mindepth')[[2]])})>0)
       data.frame(Y=yss,metric_value,metrics_name)[mdd_true,]
     }
-
-
-
+    get_sakey_values<-function(){
+      if(input$sankey_values2!="None"){
+        c(input$sankey_values,input$sankey_values2)
+      } else{
+        input$sankey_values
+      }
+    }
+    get_sakey_layers<-function(){
+      if(input$sankey_values2!="None"){
+        c("Y",input$sankey_values2,"variable")
+      } else{
+        c("Y","variable")
+      }
+    }
     get_sankey_nodes<-function(){
       pal_end<-vals$newcolhabs[[input$sankey_palette]]
       pal_y<-vals$newcolhabs[[input$sankey_paletteY]]
-      pal_middle<-vals$newcolhabs[[input$sankey_var2]](1)
+      pal_middle<-vals$newcolhabs[[input$sankey_palette_middle]](1)
       sankey_y<-get_sankey_Y()
       layers<- get_sakey_layers()
       layers_metrics<-get_sakey_values()
@@ -697,12 +962,14 @@ rf_explainer$server<-function(id,vals){
     get_sankey_links<-function(){
       # input<- readRDS('input.rds')
       # vals<- readRDS('savepoint.rds')
+
+
       rfs<-get_rfs()
       req(input$sankey_palette)
       var=input$sankey_values
       layers<- get_sakey_layers()
       layers_metrics<-get_sakey_values()
-      pal<-vals$newcolhabs[[input$sankey_palette_links]]
+
       mdf<-get_mdf()
 
       ys<-get_sankey_Y()$Y
@@ -744,22 +1011,7 @@ rf_explainer$server<-function(id,vals){
       links<-links[order(links$source, links$target),]
       links
       mdf$Y<-factor(mdf$Y, levels=sort(get_sankey_Y()$Y))
-      color=as.vector(sapply(input$sankey_factor_link,function(i){
-
-        if(i=="Y"){
-          sy<-get_sankey_Y()
-          cols_y<-pal_y(length(sy$metric_value))[cut(sy$metric_value,length(sy$metric_value))]
-          cutv<-cut(links$source,length(sy$metric_value))
-          cols_y[cutv]
-        } else{
-
-          cutv<-cut(links$value,100)
-          pal(100)[cutv]
-
-        }
-
-
-      }))
+      color=NULL
 
 
 
@@ -770,8 +1022,11 @@ rf_explainer$server<-function(id,vals){
 
 
 
+
+
+
     observe({
-      shinyjs::toggle("sankey_var2",condition=input$sankey_values2!="None")
+      shinyjs::toggle("sankey_palette_middle",condition=input$sankey_values2!="None")
       shinyjs::toggle("sankey_cut",condition=isTRUE(input$sankey_cuton))
     })
 
@@ -786,7 +1041,7 @@ rf_explainer$server<-function(id,vals){
       choices<-unique(choices[!choices%in%"variable"])
       names(choices)<-NULL
       choices2<-do.call(rbind,md)$variable
-      m$results
+
 
       m<-get_rfs()[[1]]$m
       choices_metric<-if(m$modelType=="Classification"){
@@ -795,44 +1050,51 @@ rf_explainer$server<-function(id,vals){
         c('Rsquared','RMSE',"MAE")
       }
       div(
-        pickerInput_fromtop(session$ns("sankey_metric"),"Metric",choices_metric),
-        pickerInput_fromtop(session$ns("sankey_values"),"End Value",choices),
-        pickerInput_fromtop(session$ns("sankey_values2"),"Middle value",c("None",choices)),
-        checkboxInput(ns('sankey_cuton'),"Cut middle values"),
+        tags$label("Model"),
+        div(style="padding-left: 15px",
+            pickerInput_fromtop(session$ns("sankey_metric"),"Metric",choices_metric),
+            pickerInput_fromtop(
+              inputId = ns("sankey_paletteY"),
+              label = "Palette:",
+              selected="Grays",
+              choices =vals$colors_img$val,
+              choicesOpt = list(content =vals$colors_img$img)),
+            #  uiOutput(ns("ggsankey_colorY")),
+        ),
+        tags$label("Variables"),
+        div(style="padding-left: 15px",
+            pickerInput_fromtop(session$ns("sankey_values"),"Value",choices,selected="times_a_root"),
+            pickerInput_fromtop(
+              inputId = ns("sankey_palette"),
+              label = "Palette:",
+              choices =vals$colors_img$val,
+
+              choicesOpt = list(content =vals$colors_img$img))
+        ),
+        tags$label("Middle value"),
+        div(style="padding-left: 15px",
+            pickerInput_fromtop(session$ns("sankey_values2"),"Middle value",c("None",choices)),
+            pickerInput_fromtop(
+              inputId = ns("sankey_palette_middle"),
+              label = "Palette Middle:",
+              choices =vals$colors_img$val,
+              selected="gray",
+              choicesOpt = list(content =vals$colors_img$img))
+        ),
+
+        # checkboxInput(ns('sankey_cuton'),"Cut middle values"),
         numericInput(session$ns("sankey_cut"),"Middle breaks",10),
 
 
-        pickerInput_fromtop(
-          inputId = ns("sankey_paletteY"),
-          label = "Palette Y:",
-          selected="Blues",
-          choices =vals$colors_img$val,
-          choicesOpt = list(content =vals$colors_img$img)),
-        pickerInput_fromtop(
-          inputId = ns("sankey_var2"),
-          label = "Palette Middle:",
-          choices =vals$colors_img$val,
-          selected="gray",
-          choicesOpt = list(content =vals$colors_img$img)),
-        pickerInput_fromtop(
-          inputId = ns("sankey_palette_links"),
-          label = "Palette link:",
-          selected="Grays",
-          choices =vals$colors_img$val,
-          choicesOpt = list(content =vals$colors_img$img)),
-        uiOutput(ns("sankey_factor_link")),
-        pickerInput_fromtop(
-          inputId = ns("sankey_palette"),
-          label = "Palette end:",
-          choices =vals$colors_img$val,
 
-          choicesOpt = list(content =vals$colors_img$img)),
-        div(id=ns("sankey_gg_args"),style="display: none",
+
+
+        div(id=ns("sankey_gg_args"),
             numericInput(ns("sankey_width"),"Plot width",480),
             numericInput(ns("sankey_height"),"Plot Height",700),
             textInput(ns("sankey_title"),"Title:", value="Sankey plot"),
             numericInput(ns("sankey_size"),"Text size",3),
-            checkboxInput(ns("sankey_showlegend"),"Show legend",T),
+            # checkboxInput(ns("sankey_showlegend"),"Show legend",T),
             numericInput(ns("sankey_legsize"),"Legend size",3)),
         pickerInput_fromtop(session$ns("sankey_variable"),"Value",choices2)
 
@@ -844,12 +1106,12 @@ rf_explainer$server<-function(id,vals){
     })
 
 
-    output$sankey_factor_link<-renderUI({
-      pickerInput_fromtop(ns('sankey_factor_link'),"color link by",c("Y",get_sakey_values()))
+    output$ggsankey_colorY<-renderUI({
+      pickerInput_fromtop(ns('ggsankey_colorY'),"Color by",c("model_metric","model_name"))
     })
 
     observe({
-      shinyjs::toggle("sankey_palette_links",condition=input$sankey_tab=='plotly')
+
       shinyjs::toggle("sankey_gg_args",condition=input$sankey_tab=='ggplot')
       #shinyjs::toggle("down_gg_sankey",condition=input$sankey_tab=='ggplot')
       shinyjs::toggle("run_sankey_ploly",condition=input$sankey_tab=='plotly')
@@ -896,26 +1158,12 @@ rf_explainer$server<-function(id,vals){
     })
 
 
-    get_sakey_values<-function(){
-      if(input$sankey_values2!="None"){
-        c(input$sankey_values,input$sankey_values2)
-      } else{
-        input$sankey_values
-      }
-    }
-
-
-    get_sakey_layers<-function(){
-      if(input$sankey_values2!="None"){
-        c("Y",input$sankey_values2,"variable")
-      } else{
-        c("Y","variable")
-      }
-    }
 
 
 
     get_ploly_sankey<-eventReactive(input$run_sankey_ploly,ignoreInit = T,{
+      saveRDS(reactiveValuesToList(input),'input.rds')
+      print("saved")
       req(input$sankey_tab=="plotly")
 
       var=input$sankey_values
@@ -1087,7 +1335,87 @@ rf_explainer$server<-function(id,vals){
       res
 
     })})
+
+
+
+    output$measure_models_inputs<-renderUI({
+      m<-model()
+
+      datalist<-attr(m,"Datalist")
+      models<-attr(vals$saved_data[[datalist]],"rf")
+      missing_md<-sapply(models,function(m) !length(attr(m$m,"mindepth"))>0)
+
+      choices<-names(models)
+      selected=choices[missing_md]
+      div(style="display: flex",
+          div(class="picker_open",
+              virtualPicker(
+                id = ns("measure_model"),
+                "Models selected",
+                choices=choices,
+
+                selected=selected
+              )
+
+          ),
+          div(style="padding: 25px",
+              div(class="alert alert-danger",role="alert",
+                  style="overflow: auto; max-height: 150px",
+                  icon("triangle-exclamation"),"Warning:"
+              ),
+              em('Calculating RF explainer metrics for each model can be very time-consuming. Ensure you specify which models you intend to calculate the explainer measures for.')
+          )
+      )
+    })
+
+    modal_measures_loop<-reactive({
+      modalDialog(
+        title="Calculate measures for several models",
+        uiOutput(ns("measure_models_inputs")),
+        div(align="right",
+            actionButton(ns("run_loop_measures"),"RUN>>")
+        ),
+        easyClose = T
+      )
+    })
+
+
+
+
+    observeEvent(input$run_loop_measures,ignoreInit = T,{
+      m<-model()
+
+      removeModal()
+
+      datalist<-attr(m,"Datalist")
+      models<-attr(vals$saved_data[[datalist]],"rf")
+      models<-models[input$measure_model]
+      models<-lapply(models,function(m) m$m)
+      measures<-rf_inputsmeasure()
+
+      withProgress(min=0,max=length(models),message="Calculating...",{
+        for(i in seq_along(models)) {
+
+          model_name<-names(models)[i]
+          incProgress(0,message=paste0("Calculating...",model_name))
+          print(paste0(i,'/',length(models)))
+          m<-models[[model_name]]
+          res<-multipimp( m,measures=c(measures,'p_value','no_of_trees'), mean_sample="top_trees")
+          attr(m,"mindepth")<-res
+          attr(vals$saved_data[[datalist]],"rf")[[model_name]]$m<-m
+          incProgress(1,message=paste0("Calculating...",model_name))
+        }
+      })
+
+
+    })
+
     observeEvent(ignoreInit = T,input$run_measures,{
+      if(isTRUE(input$loop_measures)){
+        return(showModal(
+          modal_measures_loop()
+        ))
+      }
       m<-model()
 
       try({
@@ -1471,4 +1799,3 @@ rf_explainer$server<-function(id,vals){
 
   })
 }
-

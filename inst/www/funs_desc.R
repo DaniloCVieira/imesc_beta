@@ -121,7 +121,7 @@ cordata_filter<-function(data,cor_method="pearson",cor_cutoff=0.75,cor_use='na.o
 
   if(ret=="lower"){
     if(!length(pic)>0){
-      attr(cordata,"war")<-paste0("Note: All correlations < =",cor_cutoff)
+      attr(cordata,"war")<-paste0("All correlations < =",cor_cutoff)
       return(cordata)
     }
     data.new<-data[,-pic]

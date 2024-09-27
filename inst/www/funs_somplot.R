@@ -7,6 +7,16 @@ pickerInput_fromtop<-function(inputId, label = NULL, choices, selected = NULL, m
   shinyWidgets::pickerInput(inputId, label = label, choices, selected = selected, multiple = multiple,options = options, choicesOpt = choicesOpt, width = width, inline = inline)
 }
 
+pickerInput_fromtop_live<-function(inputId, label = NULL, choices, selected = NULL, multiple = FALSE,options = list(), choicesOpt = NULL, width = NULL, inline = FALSE,stateInput = TRUE, autocomplete = FALSE){
+  win_pad<-shinyWidgets::pickerOptions(windowPadding="top",size=10,liveSearch =T,container="body")
+  options[names(win_pad)]<-win_pad
+
+
+
+  shinyWidgets::pickerInput(inputId, label = label, choices, selected = selected, multiple = multiple,options = options, choicesOpt = choicesOpt, width = width, inline = inline)
+}
+
+
 #' @export
 supersom_summaries<-function(m){
   traindata <- m$data
@@ -489,7 +499,42 @@ new_scale<-function (new_aes) {
 new_scale_fill<-function () {
   new_scale("fill")
 }
+get_sigma_som<-function(codebook,unit.classif,neus_ids){
+  nb <- table(factor(unit.classif, levels=neus_ids))
+  sqrt(apply(codebook,2,function(x,effectif){m2<-sum(effectif*(x- weighted.mean(x,effectif, na.rm=T))^2, na.rm=T)/(sum(effectif, na.rm=T)-1)},effectif=nb))
 
+}
+
+importance_som_hc<-function(m,layer,hc, n_top){
+  codebook<-data.frame(abs(m$codes[[layer]]))
+  #codebook<-data.frame(m$codes[[layer]])
+  colnames(codebook)<-colnames(m$codes[[layer]])
+  rownames(codebook)<-paste0("neu",1:nrow(codebook))
+
+
+  grid<-data.frame(m$grid$pts)
+  grid$hc<-hc
+  hc_ids<-lapply(split(grid,grid$hc),function(x) as.numeric(rownames(x)))
+  hc_imp_rel<-codebook
+  ids<-hc_ids[[1]]
+  split_codebook<-lapply(hc_ids,function(ids){
+    code<-hc_imp_rel[ids,]
+    unit.classif=m$unit.classif[m$unit.classif%in%ids]
+    x<-get_sigma_som(code,unit.classif=unit.classif,neus_ids=ids)
+    x
+  })
+  sigs<-data.frame(split_codebook)
+  hc_imp_rel<-decostand(sigs,"total")
+  top_indicators <- apply(hc_imp_rel, 2, function(x) {
+    top_indices <- order(x, decreasing = TRUE)[1:n_top]
+    rownames(hc_imp_rel)[top_indices]
+  })
+  indicadores<-as.vector(unlist(top_indicators))
+  l_inds<-unique(indicadores)
+  attr(l_inds,"imp_results")<-hc_imp_rel
+  attr(l_inds,"imp_layer")<-layer
+  l_inds
+}
 importance_codebook<-function(m,hc=NULL,n=5,var_pie_type=c('top_hc','top','top_w','manual'), layer=1){
   var_pie_type=match.arg(var_pie_type,c('top_hc','top','top_w','manual'))
 
@@ -503,33 +548,9 @@ importance_codebook<-function(m,hc=NULL,n=5,var_pie_type=c('top_hc','top','top_w
     n_top<-ncol(codebook)
   }
   grid<-data.frame(m$grid$pts)
-
-
   if(var_pie_type=='top_hc'){
-    req(hc)
-    grid$hc<-hc
-
-    hc_ids<-lapply(split(grid,grid$hc)
-                   ,function(x) as.numeric(rownames(x)))
-    split_codebook<-lapply(hc_ids,function(ids){
-      codebook[ids,]
-    })
-
-    hc_imp<-lapply(seq_along(split_codebook),function(i){
-      code<-split_codebook[[i]]
-      variable_importance <- colSums(code)
-      res<-data.frame(sum_weight=variable_importance)
-      colnames(res)<-names(hc_ids)[i]
-      res
-    })
-    hcimp2<-do.call(cbind,hc_imp)
-    hc_imp_rel<-as.matrix(t(apply(hcimp2,1,function(x) x/sum(x))))
-    top_indicators <- apply(hc_imp_rel, 2, function(x) {
-      top_indices <- order(x, decreasing = TRUE)[1:n_top]
-      rownames(hc_imp_rel)[top_indices]
-    })
-    indicadores<-as.vector(unlist(top_indicators))
-    l_inds<-unique(indicadores)
+    l_inds<-importance_som_hc(m,layer,hc,n_top)
+    return(l_inds)
   } else if(var_pie_type=="top"){
     hc_imp_rel<-as.matrix(t(apply(codebook,1,function(x) x/sum(x))))
     pic<-order(colSums(hc_imp_rel),decreasing=T)[1:n_top]
@@ -542,6 +563,9 @@ importance_codebook<-function(m,hc=NULL,n=5,var_pie_type=c('top_hc','top','top_w
   attr(l_inds,"imp_layer")<-layer
   l_inds
 }
+
+
+
 add_codebook_pies<-function(p,m,hc=NULL,n=5,var_pie_type=c('top_hc','top','top_w','manual'),Y_palette="turbo", var_pie=F,newcolhabs=list(turbo=turbo),var_pie_transp=0.1, layer=1,pie_variables=1:2){
   var_pie_type=match.arg(var_pie_type,c('top_hc','top','top_w','manual'))
   if(isFALSE(var_pie)){

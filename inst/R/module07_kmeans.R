@@ -371,9 +371,7 @@ k_means_module$server<-function (id,vals){
       req(input$model_or_data=="som codebook")
       renderPlot({
 
-        #vals<-readRDS("savepoint.rds")
-        # vals<-readRDS("savepoint_kmeans.rds")
-        # input<-readRDS("input_kmeans.rds")
+
         args<-argsplot_somplot()
         req(length(args)>0)
         p<-do.call(bmu_plot,args)
@@ -910,10 +908,7 @@ k_means_module$server<-function (id,vals){
     })
 
     output$pdata_plot_box<-  renderPlot({
-      #saveRDS(reactiveValuesToList(input),"input.rds")
-      #saveRDS(reactiveValuesToList(vals),"vals.rds")
-      #input<-readRDS('input.rds')
-      #vals<-readRDS("vals.rds")
+
       req(input$model_or_data=="data")
       cluster<-getkmodel()
       #req(input$data_kmeans)
@@ -1247,11 +1242,7 @@ k_means_module$server<-function (id,vals){
         data<-getdata_kmeans()
         kmeans_result<-kmeans(data, centers, iter.max=input$km_itermax, nstart=input$km_nstart,algorithm=km_alg())
         vals$k_means_results<-kmeans_result
-        #newclass<-m$unit.classif
-        #for(i in 1:length(hcut)) {newclass[newclass==i]<-rep(hcut[i],sum(  newclass==i))}
 
-
-        # kmeans_result<-readRDS("kmeans.rds")
         kmeans_result<-lapply(kmeans_result, function(x)data.frame(x))
         onecol<-which(unlist(lapply(kmeans_result,ncol))==1)
         for(i in names(onecol)){
@@ -1486,9 +1477,6 @@ k_means_module$server<-function (id,vals){
 
       saveRDS(tosave,"savepoint.rds")
       saveRDS(reactiveValuesToList(input),"input.rds")
-
-      #vals<-readRDS("vals.rds")
-      #input<-readRDS('input.rds')
 
     })
 

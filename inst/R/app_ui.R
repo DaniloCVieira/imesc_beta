@@ -14,7 +14,7 @@ library(shinyBS)
 
 
 #' @export
-ui<-app_ui<-function(request) {
+app_ui<-ui<-function(request) {
 
   tagList(
 
@@ -150,7 +150,7 @@ Shiny.onInputChange('shiny_height',myHeight)
 div(
 
     uiOutput('tools_upload'),
-    shinybusy::add_busy_spinner(spin = "hollow-dots",height="20px", color="yellow",width="20px", margins = c(15, 600),position="top-left"),
+    shinybusy::add_busy_spinner(spin = "hollow-dots",height="20px", color="yellow",width="20px", margins = c(15, 660),position="top-left"),
     div(
       div(
         div(style="z-index: 9",
@@ -186,9 +186,9 @@ div(
                           tabItem(
                             tabName = "menu_maps2",
                             column(12,
-                                   ll_data$ui("map_data"),
+                                   sptools_data$ui("sptools_data"),
                                    uiOutput('map_header'),
-                                   llet$ui("llet")
+                                   sptools_panels$ui("sptools_panels")
                                    )
                           ),
                           tabItem(tabName = "menu_som",

@@ -4,6 +4,7 @@
 #' @importFrom segRDA OrdData bp
 #' @noRd
 
+
 color_input<-function(id,label,selected=NULL,vals){
   pickerInput_fromtop(
     inputId = id,
@@ -327,6 +328,7 @@ desctools_tab1$server<-function(id,vals){
 
   })
 }
+
 desctools_tab2<-list()
 desctools_tab2$ui<-function(id){
   ns<-NS(id)
@@ -347,7 +349,7 @@ desctools_tab2$ui<-function(id){
                               pickerInput_fromtop(ns("filter_box1"),"Filter:",choices = NULL, options=shinyWidgets::pickerOptions(liveSearch =T))),
                           div(class="picker-flex",
                               pickerInput_fromtop(ns("filter_box2"),
-                                          "Class:",choices=NULL, options=shinyWidgets::pickerOptions(liveSearch =T)))
+                                                  "Class:",choices=NULL, options=shinyWidgets::pickerOptions(liveSearch =T)))
                       ),
                       div(style="display: flex;gap: 10px;height: 50px",class="setup_box picker-flex",
                           div(class="setup_box picker-flex picker-before-y", pickerInput_fromtop(ns("bbox_y_datalist"),tipify(
@@ -387,8 +389,8 @@ desctools_tab2$ui<-function(id){
                                pickerInput_fromtop(ns("box_theme"),"Theme:",c('theme_bw','theme_grey','theme_linedraw','theme_light','theme_minimal','theme_classic')),
 
                                pickerInput_fromtop(ns("box_palette"),
-                                           label = "Palette:",
-                                           choices=NULL),
+                                                   label = "Palette:",
+                                                   choices=NULL),
                                numericInput(ns('box_alpha'),"Lighten:", .3, step=0.05),
                                colourpicker::colourInput(ns("box_linecol"),label = "Line color:",value ="black",showColour="background"),
                                numericInput(ns('box_linewidth'),"Line width:", .5,step=.1),
@@ -486,17 +488,12 @@ desctools_tab2$server<-function(id,vals){
         colnames(res)[-1]<-colnames(y)
         res[,1]<-res[,1]
         res
-        # saveRDS(res,"res.rds")
-        #re<-readRDS('res.rds')
-        # levels(re$Consenso)
-        #vals<-readRDS("savepoint.rds")
-        # levels(attr(vals$saved_data[["SANTOS_C1"]],"factors")$Consenso)
 
       })
       req(!inherits(result,"try-error"))
       result
 
-      })
+    })
     bbox_y_datalist<-reactive({
       req(input$bbox_y_datalist)
       req(input$bbox_y_datalist%in%names(vals$saved_data))
@@ -517,7 +514,7 @@ desctools_tab2$server<-function(id,vals){
       req(input$box_heigth)
       req(input$box_heigth>10)
 
-      #args<-readRDS("args.rds")
+
       div(renderPlot({
 
         vals$pbox_plot
@@ -536,22 +533,57 @@ desctools_tab2$server<-function(id,vals){
     observeEvent(bbox_x_datalist(),{
       datax<-attr(bbox_x_datalist(),"factors")
       choices<-get_samerows_datalist(datax,vals$saved_data)
-      updatePickerInput(session,'bbox_y_datalist',choices=choices)
+
+      selected=vals$cur_bbox_y_datalist
+      selected=get_selected_from_choices(selected,choices)
+
+      updatePickerInput(session,'bbox_y_datalist',choices=choices,selected=selected)
     })
+    observeEvent(input$bbox_y_datalist,{
+      vals$cur_bbox_y_datalist<-input$bbox_y_datalist
+    })
+
+
+
+
     observeEvent(bbox_x_datalist(),{
       data<-bbox_x_datalist()
       factors<-attr(data,"factors")
       choices = c("none", colnames(factors))
-      updatePickerInput(session,'filter_box1',choices=choices,options=shinyWidgets::pickerOptions(liveSearch=T))
+      selected=vals$cur_filter_box1
+      selected=get_selected_from_choices(selected,choices)
+
+      updatePickerInput(session,'filter_box1',choices=choices,selected=selected,options=shinyWidgets::pickerOptions(liveSearch=T))
+    })
+
+    observeEvent(input$filter_box1,{
+      vals$cur_filter_box1<-input$filter_box1
     })
     observeEvent(bbox_x_datalist(),{
       choices=rev(colnames(attr(bbox_x_datalist(),"factors")))
-      updatePickerInput(session,'boxplot_X',choices=choices,options=shinyWidgets::pickerOptions(liveSearch=T))
+      selected=vals$cur_boxplot_X
+      selected=get_selected_from_choices(selected,choices)
+
+
+      updatePickerInput(session,'boxplot_X',choices=choices,selected=selected,options=shinyWidgets::pickerOptions(liveSearch=T))
+    })
+
+    observeEvent(input$boxplot_X,{
+      vals$cur_boxplot_X<-input$boxplot_X
     })
     observeEvent(bbox_y_datalist(),{
       data<-bbox_y_datalist()
       choices = colnames(data)
-      updatePickerInput(session,'box_y',choices=choices,selected= colnames(data)[1],options=shinyWidgets::pickerOptions(liveSearch=T))
+      selected=vals$cur_box_y
+      selected=get_selected_from_choices(selected,choices)
+      if(is.null(selected)){
+        selected=choices[1]
+      }
+      updatePickerInput(session,'box_y',choices=choices,selected= selected,options=shinyWidgets::pickerOptions(liveSearch=T))
+    })
+
+    observeEvent(input$box_y,{
+      vals$cur_box_y<-input$box_y
     })
 
     observeEvent(input$filter_box1,{
@@ -560,10 +592,25 @@ desctools_tab2$server<-function(id,vals){
       factors<-attr(data,"factors")
       labels<-factors[rownames(data), input$filter_box1]
       choices = c(levels(as.factor(labels)))
-      updatePickerInput(session,'filter_box2',choices=choices)
+      selected=vals$cur_filter_box2
+      selected=get_selected_from_choices(selected,choices)
+
+
+      updatePickerInput(session,'filter_box2',choices=choices,selected = selected)
+    })
+
+    observeEvent(input$filter_box2,{
+      vals$cur_filter_box2<-input$filter_box2
     })
     observeEvent(vals$saved_data,{
-      updatePickerInput(session,'bbox_x_datalist',choices=names(vals$saved_data))
+      choices=names(vals$saved_data)
+      selected=vals$cur_bbox_x_datalist
+      selected=get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'bbox_x_datalist',choices=choices,selected=selected)
+    })
+
+    observeEvent(input$bbox_x_datalist,{
+      vals$cur_bbox_x_datalist<-input$bbox_x_datalist
     })
 
     observeEvent(vals$newcolhabs,{
@@ -750,7 +797,7 @@ desctools_tab3$server<-function(id,vals){
       updatePickerInput(session,'rid_col',choices = vals$colors_img$val,choicesOpt = list(content = vals$colors_img$img))
     })
     observe({
-     # print(input$ridge_variables)
+      # print(input$ridge_variables)
     })
 
     args_ridges<-reactive({
@@ -761,12 +808,9 @@ desctools_tab3$server<-function(id,vals){
 
         data=getdata_descX()
         factors<-attr(data,"factors")
-        #input<-readRDS("input.rds")
-        #vals<-readRDS('vals.rds')
-        #saveRDS(reactiveValuesToList(input),"input.rds")
-        #saveRDS(reactiveValuesToList(vals),"vals.rds")
+
         req(length(input$ridge_variables)>0)
-        # req(input$ridge_variables%in%colnames(data))
+
         x<-data<-data[,input$ridge_variables, drop=F]
         req(input$rid_y%in%colnames(factors))
         y<-factors[input$rid_y]
@@ -790,7 +834,7 @@ desctools_tab3$server<-function(id,vals){
       })
       req(!inherits(result,"try-error"))
       result
-      })
+    })
 
     observeEvent(getdata_descX(),{
       data<-getdata_descX()
@@ -835,32 +879,32 @@ desctools_tab4$ui<-function(id){
 
 
 
-                       pickerInput_fromtop(ns("ggpair.upper"), "Upper panel",
-                                   choices = list(
-                                     "Correlation" = "corr",
-                                     "Corr + group" = "corr+group",
-                                     "none" = "blank"
-                                   )),
-                       pickerInput_fromtop(ns("ggpair.lower"), "Lower panel",
-                                   choices = list(
-                                     "Points" = "points",
-                                     "Points + group" = "points+group",
-                                     "none" = "blank"
-                                   )),
-                       pickerInput_fromtop(ns("ggpair.diag"), "Diagonal panel",
-                                   choices = list(
-                                     "Density" = "density",
-                                     "Density + group" = "density+group",
-                                     "Hist" = "hist",
-                                     "Hist+group" = "hist+group",
-                                     "none" = "blank"
-                                   )),
-                       checkboxInput(ns("ggpair.box.include"), "Y boxplot",F),
-                       div(
-                         style="border-bottom: 1px solid; margin-bottom: 5px; margin-left: 20px",
-                         pickerInput_fromtop(ns("ggpair.y.variable"),strong("Grouping Factor:", class='text_alert'),NULL, options=shinyWidgets::pickerOptions(liveSearch =T))
-                       ),
-                       pickerInput_fromtop(ns("ggpair.method"), "Correlation method:", c("pearson", "kendall", "spearman", "none"))
+                         pickerInput_fromtop(ns("ggpair.upper"), "Upper panel",
+                                             choices = list(
+                                               "Correlation" = "corr",
+                                               "Corr + group" = "corr+group",
+                                               "none" = "blank"
+                                             )),
+                         pickerInput_fromtop(ns("ggpair.lower"), "Lower panel",
+                                             choices = list(
+                                               "Points" = "points",
+                                               "Points + group" = "points+group",
+                                               "none" = "blank"
+                                             )),
+                         pickerInput_fromtop(ns("ggpair.diag"), "Diagonal panel",
+                                             choices = list(
+                                               "Density" = "density",
+                                               "Density + group" = "density+group",
+                                               "Hist" = "hist",
+                                               "Hist+group" = "hist+group",
+                                               "none" = "blank"
+                                             )),
+                         checkboxInput(ns("ggpair.box.include"), "Y boxplot",F),
+                         div(
+                           style="border-bottom: 1px solid; margin-bottom: 5px; margin-left: 20px",
+                           pickerInput_fromtop(ns("ggpair.y.variable"),strong("Grouping Factor:", class='text_alert'),NULL, options=shinyWidgets::pickerOptions(liveSearch =T))
+                         ),
+                         pickerInput_fromtop(ns("ggpair.method"), "Correlation method:", c("pearson", "kendall", "spearman", "none"))
                      )),
            box_caret(ns("box_4b"),
                      title = "General Options",
@@ -868,8 +912,8 @@ desctools_tab4$ui<-function(id){
                      div(
 
                        pickerInput_fromtop(inputId = ns("fm_palette"),
-                                   label = '+ Palette',
-                                   choices=NULL),
+                                           label = '+ Palette',
+                                           choices=NULL),
                        numericInput(ns("msp_plot_width"), "Plot width",550),
                        numericInput(ns("msp_plot_height"), "Plot height",400),
                        numericInput(ns("msp_plot_base_size"),"Base size",12),
@@ -879,7 +923,7 @@ desctools_tab4$ui<-function(id){
                        numericInput(ns("ggpair.varnames.size"), "Variable name size:", 1),
                        numericInput(ns("ggpair.cor.size"), "Corr size:", 2),
                        pickerInput_fromtop(inputId = ns("ggpair.pch"),
-                                   label = "Point shape",NULL),
+                                           label = "Point shape",NULL),
                        numericInput(ns("ggpair.points.size"), "Points size", 1),
                        numericInput(ns("ggpair.legend.text.size"), "legend.text.size:", 1),
                        numericInput(ns("ggpair.legend.title.size"), "legend.title.size:", 1),
@@ -1087,7 +1131,7 @@ desctools_tab4$server<-function(id,vals){
         )
         #  saveRDS(args,"args.rds")
 
-       # req(   !any(sapply(args[-2],length)<1))
+        # req(   !any(sapply(args[-2],length)<1))
         # attach(args)
         #class(args)<-'iggpair'
 
@@ -1104,11 +1148,17 @@ desctools_tab4$server<-function(id,vals){
 
   })
 }
+tiphelp5<-function(title,text,placement ="bottom"){
+  span(class="tip-80",
+       style="color: #3c8dbc;",
+       title,tipify(icon("fas fa-question-circle"),text,placement =placement ))
+}
 
 desctools_tab5<-list()
 desctools_tab5$ui<-function(id){
   ns<-NS(id)
   div(
+
     column(4,class='mp0', style="height:  calc(100vh - 200px);overflow: auto",
            box_caret(
              ns("box_5a"),
@@ -1116,39 +1166,39 @@ desctools_tab5$ui<-function(id){
              color="#c3cc74ff",
              div(
                div(style="display: flex",
-                   pickerInput_fromtop(ns("cor_method"),choices = c("pearson", "kendall", "spearman"),tiphelp3("Correlation","Select the correlation coefficient to be computed."))
+                   pickerInput_fromtop(ns("cor_method"),choices = c("pearson", "kendall", "spearman"),tiphelp5("Correlation","Select the correlation coefficient to be computed."))
 
 
                ),
-               div(style="display: flex",
-                   pickerInput_fromtop(ns('cutoff_hl'),tiphelp3("Filter correlations:","Choose the pair-wise absolute correlation cutoff."),choices = list("All" = "all", "Lower than" = "lower", "Higher than" = "higher")),
-                   uiOutput(ns('corr_cutoff'))
+               div(
+                 pickerInput_fromtop(ns('cutoff_hl'),tiphelp5("Filter correlations:","Choose the pair-wise absolute correlation cutoff."),choices = list("All" = "all", "Lower than" = "lower", "Higher than" = "higher")),
+                 uiOutput(ns('corr_cutoff'))
                ),
 
                pickerInput_fromtop(ns("cor_use"),
-                           tiphelp3("Use","Select the method for computing covariances in the presence of missing values."),choices = c( "complete.obs","everything", "all.obs", "na.or.complete", "pairwise.complete.obs")),
-               pickerInput_fromtop(ns("cor_dendogram"),tiphelp3("Dendogram","Choose whether to draw none, row, column, or both dendrograms."),choices = c("both","row","column","none")),
-               pickerInput_fromtop(ns("cor_scale"),tiphelp3("Scale","Indicate if the values should be centered and scaled in the row direction, column direction, or none."),
-                           choices = c("none","row", "column")),
+                                   tiphelp5("Use","Select the method for computing covariances in the presence of missing values."),choices = c( "complete.obs","everything", "all.obs", "na.or.complete", "pairwise.complete.obs")),
+               pickerInput_fromtop(ns("cor_dendogram"),tiphelp5("Dendogram","Choose whether to draw none, row, column, or both dendrograms."),choices = c("both","row","column","none")),
+               pickerInput_fromtop(ns("cor_scale"),tiphelp5("Scale","Indicate if the values should be centered and scaled in the row direction, column direction, or none."),
+                                   choices = c("none","row", "column")),
                pickerInput_fromtop(ns("cor_Rowv"),
-                           tiphelp3("Rowv","If TRUE, the dendrogram is computed and reordered based on row means."),choices = c('TRUE','FALSE')),
-               pickerInput_fromtop(ns("cor_Colv"),tiphelp3("Colv","<code>Rowv</code> means that columns should be treated identically to the rows. If <code>TRUEv</code>, the dendrogram is computed and reordered based on column means."),choices = c('Rowv',T,F)),
-               pickerInput_fromtop(ns("cor_revC"),tiphelp3("revC","Indicate if the column order should be reversed for plotting."),choices = c('TRUE','FALSE')),
-               pickerInput_fromtop(ns("cor_na.rm"),tiphelp3("na.rm","Indicate if NAs should be removed."),choices = c('TRUE','FALSE')),
-               pickerInput_fromtop(ns("cor_labRow"),tiphelp3("labRow","Choose whether to show observation labels."),choices = c('TRUE','FALSE')),
-               pickerInput_fromtop(ns("cor_labCol"),tiphelp3("labCol","Choose whether to show variable labels."),choices = c('TRUE','FALSE')),
-               pickerInput_fromtop(ns("cor_density.info"),tiphelp3("density.info","Indicate whether to superimpose a histogram, a density plot, or no plot on the color-key."),
-                           choices = c("histogram","density","none")),
+                                   tiphelp5("Rowv","If TRUE, the dendrogram is computed and reordered based on row means."),choices = c('TRUE','FALSE')),
+               pickerInput_fromtop(ns("cor_Colv"),tiphelp5("Colv","<code>Rowv</code> means that columns should be treated identically to the rows. If <code>TRUEv</code>, the dendrogram is computed and reordered based on column means."),choices = c('Rowv',T,F)),
+               pickerInput_fromtop(ns("cor_revC"),tiphelp5("revC","Indicate if the column order should be reversed for plotting."),choices = c('TRUE','FALSE')),
+               pickerInput_fromtop(ns("cor_na.rm"),tiphelp5("na.rm","Indicate if NAs should be removed."),choices = c('TRUE','FALSE')),
+               pickerInput_fromtop(ns("cor_labRow"),tiphelp5("labRow","Choose whether to show observation labels."),choices = c('TRUE','FALSE')),
+               pickerInput_fromtop(ns("cor_labCol"),tiphelp5("labCol","Choose whether to show variable labels."),choices = c('TRUE','FALSE')),
+               pickerInput_fromtop(ns("cor_density.info"),tiphelp5("density.info","Indicate whether to superimpose a histogram, a density plot, or no plot on the color-key."),
+                                   choices = c("histogram","density","none")),
                pickerInput_fromtop(inputId = ns("cor_palette"),label = "Palette:",choices = NULL),
                numericInput(ns("cor_mar_row"),"X margin",value = 5, min = 0, step = 1),
                numericInput(ns("cor_mar_col"),"Y margin",value = 5, min = 0, step = 1),
-               numericInput(ns("cor_sepwidth_a"),tiphelp3("sep row width:","Set the space between rows."),value = 0.05, min = 0.1, max = 1, step = .01),
-               numericInput(ns("cor_sepwidth_b"),tiphelp3("sep col width:","Set the space between columns."),value = 0.05, min = 0.1, max = 1, step = .01),
-               colourpicker::colourInput(ns("cor_sepcolor"),label = tiphelp3("Sep color:","Choose the color between rows and columns."),value = "black", showColour = "background"),
-               colourpicker::colourInput(ns("cor_na.color"),label = tiphelp3("NA color:","Choose the color to use for missing value."),value = "gray", showColour = "background"),
-               pickerInput_fromtop(ns("cor_cellnote"),tiphelp3("Cell note","Choose whether to show correlation values as cell notes."),choices = c('TRUE','FALSE')),
-               colourpicker::colourInput(ns("cor_noteco"),label = tiphelp3("Note color:","Choose the color of the correlation value."),value = "black", showColour = "background"),
-               numericInput(ns("cor_notecex"),tiphelp3("Note size:","Set the size of the correlation value."),value = 1, step = 0.1),
+               numericInput(ns("cor_sepwidth_a"),tiphelp5("sep row width:","Set the space between rows."),value = 0.05, min = 0.1, max = 1, step = .01),
+               numericInput(ns("cor_sepwidth_b"),tiphelp5("sep col width:","Set the space between columns."),value = 0.05, min = 0.1, max = 1, step = .01),
+               colourpicker::colourInput(ns("cor_sepcolor"),label = tiphelp5("Sep color:","Choose the color between rows and columns."),value = "black", showColour = "background"),
+               colourpicker::colourInput(ns("cor_na.color"),label = tiphelp5("NA color:","Choose the color to use for missing value."),value = "gray", showColour = "background"),
+               pickerInput_fromtop(ns("cor_cellnote"),tiphelp5("Cell note","Choose whether to show correlation values as cell notes."),choices = c('TRUE','FALSE')),
+               colourpicker::colourInput(ns("cor_noteco"),label = tiphelp5("Note color:","Choose the color of the correlation value."),value = "black", showColour = "background"),
+               numericInput(ns("cor_notecex"),tiphelp5("Note size:","Set the size of the correlation value."),value = 1, step = 0.1),
                div(),
                div(
                  actionLink(ns('corr_down_results'), span("Download Results", icon("fas fa-table")), style = "button_active")
@@ -1164,8 +1214,10 @@ desctools_tab5$ui<-function(id){
 
                      button_title =                                       actionLink(ns('corr_downp'), "Download",icon("download")),
 
-                     div(uiOutput(ns("corr_btn")),
-                         uiOutput(ns("corr_plot")))
+                     div(
+                       uiOutput(ns('corr_warning')),
+                       uiOutput(ns("corr_btn")),
+                       uiOutput(ns("corr_plot")))
 
            )
     )
@@ -1192,10 +1244,7 @@ desctools_tab5$server<-function(id,vals){
       req(input$cutoff_hl)
       try({
         args<-list(data=getdata_descX(),cor_method=input$cor_method,cor_cutoff=input$cor_cutoff,cor_use=input$cor_use,ret=input$cutoff_hl)
-        # saveRDS(args,"args.rds")
 
-        #args<-readRDS("args.rds")
-        # attach(args)
         cordata<-do.call(cordata_filter,args)
         cordata
       })
@@ -1209,11 +1258,16 @@ desctools_tab5$server<-function(id,vals){
       if(is.null(vals$cor_cutoff)){vals$cor_cutoff<-0.9}
       div(
         inline(numericInput(ns("cor_cutoff"),"Cutoff",value = vals$cor_cutoff,min = 0.1,max = 1,step = .1)),
-        inline(div(em(attr(get_corrdata(),"war"), tyle="color: gray"))),
+
 
 
       )
     })
+
+    observeEvent(input$cor_cutoff,{
+      vals$cor_cutoff<-input$cor_cutoff
+    })
+
     corplot_val<-reactiveVal()
     output$corr_plot<-renderUI({
       req(corplot_val())
@@ -1264,8 +1318,24 @@ desctools_tab5$server<-function(id,vals){
       mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals)
 
     })
+
+
+    output$corr_warning<-renderUI({
+
+      req(cor_war())
+      div(style="padding: 5px; font-size:11px",
+          class = "alert_warning",
+          icon("triangle-exclamation",style="color: Dark yellow3"),
+          strong("Note:"),cor_war()
+      )
+
+    })
+    cor_war<-reactiveVal()
     observeEvent(input$run_cor,ignoreInit = T,{
       args<-args_corrplot()
+      cor_war(attr(get_corrdata(),"war"))
+
+
       corplot_val(args)
       shinyjs::removeClass("run_cor_btn",'save_changes')
     })
@@ -1404,11 +1474,11 @@ desctools_tab6$server<-function(id,vals){
         color_input(ns('mds_points_palette') ,tiphelp3("Palette","Choose a gradient to represent colors based on the selected factor"),selected='turbo', vals),
         pickerInput_fromtop(ns('mds_points_factor')  ,"Factor:",choices=choices,selected= NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
         pickerInput_fromtop(inputId = ns("mds_points_shape"),
-                    label = "Shape:",
-                    choices = df_symbol$val,
-                    choicesOpt = list(content = df_symbol$img),
-                    selected=16,
-                    width = "100px"),
+                            label = "Shape:",
+                            choices = df_symbol$val,
+                            choicesOpt = list(content = df_symbol$img),
+                            selected=16,
+                            width = "100px"),
         checkboxInput(ns('mds_scale_shape') ,mds_scale_shape,value=F),
         numericInput (ns('mds_points_size') ,"Size:",value=2),
 
@@ -1496,10 +1566,10 @@ desctools_tab6$server<-function(id,vals){
       validate(need(!anyNA(getdata_descX()), "This functionality does not support missing values; Please use the transformation tool to the handle missing values."))
       withProgress(message="Running...",
                    min=NA,max=NA,{
-        mds<-try(metaMDS(getdata_descX(), distance = input$mds_distance))
-      })
+                     mds<-try(metaMDS(getdata_descX(), distance = input$mds_distance))
+                   })
       if(!inherits(mds,"try-error")){
-      vals$mds<-mds}
+        vals$mds<-mds}
     })
 
     observeEvent(ignoreInit = T,input$down_mds_results,{
@@ -1640,12 +1710,12 @@ desctools_tab7$server<-function(id,vals){
         color_input(ns('pca_points_palette') ,tiphelp3("Palette","Choose a gradient to represent colors based on the selected factor"),selected='turbo', vals),
         pickerInput_fromtop(ns('pca_points_factor')  ,"Factor:",choices=choices,selected= NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
         pickerInput_fromtop(inputId = ns("pca_points_shape"),
-                    label = "Shape:",
-                    choices = df_symbol$val,
-                    choicesOpt = list(content = df_symbol$img),
-                    selected=16,
+                            label = "Shape:",
+                            choices = df_symbol$val,
+                            choicesOpt = list(content = df_symbol$img),
+                            selected=16,
 
-                    width = "100px"),
+                            width = "100px"),
         checkboxInput(ns('pca_scale_shape') ,pca_scale_shape,value=F),
         numericInput (ns('pca_points_size') ,"Size:",value=2),
 
@@ -1840,7 +1910,7 @@ desctools_tab7$server<-function(id,vals){
     observeEvent(input$run_pca,ignoreInit = T,{
       pca<-try(prcomp(getdata_descX(), center=F, scale=F))
       if(!inherits(pca,"try-error"))
-      pca_model(pca)
+        pca_model(pca)
       runval$pca<-"btn_nice"
     })
 
@@ -1874,7 +1944,7 @@ desctools_tab8$ui<-function(id){
                               )
                           ),
                           div(style="margin-top: 20px",
-                            uiOutput(ns('rda_btn'))
+                              uiOutput(ns('rda_btn'))
                           )
 
                       ),
@@ -2005,12 +2075,12 @@ desctools_tab8$server<-function(id,vals){
         color_input(ns('rda_points_palette') ,tiphelp3("Palette","Choose a gradient to represent colors based on the selected factor"),selected='turbo', vals),
         pickerInput_fromtop(ns('rda_points_factor')  ,"Factor:",choices=choices,selected= NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
         pickerInput_fromtop(inputId = ns("rda_points_shape"),
-                    label = "Shape:",
-                    choices = df_symbol$val,
-                    choicesOpt = list(content = df_symbol$img),
-                    selected=16,
+                            label = "Shape:",
+                            choices = df_symbol$val,
+                            choicesOpt = list(content = df_symbol$img),
+                            selected=16,
 
-                    width = "100px"),
+                            width = "100px"),
         numericInput (ns('rda_points_size') ,"Size:",value=2),
 
       )
@@ -2186,12 +2256,12 @@ desctools_tab8$server<-function(id,vals){
         ),
         pickerInput_fromtop(ns('rda_species_plot') ,"Display:",choices=c("points","text")),
         pickerInput_fromtop(inputId = ns("rda_species_shape"),
-                    label = "Shape:",
-                    choices = df_symbol$val,
-                    choicesOpt = list(content = df_symbol$img),
-                    selected=df_symbol$val[8],
+                            label = "Shape:",
+                            choices = df_symbol$val,
+                            choicesOpt = list(content = df_symbol$img),
+                            selected=df_symbol$val[8],
 
-                    width = "100px"),
+                            width = "100px"),
         numericInput(ns('rda_species_n') ,"sp number:",value=value),
 
         numericInput(ns('rda_species_size') ,"Size:",value=2),
@@ -2365,7 +2435,7 @@ desctools_tab9$ui<-function(id){
 
 
                               pickerInput_fromtop(inputId=ns("dp_palette"),
-                                          label = "Palette",NULL),
+                                                  label = "Palette",NULL),
                               numericInput(ns("dp_cex"), "size",value=1,min=0.1,step=0.1),
                               colourpicker::colourInput(inputId=ns("dp_dcol"),
                                                         label = "diss col",
@@ -2600,9 +2670,9 @@ desctools_tab9$server<-function(id,vals){
     matrixplot<-reactive({
       req(isTRUE(input$segrda_ord))
       sim1o<-getord()
-      #sim1o<-readRDS('sim1o.rds')
+
       mybreaks<-vals$window_pool
-      #mybreaks<-c(2,50,141)
+
       xo<-sim1o$xo ## ordered explanatory matrix.
       yo<-sim1o$yo ## ordered community matrix (untransformed).
       x<-sim1o$y
@@ -2658,12 +2728,12 @@ desctools_tab9$server<-function(id,vals){
         color_input(ns('segrda_points_palette') ,tiphelp3("Palette","Choose a gradient to represent colors based on the selected factor"),selected='turbo', vals),
         pickerInput_fromtop(ns('segrda_points_factor')  ,"Factor:",choices=choices,selected= NULL,options=shinyWidgets::pickerOptions(liveSearch=T)),
         pickerInput_fromtop(inputId = ns("segrda_points_shape"),
-                    label = "Shape:",
-                    choices = df_symbol$val,
-                    choicesOpt = list(content = df_symbol$img),
-                    selected=16,
+                            label = "Shape:",
+                            choices = df_symbol$val,
+                            choicesOpt = list(content = df_symbol$img),
+                            selected=16,
 
-                    width = "100px"),
+                            width = "100px"),
         numericInput (ns('segrda_points_size') ,"Size:",value=2),
 
       )
@@ -2708,12 +2778,12 @@ desctools_tab9$server<-function(id,vals){
         ),
         pickerInput_fromtop(ns('segrda_species_plot') ,"Display:",choices=c("points","text")),
         pickerInput_fromtop(inputId = ns("segrda_species_shape"),
-                    label = "Shape:",
-                    choices = df_symbol$val,
-                    choicesOpt = list(content = df_symbol$img),
-                    selected=df_symbol$val[8],
+                            label = "Shape:",
+                            choices = df_symbol$val,
+                            choicesOpt = list(content = df_symbol$img),
+                            selected=df_symbol$val[8],
 
-                    width = "100px"),
+                            width = "100px"),
         numericInput(ns('segrda_species_n') ,"sp number:",value=value),
 
         numericInput(ns('segrda_species_size') ,"Size:",value=2),
@@ -3260,8 +3330,6 @@ desctools_tab9$server<-function(id,vals){
       saveRDS(reactiveValuesToList(vals),"savepoint.rds")
       saveRDS(reactiveValuesToList(input),"input.rds")
       beep()
-      #vals<-readRDS("vals.rds")
-      #input<-readRDS('input.rds')
 
     })
     observeEvent(ignoreInit = T,input$segrda_Y,{
@@ -3625,9 +3693,7 @@ desctools_tab9$server<-function(id,vals){
       module_ui_figs("downfigs")
       mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals)
     })
-    observeEvent(ignoreInit = T,input$cor_cutoff,{
-      vals$cor_cutoff<-input$cor_cutoff
-    })
+
     observeEvent(ignoreInit = T,input$missing_id1,{
       vals$missing_id1<-input$missing_id1
     })
@@ -3841,11 +3907,15 @@ desctools$server<-function (id,vals ){
       vals$desc_data_x<-vals$saved_data[[input$data_descX]]
     })
     observeEvent(vals$saved_data,{
-      updatePickerInput(session,'data_descX',choices=names(vals$saved_data), selected=vals$cur_data)
+      choices=names(vals$saved_data)
+      selected=vals$cur_data
+      selected=get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'data_descX',choices=choices, selected=selected)
     })
 
 
 
   })
 }
+
 

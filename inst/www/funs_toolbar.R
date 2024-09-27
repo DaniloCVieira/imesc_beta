@@ -1,11 +1,13 @@
 
 
-transf_data<-function(data,transf){
+transf_data<-function(data,transf, cols=1:ncol(data)){
 
+  req(cols%in%colnames(data))
   if(transf=="None"){
     return(data)
   }
-  data0<-data
+  data_end<-data0<-data
+  data<-data[cols]
   data<- switch(transf,
                 "None"=data,
                 "log2"={decostand(data, "log", na.rm = T, logbase = 2)},
@@ -35,14 +37,16 @@ transf_data<-function(data,transf){
                   imp <- preProcess(data, method = "expoTrans")
                   data <- predict(imp, data)
                   data
-                }
+                },
+                "exp"=exp(data),
+                "exp10"=10^data
 
   )
+  data_end[cols]<-data.frame(data)
 
-  data = data.frame(data)
-  attr(data,"transf")<-c(attr(data0,"transf"),transform=transf)
+  attr(data_end,"transf")<-c(attr(data0,"transf"),transform=transf)
 
-  data
+  data_end
 }
 gg_transf<-function(data,transformed){
   df<-data.frame(original=colSums(data),transformed=colSums(transformed))

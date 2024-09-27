@@ -452,9 +452,37 @@ render_warning<-function(...,title="Warning:",point_icon=T,icon=icon("triangle-e
   )
 }
 
+get_distsom_list<-function(m,whatmap){
+  lapply(whatmap,function(x){
+    object.distances(m,"codes",x)
+  })
+}
 
+get_somdist_weighted<-function(m,whatmap=NULL,weights=NULL){
+  if(is.null(whatmap)){
+  return(object.distances(m,"codes"))
+  }
+  dist_list<-get_distsom_list(m,whatmap)
+  if(is.null(weights)){
+    weights<-m$user.weights
+    pic_w<-names(m$codes)%in%whatmap
+    weights<-weights[pic_w]
+  }
 
-imesc_hclutering<-function(data, k,hc_fun,hc_method,distance_metric=NULL, target="som codebook", model_name=1){
+  if(length(weights)==1){
+    weights<-1
+  }
+  wei_mean_dist(dist_list,weights)
+
+}
+
+wei_mean_dist <- function(dist_list, weights) {
+  weighted_dists <- mapply(function(d, w) as.matrix(d) * w, dist_list, weights, SIMPLIFY = FALSE)
+  mean_dist_matrix <- Reduce(`+`, weighted_dists)
+  return(as.dist(mean_dist_matrix))
+}
+
+imesc_hclutering<-function(data, k,hc_fun,hc_method,distance_metric=NULL, target="som codebook", model_name=1,whatmap=NULL,use_weights=F){
   pred=NULL
   hcut_result<-NULL
   h_message<-NULL
@@ -467,10 +495,19 @@ imesc_hclutering<-function(data, k,hc_fun,hc_method,distance_metric=NULL, target
   }
 
   d_message<-NULL
+
   if(class(m)[1]=="kohonen"){
     codes<-do.call(cbind,m$codes)
     rownames(codes)<-1:nrow(codes)
-    d=object.distances(m,"codes")
+    if(!is.null(whatmap)){
+      weights<-rep(1,length(whatmap))
+      if(isTRUE(use_weights)){
+        weights<-NULL
+      }
+    }
+
+    d=get_somdist_weighted(m,weights=weights,whatmap)
+   # d=object.distances(m,"codes")
 
   } else{
     if(is.null(distance_metric)){
@@ -558,11 +595,15 @@ imesc_hclutering<-function(data, k,hc_fun,hc_method,distance_metric=NULL, target
   return(somC)
 }
 
-cutsom_new<-function(m, k,hc_fun,hc_method,distance_metric=NULL){
+cutsom_new<-function(m, k,hc_fun,hc_method,distance_metric=NULL,use_weights=F,whatmap=NULL){
   if(class(m)[1]=="kohonen"){
     codes<-do.call(cbind,m$codes)
     rownames(codes)<-1:nrow(codes)
-    d=object.distances(m,"codes")
+    weights<-rep(1,length(whatmap))
+    if(isTRUE(use_weights)){
+      weights<-NULL
+    }
+    d=get_somdist_weighted(m,weights=weights,whatmap)
 
     hc<-hcut(d,k,hc_func =hc_fun ,hc_method =hc_method  ,method=hc_method,isdiss =T)
     hcut<-hc$cluster
@@ -751,30 +792,32 @@ get_dend_labposition<-function(dend,groups){
   dhei$x<-tre2[!is.na(tre2$col),"x"]
   dhei
 }
-hc_plot<-function(somC, col=NULL, labels=NULL, lwd=2, main="", xlab="Observations", ylab="Height", base_size=12, theme='theme_grey',offset_labels=-.1,xlab_adj=20, legend=c("outside","inside")){
+hc_plot<-function(obs.clusters,hc.clusters,hc.object, palette=NULL, labels=NULL, lwd=2, main="", xlab="Observations", ylab="Height", base_size=12, theme='theme_grey',offset_labels=-.1,xlab_adj=20, legend=c("outside","inside")){
   legend<-match.arg(legend,c("outside","inside"))
-  groups<-somC$groups
+  groups<-nlevels(obs.clusters)
   opar<-par(no.readonly=TRUE)
-  hc <- as.hclust(as.dendrogram(somC$hc.object))
-  hc.dendo <- as.dendrogram(somC$hc.object)
-  my_5_cluster <-somC$som.hc
+  hc <- as.hclust(as.dendrogram(hc.object))
+  hc.dendo <- as.dendrogram(hc.object)
+  my_5_cluster <-hc.clusters
+  col=palette(nlevels(my_5_cluster))
+
   clust.cutree <- cutree(hc.dendo, k=groups, order_clusters_as_data = FALSE)
-  clust.cutree<-factor(clust.cutree,levels=levels(somC$somC),labels=levels(somC$somC))
+  clust.cutree<-factor(clust.cutree,levels=levels(obs.clusters),labels=levels(obs.clusters))
   idx <- order(as.vector(names(clust.cutree)))
   clust.cutree <- clust.cutree[idx]
   df.merge <- merge(my_5_cluster,clust.cutree,by='row.names')
   df.merge.sorted <- df.merge[order(df.merge$y),]
   lbls<-unique(df.merge.sorted$x)
-  if(is.null(col)){ color=somC$colhabs[lbls]
+  if(is.null(col)){ color=turbo(nlevels(obs.clusters))[lbls]
   } else {color=col[lbls]}
   dend1 <- color_branches(dend=hc.dendo, col=color,k = groups, groupLabels = lbls)
   if(is.null(col)){
-    colors_dend1<- somC$colhabs[my_5_cluster[labels(dend1)]]
+    colors_dend1="black"
   } else {colors_dend1="black" }
 
   if(!is.null(labels)){
     lab_dend<-labels(dend1)
-    names(labels)<-names(somC[[1]])
+    names(labels)<-names(obs.clusters)
     labels(dend1)<-labels[labels(dend1)]
   }
   labels_colors(dend1)<-colors_dend1

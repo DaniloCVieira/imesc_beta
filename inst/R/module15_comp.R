@@ -4,58 +4,186 @@
 #'
 #' @noRd
 
-#' @export
+
 mod_comp_plot_options<-list()
 #' @export
+get_ggcompdata<-function(results,gg_metric=NULL){
+
+
+  if(!inherits(results,"resamples")){
+    req(inherits(results,"list"))
+    results<-resamples(results)
+  }
+  if(is.null(gg_metric)){
+    gg_metric<-results$metrics
+  }
+
+
+
+  results_values<-results$values
+  colnames(results_values)<-gsub("\\~","_split_metric_",colnames(results_values))
+
+
+
+  df<-reshape::melt(data.frame(results_values),"Resample")
+
+
+  df$variable<-as.character(df$variable)
+  metric_model<-data.frame(do.call(rbind,sapply(df$variable,function(x) strsplit(x,"_split_metric_"))))
+  colnames(metric_model)<-c("model_name","metric")
+  rownames(metric_model)<-NULL
+  rownames(df)<-NULL
+  df_box<-cbind(df['value'],metric_model)
+  df_box$model_name<-factor(df_box$model_name,rev(unique(df_box$model_name)))
+
+  colnames(df_box)<-c("y","x","metric")
+  df_box<-df_box[which(df_box$metric%in%gg_metric),]
+  req(nrow(df_box)>0)
+  df_box
+}
+ggbox_modelmetrics<-function(results,gg_base_size=12,
+                             gg_metric=NULL,gg_axis_size=11,gg_label_size=11,gg_lwd_size=1,gg_fill_lighten=0.3,gg_palette="turbo",gg_title_size=13,gg_theme="theme_minimal",newcolhabs=list("turbo"=viridis::turbo),type="boxplot", gg_text_size=12,gg_point_size=12,gg_fill="y",...) {
+
+
+  leg_name<-switch(gg_fill,
+                   "x"="Model",
+                   "model_tag"="Model name",
+                   'supervisor'="Y")
+  fill<-newcolhabs[[gg_palette]](1)
+  fill<-lighten(fill,gg_fill_lighten)
+  df_box<-get_ggcompdata(results,gg_metric)
+  df_box$x<-reorder(df_box$x,df_box$y,decreasing=T)
+
+
+  model_tags<-attr(results,"model_tags")
+  supervisor<-attr(results,"supervisor")
+  df_box$model_tag<-  model_tags[as.character(df_box$x)]
+  df_box$supervisor<-  supervisor[as.character(df_box$x)]
+  df_box$uniform=1
+  df_box$gg_fill<-factor(df_box[,gg_fill])
+  colors<-newcolhabs[[gg_palette]](nlevels(df_box$gg_fill))
+  colors<-lighten(colors,gg_fill_lighten)
+  df_box$x<-factor(df_box$x,levels=   unique(df_box$x[order(df_box$y)]))
+  df_box$order<-as.numeric(df_box$gg_fill)
+
+  if(type=="boxplot"){
+    # colors<-newcolhabs[[input$gg_palette]](256)
+    p<-ggplot(df_box,aes(x=reorder(x,order),y=y,fill=gg_fill))+  stat_boxplot(geom='errorbar', linetype=1, width=0.3, linewidth=gg_lwd_size)+  geom_boxplot()+coord_flip()+scale_fill_manual(values=colors,name=leg_name)
+
+  } else if(type=="dotplot"){
+
+    df_mean<-aggregate(df_box[1],df_box[c("x","metric","gg_fill")],mean)
+    p<-ggplot(df_box,aes(x=reorder(x,order),y=y,color=gg_fill))+
+      stat_boxplot(geom='errorbar', linetype=1, width=0.3, linewidth=gg_lwd_size)+geom_point(data=df_mean,size=gg_base_size/4,aes(x,y))+coord_flip()+scale_color_manual(values=colors,name=leg_name)
+  } else if(type=="density"){
+    #colors<-newcolhabs[[gg_palette]](length(unique(df_box$x)))
+    #  colors<-lighten(colors,gg_fill_lighten)
+    p<-ggplot(df_box)+geom_density(aes(y,colour =gg_fill,group=x), linewidth=gg_lwd_size)+facet_wrap(~metric,scales="free_x")+xlab("")+ylab("Value")+scale_color_manual(values=colors, name=leg_name)
+  }
+  if(type!='ggpairs'){
+    if(type=="density"){
+      scales='free'
+    } else{
+      scales='free_x'
+    }
+    p<-p+facet_wrap(~metric,scales= scales)+xlab("")+ylab("Value")
+    if(gg_fill=="uniform"){
+      p<-p+guides(fill="none")
+    }
+  } else{
+
+
+
+    df1<-df[grepl(paste0(gg_metric,collapse="|"),colnames(df))]
+    colnames(df1)<-results$models
+
+    p<-ggpairs(df1,
+               upper = list(
+                 continuous = GGally::wrap(
+                   "cor",
+                   size = gg_text_size,
+                   color=fill
+                 )
+               ),  # Adjust the size as needed
+               lower = list(
+                 continuous = GGally::wrap("points", size = gg_point_size, colour = fill)
+               ),
+               diag = list(
+                 continuous = GGally::wrap(
+                   "densityDiag",
+                   linewidth=gg_lwd_size,
+                   color=fill
+                 )
+               ))
+
+  }
+
+
+  p<-switch(gg_theme,
+            'theme_grey'={p+theme_grey(gg_base_size)},
+            'theme_bw'={p+theme_bw(gg_base_size)},
+            'theme_linedraw'={p+theme_linedraw(gg_base_size)},
+            'theme_light'={p+theme_light(gg_base_size)},
+            'theme_dark'={p+theme_dark(gg_base_size)},
+            'theme_minimal'={p+theme_minimal(gg_base_size)},
+            'theme_classic'={p+theme_classic(gg_base_size)},
+            'theme_void'={p+theme_void(gg_base_size)})
+
+  p+theme(
+    axis.text=element_text(size=gg_axis_size),
+    axis.title=element_text(size=gg_label_size),
+    strip.text = element_text(size = gg_title_size),
+  )
+}
+
+
+
 mod_comp_plot_options$ui<-function(id){
   ns<-NS(id)
-  div(
-    fluidRow(
+  box_caret(
+    ns("box_c"),
+    color="#c3cc74ff",
+    title="Plot options",
+    show_tittle = T,
+    div(
+      div(
+        uiOutput(ns("gg_metric_out")),
+
+        pickerInput_fromtop(inputId = ns("gg_fill"),
+                            label = "+ Fill",
+                            choices =c("Y"="supervisor",'Model type'="model_tag","Model name"='x',"Uniform"="uniform")),
+
+        pickerInput_fromtop(inputId = ns("gg_palette"),
+                            label = "+ Palette",
+                            choices =NULL),
+        numericInput(ns("gg_fill_lighten"),"+ Lighten:", value=0.3,step=0.1),
+        numericInput(ns("gg_base_size"),"+ Base size:", value=12),
+        numericInput(ns("gg_title_size"),"+ Title size:", value=11),
+        numericInput(ns("gg_axis_size"),"+ Axis size:", value=11),
+        numericInput(ns("gg_label_size"),"+ Label size:", value=11),
+        numericInput(ns("gg_lwd_size"),"+ Line width:", value=1),
+        numericInput(ns("gg_text_size"),"+ Cor Size:", value=5),
+        numericInput(ns("gg_point_size"),"+ Point Size:", value=3),
 
 
-      column(
-        4,
-        box_caret(
-          ns("box_c"),
+        pickerInput_fromtop(ns('gg_theme'),"+ Theme",choices=c('theme_bw','theme_grey','theme_linedraw','theme_light','theme_dark','theme_minimal','theme_classic','theme_void')),
 
-          show_tittle = F,
-          div(div(id=ns('run_plot_btn'),class="save_changes",
-                  align="right",
-                  actionButton(ns("run_plot"),"RUN>>",style="height: 24px;width: 60px; padding: 3px; font-size: 12px")
-          ),
-          div(
-            uiOutput(ns("gg_metric_out")),
-            numericInput(ns("gg_base_size"),"+ Base size:", value=12),
-            numericInput(ns("gg_title_size"),"+ Title size:", value=11),
-            numericInput(ns("gg_axis_size"),"+ Axis size:", value=11),
-            numericInput(ns("gg_label_size"),"+ Label size:", value=11),
-            numericInput(ns("gg_lwd_size"),"+ Line width:", value=1),
-            numericInput(ns("gg_text_size"),"+ Cor Size:", value=5),
-            numericInput(ns("gg_point_size"),"+ Point Size:", value=3),
-            numericInput(ns("gg_fill_lighten"),"+ Lighten:", value=0.3,step=0.1),
+      ))
 
-            pickerInput_fromtop(inputId = ns("gg_palette"),
-                                label = "+ Palette",
-                                choices =NULL),
-            pickerInput_fromtop(ns('gg_theme'),"+ Theme",choices=c('theme_grey','theme_bw','theme_linedraw','theme_light','theme_dark','theme_minimal','theme_classic','theme_void')),
-
-            actionLink(ns('gg_download'),"Download",icon('download'))
-          ))
-
-        )
-      ),
-      column(
-        8,class='mp0',
-        uiOutput(ns('plot_output'))
-      )
-
-    )
   )
 }
 #' @export
 mod_comp_plot_options$server<-function(id,vals,type="density"){
   moduleServer(id,function(input,output,session){
 
+    print("plot_server")
+    if(type=="density"){
+      updatePickerInput(session,"gg_fill",choices=c("Model name"='x',"Y"="supervisor",'Model type'="model_tag"))
+    }
+
+    if(type=="ggpairs"){
+      hide('gg_fill')
+    }
     ns<-session$ns
     output$gg_metric_out<-renderUI({
       multiple = T
@@ -64,7 +192,7 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
       if(type=="ggpairs"){
         multipe=F
       }
-      pickerInput_fromtop(ns("gg_metric"),"Metrics:",choices=results$metrics,multiple = multiple,selected =results$metrics )
+      virtualPicker_unique(id=ns("gg_metric"),label="Metrics:",choices=results$metrics,multiple = multiple,selected =results$metrics,search=F)
 
     })
     observe({
@@ -89,7 +217,7 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
     })
 
     getsolid_col<-reactive({
-      if(type=="density"){
+      if(type!="ggpairs"){
         return(1:length(vals$newcolhabs))
       }
       res<-lapply(vals$newcolhabs, function(x) x(2))
@@ -101,107 +229,13 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
     observeEvent(vals$newcolhabs,{
       choices =vals$colors_img$val[getsolid_col()]
       choicesOpt = list(content =vals$colors_img$img[getsolid_col()])
-      if(type%in%c("dotplot","ggpairs")){
-        selected="black"
-      } else{
-        selected=choices[1]
-      }
+      selected=choices[1]
       updatePickerInput(session,'gg_palette',choices=choices,choicesOpt=choicesOpt,selected=selected)
     })
-    get_ggcompdata<-function(results,gg_metric=NULL){
-      if(!inherits(results,"resamples")){
-        req(inherits(results,"list"))
-        results<-resamples(results)
-      }
-      if(is.null(gg_metric)){
-        gg_metric<-results$metrics
-      }
-
-      df<-reshape::melt(data.frame(results$values),"Resample")
-      df$variable<-as.character(df$variable)
-      metric_model<-data.frame(do.call(rbind,sapply(df$variable,function(x) strsplit(x,"\\."))))
-      colnames(metric_model)<-c("model_name","metric")
-      rownames(metric_model)<-NULL
-      rownames(df)<-NULL
-      df_box<-cbind(df['value'],metric_model)
-      df_box$model_name<-factor(df_box$model_name,rev(unique(df_box$model_name)))
-
-      colnames(df_box)<-c("y","x","metric")
-      df_box<-df_box[which(df_box$metric%in%gg_metric),]
-      req(nrow(df_box)>0)
-      df_box
-    }
-
-    ggbox_modelmetrics<-function(results,gg_base_size=12,
-                                 gg_metric=NULL,gg_axis_size=11,gg_label_size=11,gg_lwd_size=1,
-                                 gg_fill_lighten=0.3,gg_palette="turbo",gg_title_size=13,gg_theme="theme_minimal",newcolhabs=list("turbo"=viridis::turbo),type="boxplot", gg_text_size=12,gg_point_size=12) {
-
-      fill<-newcolhabs[[gg_palette]](1)
-      fill<-lighten(fill,gg_fill_lighten)
-      df_box<-get_ggcompdata(results,gg_metric)
 
 
-      if(type=="boxplot"){
-        p<-ggplot(df_box,aes(x,y))+
-          stat_boxplot(geom='errorbar', linetype=1, width=0.3, linewidth=gg_lwd_size)+
-          geom_boxplot(fill=fill)+coord_flip()
-      } else if(type=="dotplot"){
-        df_mean<-aggregate(df_box[1],df_box[2:3],mean)
-        p<-ggplot(df_box,aes(x,y))+
-          stat_boxplot(geom='errorbar', linetype=1, width=0.3, linewidth=gg_lwd_size, color=gg_palette)+geom_point(data=df_mean,size=gg_base_size/4,aes(x,y), color=gg_palette)+coord_flip()
-      } else if(type=="density"){
-        colors<-vals$newcolhabs[[input$gg_palette]](length(unique(df_box$x)))
-        colors<-lighten(colors,gg_fill_lighten)
-        p<-ggplot(df_box)+geom_density(aes(y,colour =x), linewidth=gg_lwd_size)+facet_wrap(~metric,scales="free_x")+xlab("")+ylab("Value")+scale_color_manual(values=colors, name="Model")
-      }
-      if(type!='ggpairs'){
-        p<-p+facet_wrap(~metric,scales="free_x")+xlab("")+ylab("Value")
-      } else{
-        df<-results$values
 
-        df1<-df[grepl(gg_metric,colnames(df))]
-        colnames(df1)<-results$models
-
-        p<-ggpairs(df1,
-                   upper = list(
-                     continuous = GGally::wrap(
-                       "cor",
-                       size = gg_text_size,
-                       color=fill
-                     )
-                   ),  # Adjust the size as needed
-                   lower = list(
-                     continuous = GGally::wrap("points", size = gg_point_size, colour = fill)
-                   ),
-                   diag = list(
-                     continuous = GGally::wrap(
-                       "densityDiag",
-                       linewidth=gg_lwd_size,
-                       color=fill
-                     )
-                   ))
-
-      }
-
-
-      p<-switch(gg_theme,
-                'theme_grey'={p+theme_grey(gg_base_size)},
-                'theme_bw'={p+theme_bw(gg_base_size)},
-                'theme_linedraw'={p+theme_linedraw(gg_base_size)},
-                'theme_light'={p+theme_light(gg_base_size)},
-                'theme_dark'={p+theme_dark(gg_base_size)},
-                'theme_minimal'={p+theme_minimal(gg_base_size)},
-                'theme_classic'={p+theme_classic(gg_base_size)},
-                'theme_void'={p+theme_void(gg_base_size)})
-
-      p+theme(
-        axis.text=element_text(size=gg_axis_size),
-        axis.title=element_text(size=gg_label_size),
-        strip.text = element_text(size = gg_title_size),
-      )
-    }
-
-    args_plot<-reactive({
+    args_plot<-function(){
       results<-vals$resample_results
       req(!is.null(results))
       list(
@@ -219,30 +253,44 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
         gg_metric=input$gg_metric,
         type=type,
         gg_text_size=input$gg_text_size,
-        gg_point_size=input$gg_point_size
+        gg_point_size=input$gg_point_size,
+        gg_fill=input$gg_fill
 
       )
-    })
+    }
     observeEvent(args_plot(),{
       shinyjs::addClass("run_plot_btn","save_changes")
     })
-    get_plot<-eventReactive(input$run_plot,{
-
+    get_plot<-eventReactive(input$run_plot,ignoreInit = T,{
       args<-args_plot()
 
-      vals$box_metrics<-do.call(ggbox_modelmetrics,args)
+      vals$box_metrics<-withProgress(do.call(ggbox_modelmetrics,args),min=NA,max=NA,message="Running...")
       shinyjs::removeClass("run_plot_btn","save_changes")
       vals$box_metrics
-
-
+    })
+    output$plot<-renderPlot({
+      get_plot()
     })
 
-    output$plot_output<-renderUI({
-      validate(need(length(vals$resample_results)>0,"Error: at least two models are needed"))
-      renderPlot({get_plot()})
+    output$page<-renderUI({
+      div(
+        div(id=ns('run_plot_btn'),class="save_changes",
+            actionButton(ns("run_plot"),"RUN>>",style="height: 24px;width: 60px; padding: 3px; font-size: 12px"),
+        ),
+        div(style="position: absolute; right: 5px;top: 30px",
+            actionLink(ns('gg_download'),"Download",icon('download')),
+        ),
+
+
+
+        plotOutput(ns("plot"))
+      )
     })
 
-    return(NULL)
+
+
+
+
   })
 }
 #' @export
@@ -251,8 +299,7 @@ compare_models<-list()
 compare_models$ui<-function(id){
   ns<-NS(id)
   div(
-    tags$style(HTML(".picker-tip .text-muted{color: SeaGreen; font-style: italic}
-                    .virtual12 .vscomp-dropbox{font-size: 12px}")),
+
     box_caret(
       ns("box_setup1"),inline=F,
       color="#374061ff",
@@ -265,66 +312,72 @@ compare_models$ui<-function(id){
       )
     ),
     column(
-      3,class="mp0",
+      4,class="mp0",
+      style="height: 100vh; overflow-y: auto",
       box_caret(
         ns("box_setup2"),
         title="Model selection",
         color="#c3cc74ff",
         div(
-          div(class="virtual12",
+          div(class="virtual-180 virtual12",
               virtualPicker(ns("model_in"),"models selected")
           )
 
         )
+      ),
+      div(
+        id=ns("tabbox1"),
+        box_caret(
+          ns("box_tab1"),
+          title="Options",
+          color="#c3cc74ff",
+          div(
+            pickerInput_fromtop(ns("summary_show"),"+ Show:" , choices=NULL),
+            numericInput(ns('summary_round'),"+ Round",3)
+
+          )
+        )
+      ),
+      div(
+        id=ns("tabbox2"),
+        mod_comp_plot_options$ui(ns("tab2"))
+      ),
+      div(
+        id=ns("tabbox3"),
+        mod_comp_plot_options$ui(ns("tab3"))
+      ),
+      div(
+        id=ns("tabbox4"),
+        mod_comp_plot_options$ui(ns("tab4"))
+      ),
+      div(
+        id=ns("tabbox5"),
+        mod_comp_plot_options$ui(ns("tab5"))
       )
     ),
     column(
-      9,class="mp0",
-      tags$style(HTML(".small_radio .btn{
-                      padding-left: 7px;
- padding-right: 7px;
-                      font-size: 12px
-                      }
- .radiobox_title{
- display: flex;
-
- margin-left: 5px;
- margin-right: 5px
- }
-  .box_comp_results .box_title{
- display: flex;
-
-
-  }
-
- .box_comp_results .radio12 .btn{
- margin-top: -6px;
- display: inline-block;
- color: #333;
-
- font-size: 12px;
- padding-left: 5px;
- padding-right: 5px
- }
- ")),
-
-
+      8,class="mp0",
  div(class="box_comp_results",
      box_caret(
        ns("box_setup3"),
-       title=div(class="radiobox_title",
-                 "Results:",
-                 div(
-                   class="radio12",
-                   radioGroupButtons(
-                     ns("tab_results"),NULL,
-                     choiceValues =paste0("tab",1:6),
-                     choiceNames =c("3.1. Summary","3.2. Boxplot","3.3.densityplot","3.4. dotplot","3.5. GGpairs","3.6. Pairwise"),justified =T, width="51.5vw"
-                   )
-                 )
+       title="Results",
+       button_title2=div(
+
+         div(
+           class="radio12",
+           radioGroupButtons(
+             ns("tab_results"),NULL,
+             choiceValues =paste0("tab",1:6),
+             selected="tab2",
+             choiceNames =c("3.1. Summary","3.2. Boxplot","3.3.densityplot","3.4. dotplot","3.5. GGpairs","3.6. Pairwise")
+           )
+         )
        ),
        div(
-
+         div(
+           style="position: absolute; right: 5px;top: 30px",
+           actionLink(ns('summary_download'),"Download",icon('download'))
+         ),
          tabsetPanel(
            id=ns("comp_results"),
            type="hidden",
@@ -332,60 +385,33 @@ compare_models$ui<-function(id){
              "3.1. Summary",value="tab1",
              div(
                fluidRow(   style="overflow-x: scroll",
-                           column(
-                             4,
-                             box_caret(
-                               ns("box_tab1"),
-                               show_tittle = F,
-                               div(
-                                 pickerInput_fromtop(ns("summary_show"),"+ Show:" , choices=NULL),
-                                 numericInput(ns('summary_round'),"+ Round",3),
-                                 actionLink(ns('summary_download'),"Download",icon('download'))
-                               )
-                             )
-                           ),
+
 
                            column(12,style="margin-top: 30px",
-                                  uiOutput(ns('summary'))
+                                  uiOutput(ns('tab1_out'))
                            )
                )
              )
            ),
            tabPanel(
              "3.2. GGplot",value="tab2",
-             div(mod_comp_plot_options$ui(ns("boxplot")),
-                 uiOutput(ns("box_plot")))
+             div(
+               uiOutput(ns("box_plot")))
            ),
            tabPanel("3.3. densityplot",value="tab3",
-                    mod_comp_plot_options$ui(ns("density")),
                     uiOutput(ns('density_plot'))),
            tabPanel("3.4. dotplot",value="tab4",
-                    div(mod_comp_plot_options$ui(ns("dotplot")),
-                        uiOutput(ns("dot_plot")))),
+                    div(
+                      uiOutput(ns("dot_plot")))),
            tabPanel("3.5. ggpairs",value="tab5",
                     div(
-                      mod_comp_plot_options$ui(ns("ggpairs")),
                       uiOutput(ns('ggpairs_plot'))
                     )),
            tabPanel("3.7. Pairwise comparisons",
                     value="tab6",
                     div(style="overflow-x: auto",
-                        column(
-                          4,class="mp0",
-                          box_caret(
-                            ns("box_tab1"),
-                            show_tittle = F,
-                            div(
-                              pickerInput_fromtop(ns("pair_show"),"+ Show:" , choices=NULL),
-                              numericInput(ns('pair_round'),"+ Round",3),
-                              actionLink(ns('pair_download'),"Download",icon('download'))
-                            )
-                          )
-                        ),
-                        column(
-                          8,class="mp0",
-                          uiOutput(ns('plot6'))
-                        )
+                        column(12,style="margin-top: 30px",
+                               uiOutput(ns('plot6')))
                     ))
          ),
          uiOutput(ns("teste"))
@@ -406,6 +432,13 @@ compare_models$server<-function(id,vals){
 
 
 
+    observe({
+      shinyjs::toggle('tabbox2',condition=input$tab_results=='tab2')
+      shinyjs::toggle('tabbox3',condition=input$tab_results=='tab3')
+      shinyjs::toggle('tabbox4',condition=input$tab_results=='tab4')
+      shinyjs::toggle('tabbox5',condition=input$tab_results=='tab5')
+      shinyjs::toggle('tabbox1',condition=input$tab_results%in%c("tab1","tab6"))
+    })
 
 
     observeEvent(input$tab_results,{
@@ -436,16 +469,20 @@ compare_models$server<-function(id,vals){
       choices=names(summary_models()$statistics)
       updatePickerInput(session,"summary_show",choices=choices)
     })
-    output$summary<-renderUI({
+    output$tab1_out<-renderUI({
       req(summary_models())
       req(input$summary_show)%in%names(summary_models()$statistics)
-      div(class="half-drop-inline",
+      div(
+        strong(input$summary_show),
+        div(class="half-drop-inline",
 
-          fixed_dt(summary_models()$statistics[[input$summary_show]])
+            fixed_dt(summary_models()$statistics[[input$summary_show]])
+        )
       )
     })
 
     observeEvent(ignoreInit = T,input$summary_download,{
+      req(input$tab_results=="tab1")
       vals$hand_down<-"generic"
       req(input$summary_show)
       req(summary_models())
@@ -454,26 +491,24 @@ compare_models$server<-function(id,vals){
       data<-data.frame(summary_models()$statistics[[input$summary_show]])
       mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Summary comparisons",data=data, name=name)
     })
-    ##tab2
 
     output$box_plot<-renderUI({
 
-      mod_comp_plot_options$server('boxplot',vals,type="boxplot")
+      mod_comp_plot_options$server('tab2',vals,type="boxplot")
+
 
     })
 
 
     ##tab3
     output$density_plot<-renderUI({
-
-      mod_comp_plot_options$server('density',vals,type="density")
-
+      mod_comp_plot_options$server('tab3',vals,type="density")
     })
 
 
     output$dot_plot<-renderUI({
       div(
-        mod_comp_plot_options$server('dotplot',vals,type="dotplot")
+        mod_comp_plot_options$server('tab4',vals,type="dotplot")
 
       )
     })
@@ -481,7 +516,7 @@ compare_models$server<-function(id,vals){
       results<-resample_models()
       req(!is.null(results))
       div(
-        mod_comp_plot_options$server('ggpairs',vals,type="ggpairs")
+        mod_comp_plot_options$server('tab5',vals,type="ggpairs")
 
       )
     })
@@ -489,7 +524,7 @@ compare_models$server<-function(id,vals){
 
 
     output$plot6<-renderUI({
-      req(input$pair_show)
+      req(input$summary_show)
       results<-resample_models()
 
       req(!is.null(results))
@@ -501,11 +536,11 @@ compare_models$server<-function(id,vals){
       reprint$call<-NULL
       reprint$table<-NULL
       reprint<- capture.output(reprint)
-      res<-apply(data.frame(re$table[[input$pair_show]]),2,function(x)as.numeric(x))
-      colnames(res)<-colnames(re$table[[input$pair_show]])
-      rownames(res)<-rownames(re$table[[input$pair_show]])
+      res<-apply(data.frame(re$table[[input$summary_show]]),2,function(x)as.numeric(x))
+      colnames(res)<-colnames(re$table[[input$summary_show]])
+      rownames(res)<-rownames(re$table[[input$summary_show]])
       vals$getsummary_comp<-data.frame(res)
-      res<-round(vals$getsummary_comp, input$pair_round)
+      res<-round(vals$getsummary_comp, input$summary_round)
       div(class="half-drop-inline",
           fixed_dt(res,scrollY = "200px"),
           lapply(reprint[ which(!reprint%in%c("Call:","","NULL"))],function(x) div(em(x)))
@@ -514,7 +549,8 @@ compare_models$server<-function(id,vals){
 
 
 
-    observeEvent(ignoreInit = T,input$pair_download,{
+    observeEvent(ignoreInit = T,input$summary_download,{
+      req(input$tab_results=="tab6")
       vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
       name<-"Pairwise_model_compare"
@@ -527,37 +563,65 @@ compare_models$server<-function(id,vals){
     #tab6
     observeEvent(resample_models(),{
       choices=names(summary_models()$statistics)
-      updatePickerInput(session,"pair_show",choices=choices)
+      updatePickerInput(session,"summary_show",choices=choices)
     })
 
-    get_modelist<-reactive({
+    get_modelist<-function(){
+
       req(input$compare)
       model_boxes<-get_modelist_boxes()
+
       req(model_boxes)
       boxlist<-model_boxes$model_boxlist
       req(input$compare%in%names(boxlist))
       box_selected<-boxlist[[input$compare]]
-      req(input$model_in%in%names(box_selected))
-      box_selected[input$model_in]
-    })
+      ids<-sapply(box_selected,function(x) attr(x,"id"))
 
-    resample_models<-reactive({
+      box_selected[ids%in%input$model_in]
+    }
+
+
+    #input<-readRDS("input.rds")
+    resample_models<-function(){
+      modelist_boxes<-get_modelist_boxes()
       model_list<-get_modelist()
-      names(model_list)<-gsub(" ","",gsub("[^0-9A-Za-z///' ]", ".", names(model_list), ignore.case = TRUE)) # no libraries needed
+      names(model_list)<-NULL
       if(!length(model_list)>1){
         vals$resample_results<-NULL
       }
       validate(need(length(model_list)>1,"Error: at least two models are needed"))
 
+
+
+      names(model_list)<-reshape_names(sapply(model_list,function(x) attr(x,"model_name")))
+
+
+
+
       results<-try({
         resamples(model_list)
       },silent=T)
+      attr(results,"model_tags")<-  sapply(model_list,function(x) attr(x,"model_tag"))
+      attr(results,"supervisor")<-  sapply(model_list,function(x) attr(x,"supervisor"))
       if(!inherits(results,"try-error")){
 
         results
       } else{
         NULL
       }
+    }
+
+    observeEvent(input$model_in,{
+      # print(input$model_in)
+      #saveRDS(reactiveValuesToList(input),"input.rds")
+      # saveRDS(get_modelist(),"model_list.rds")
+    })
+
+    #input<-readRDS("input.rds")
+    #model_list<-readRDS('model_list.rds')
+    observeEvent(get_modelist(),{
+      #  saveRDS(reactiveValuesToList(input),"input.rds")
+      #saveRDS(get_modelist(),"model_list.rds")
     })
     observeEvent(vals$saved_data,{
       names(available_models)<-available_models
@@ -569,10 +633,11 @@ compare_models$server<-function(id,vals){
       subtext<-paste0("(",choices[choices>0]," models)")
 
       choices<-names(choices[choices>0])
+      selected<-get_selected_from_choices(vals$cur_data,choices)
       updatePickerInput(
         session,"data_x",
         choices=choices,
-        selected=vals$cur_data,
+        selected=selected,
         choicesOpt =list(subtext =subtext),
         options=shinyWidgets::pickerOptions(showSubtext =T)
       )
@@ -582,17 +647,18 @@ compare_models$server<-function(id,vals){
     })
 
     observeEvent(input$compare,{
-      choices<-get_modelist_boxes()$model_boxes[[input$compare]]$model_name
 
+      modelist_boxes<-get_modelist_boxes()
+      bl<-modelist_boxes$model_boxlist[[input$compare]]
+      values<-sapply(bl,function(x) attr(x,"id"))
       shinyWidgets::updateVirtualSelect(
-        'model_in',choices=choices,selected=choices
-      )
+        "model_in",choices=values,selected=as.character(values))
     })
 
-    data_x<-reactive({
+    data_x<-function(){
       req(input$data_x%in%names(vals$saved_data))
       vals$saved_data[[input$data_x]]
-    })
+    }
     #observe(print(get_modelist_boxes()$choices_names))
 
 
@@ -604,7 +670,7 @@ compare_models$server<-function(id,vals){
 
       updatePickerInput(
         session,"compare",
-        choices=choices,
+        choices=rev(choices),
         choicesOpt =list(subtext =subtext),
         options=shinyWidgets::pickerOptions(showSubtext =T)
       )
@@ -614,23 +680,34 @@ compare_models$server<-function(id,vals){
       vals$cur_comp<-input$compare
     })
 
-    get_modelist_boxes<-reactive({
+
+    get_modelist_boxes<-function(){
       data<-data_x()
       choices<-lapply(available_models,function(x){
         if(check_model(data,x))x})
       choices<-choices[sapply(choices,length)>0]
       validate(need(length(choices)>0,"No models saved in selected datalist"))
       names(choices)<-choices
+
       limodels<-lapply(choices,function(x) {
         attr(data,x)})
       names0<-unlist(lapply(limodels,names))
       model_names<-sapply(limodels,names)
       model_attr<-names(limodels)
 
-      resmethos<-lapply(names(limodels),function(att) {
+
+      resmethos<-list()
+      id<-0
+      for(att in names(limodels)){
         x<-limodels[[att]]
-        res<-lapply(names(x),function(model_name){
+        model_name<-names(x)[1]
+        res<-list()
+        for(model_name in names(x) ) {
+          id<-id+1
+          attr(limodels[[att]][[model_name]]$m,"id")<-id
+          attr(limodels[[att]][[model_name]]$m,"model_name")<-model_name
           model<-x[[model_name]][[1]]
+          attr(model,"")
           req(model)
           y<-attr(model,"supervisor")
           model_type=model$modelType
@@ -638,18 +715,28 @@ compare_models$server<-function(id,vals){
           control_number=model$control$number
           control_repeats<-model$control$repeats
           model_name<-model_name
-          data.frame(
+          cvname<-gsub("Cross-Validated|\\(","",resampName(model))
+          df<-data.frame(
+            id=id,
             model_name,model_type,control_method,control_number,control_repeats,
+            model_tag=att,
             id_label=paste(model_type,"models"),
-            subtext=paste("(Y:",y,";Resamling:",paste0(control_number,"-",control_method,";"),"Repeats:",paste0(control_repeats,")") ),
-            id_value=paste0(model_type,y,control_number,control_method,control_repeats )
+            subtext=paste(cvname),
+            id_value=paste0(model_type,control_number,control_method,control_repeats )
+            #subtext=paste("(Y:",y,";Resamling:",paste0(control_number,"-",control_method,";"),"Repeats:",paste0(control_repeats,")") ),
+            #id_value=paste0(model_type,y,control_number,control_method,control_repeats )
           )
-        })
-        names(res)<-names(x)
-        do.call(rbind,res)
-      })
+          res[[model_name]]<-df
+        }
+        resmethos[[att]]<-  do.call(rbind,res)
+
+      }
       restable<-do.call(rbind,resmethos)
-      restable<-cbind(id=1:nrow(restable),restable)
+
+
+
+
+
       modelist<-lapply(limodels,function(x) {
         res<-lapply(names(x),function(model_name){
           model<-x[[model_name]][[1]]
@@ -659,6 +746,10 @@ compare_models$server<-function(id,vals){
       model_names<-unlist(sapply(limodels,names))
       modelist<-unlist(modelist,recursive = F)
       model_boxes<-split(restable,as.factor(restable$id_value))
+      model_boxes<-lapply(model_boxes,function(x){
+        x$subtext<-paste(paste0("(",nrow(x)),"models:",x$subtext)
+        x
+      })
 
       model_names_boxes<-split(model_names,as.factor(restable$id_value))
       model_names_boxes<-lapply(model_names_boxes,function(x){
@@ -666,8 +757,7 @@ compare_models$server<-function(id,vals){
       })
       model_boxlist<-split(modelist,as.factor(restable$id_value))
 
-      lapply(model_boxlist,names)
-      i=1
+
       model_boxlist<-lapply(seq_along(model_boxlist),function(i){
         names(model_boxlist[[i]])<-model_names_boxes[[i]]
         model_boxlist[[i]]
@@ -678,13 +768,13 @@ compare_models$server<-function(id,vals){
       choices_names<-as.character(sapply(model_boxes,function(x) x$id_label[1]))
       subtext<-as.character(sapply(model_boxes,function(x) x$subtext[1]))
 
+
       result_list<-list(choices_values=choices_values,choices_names=choices_names,model_boxlist=model_boxlist,model_boxes=model_boxes,subtext=subtext,model_names_boxes=model_names_boxes)
       return(result_list)
-    })
+    }
 
 
 
 
   })
 }
-

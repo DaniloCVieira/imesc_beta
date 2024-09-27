@@ -32,6 +32,8 @@ ggpubr
 ggraph
 ggrepel
 ggridges
+gridExtra
+grid
 golem
 gplots
 gstat
@@ -86,3 +88,4 @@ writexl
 plotly
 plot3D
 ggplot2
+indicspecies

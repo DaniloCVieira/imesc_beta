@@ -66,6 +66,9 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
 
 
 
+    if(inherits(generic,'gtable')){
+      return(grid::grid.draw(generic))
+    }
     switch (
       vals$hand_plot,
       "plot_funcion"=do.call(fun,args_plot),
@@ -194,7 +197,13 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
       fn_download()
       dev.off()
 
+      if(isTRUE(vals$hw_changed)){
+        vals$fheight<-20
+        vals$fwidth<-15
+        vals$hw_changed<-F
+      }
       file.copy(fn_downloadf(), file, overwrite=T)
+
 
     }
   )
@@ -214,6 +223,14 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
 
 
 
+  get_args_dims<-reactive({
+    fheight<-input$fheight
+    req(fheight)
+    fwidth<-input$fwidth
+    req(fwidth)
+    c(fwidth,fheight)
+  })
+
   output$plotoutput<-renderImage({
     req(length(input$fig_preview)>0)
     req(isTRUE(input$fig_preview))
@@ -226,123 +243,128 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
                   {
 
 
-                    fheight<-input$fheight
-                    fwidth<-input$fwidth
+                    fheight<-get_args_dims()[2]
+                    fwidth<-get_args_dims()[1]
                     fres<-as.numeric(input$fres)
                     png(paste0(name_c,".png",sep=""), height=fheight, width=fwidth, res=fres, units="cm", pointsize = input$pointsize)
-                    switch(
-                      vals$hand_plot,
-                      "plot_funcion"=do.call(fun,args_plot),
-                      "generic_ggmatrix"={print.ggmatrix(generic)},
-                      "generic_gg"={plot(generic)},
-                      "generic_replay"={replayPlot(generic)},
+                    if(inherits(generic,'gtable')){
+                      grid::grid.draw(generic)
+                    } else{
+                      switch(
+                        vals$hand_plot,
+                        "plot_funcion"=do.call(fun,args_plot),
+                        "generic_ggmatrix"={print.ggmatrix(generic)},
+                        "generic_gg"={plot(generic)},
+                        "generic_replay"={replayPlot(generic)},
 
-                      "ggplot map"={plot(vals$newggplot)},
-                      "Variogram"={plot(vals$g_variogram)},
-                      "data Histogram"=plot(vals$gghist_unlist_data),
-                      "rowSums Histogram"=plot(vals$gghist_rowSums),
-                      "colSums Histogram"=plot(vals$gghist_colsums),
-                      "Feature Shuffling"={plot(vals$spd_varImp_plot)},
-                      "Pairs-plot"={print.ggmatrix(vals$desc_pairplot)},
+                        "ggplot map"={plot(vals$newggplot)},
+                        "Variogram"={plot(vals$g_variogram)},
+                        "data Histogram"=plot(vals$gghist_unlist_data),
+                        "rowSums Histogram"=plot(vals$gghist_rowSums),
+                        "colSums Histogram"=plot(vals$gghist_colsums),
+                        "Feature Shuffling"={plot(vals$spd_varImp_plot)},
+                        "Pairs-plot"={print.ggmatrix(vals$desc_pairplot)},
 
-                      "Pairs plot"=print.ggmatrix(vals$fm_downplot4),
-                      "Feature plot"=plot(vals$fm_downplot),
-                      "Feature plot 2"=plot(vals$fm_downplot2),
-                      "Feature plot 3"=plot(vals$fm_downplot3),
-                      'Confusion Matrix'=plot(vals$plot_ensemble),
-                      "Surface map"=replayPlot(vals$map_res),
-                      "Scatter 3D"=replayPlot(vals$map_res),
-                      "mantel plot"=replayPlot(vals$mantel_plot),
-                      "stacked raster map"=replayPlot(vals$map_res),
-                      "stacked scatter map"=replayPlot(vals$map_res),
-                      "Map"=plot(vals$map_res),
-                      "EBNB"=plot(vals$plot_niche),
-                      'ensemble - Variable Importance plot'=plot(vals$ensemble_varImp_plot),
-                      'Confusion Matrix Post-Shuffling'=plot(vals$feature_cm_plot),
-                      'Correlation Plot'=replayPlot(vals$plot_correlation),
-                      'Missing plot'=plot(vals$missing_plot),
-                      'Scatter plot'=replayPlot(vals$scatter_plot),
-                      'Corr plot'=replayPlot(vals$corplot),
-                      "Download plot - Model comparation"=plot(vals$comp_plot),
-                      "k-means (pca reprentation)"= plot(vals$kmeans_plot_data),
-                      "k-means (codebook)"=plot(vals$psom_plot),
-                      "Dendrogram"=replayPlot(vals$hc_tab1_plot),
-                      "Scree plot"=plot(vals$scree_plot_hc),
-                      "Codebook screeplot"=plot(vals$hc_tab6_plot),
-                      "Hcut"=plot(vals$hc_tab3_plot),
-                      "codebook clusters"=plot(vals$hc_tab4_plot),
-                      "mapcodes predictions"=plot(vals$hc_tab5_plot),
-                      "Ridge plot"=plot(vals$rid_plot),
-                      "variable summary"={
-                        replayPlot(vals$varplot)
-                      },
-                      "Factor plot"={plot(vals$factorsplot)},
-                      "histogram"={replayPlot(vals$phist)},
-                      "boxplot"={plot(vals$pbox_plot)},
-                      "pca"=   {plot(vals$ppca_plot)},
-                      "mds"= {plot(vals$pmds_plot)},
-                      "rda"={plot(vals$rda_plot)},
-                      "dp"={replayPlot(vals$plot_dp)},
-                      "we"={replayPlot(vals$plot_we)},
-                      "segrda"={plot(vals$seg_rda_plot)},
+                        "Pairs plot"=print.ggmatrix(vals$fm_downplot4),
+                        "Feature plot"=plot(vals$fm_downplot),
+                        "Feature plot 2"=plot(vals$fm_downplot2),
+                        "Feature plot 3"=plot(vals$fm_downplot3),
+                        'Confusion Matrix'=plot(vals$plot_ensemble),
+                        "Surface map"=replayPlot(vals$map_res),
+                        "Scatter 3D"=replayPlot(vals$map_res),
+                        "mantel plot"=replayPlot(vals$mantel_plot),
+                        "stacked raster map"=replayPlot(vals$map_res),
+                        "stacked scatter map"=replayPlot(vals$map_res),
+                        "Map"=plot(vals$map_res),
+                        "EBNB"=plot(vals$plot_niche),
+                        'ensemble - Variable Importance plot'=plot(vals$ensemble_varImp_plot),
+                        'Confusion Matrix Post-Shuffling'=plot(vals$feature_cm_plot),
+                        'Correlation Plot'=replayPlot(vals$plot_correlation),
+                        'Missing plot'=plot(vals$missing_plot),
+                        'Scatter plot'=replayPlot(vals$scatter_plot),
+                        'Corr plot'=replayPlot(vals$corplot),
+                        "Download plot - Model comparation"=plot(vals$comp_plot),
+                        "k-means (pca reprentation)"= plot(vals$kmeans_plot_data),
+                        "k-means (codebook)"=plot(vals$psom_plot),
+                        "Dendrogram"=replayPlot(vals$hc_tab1_plot),
+                        "Scree plot"=plot(vals$scree_plot_hc),
+                        "Codebook screeplot"=plot(vals$hc_tab6_plot),
+                        "Hcut"=plot(vals$hc_tab3_plot),
+                        "codebook clusters"=plot(vals$hc_tab4_plot),
+                        "mapcodes predictions"=plot(vals$hc_tab5_plot),
+                        "Ridge plot"=plot(vals$rid_plot),
+                        "variable summary"={
+                          replayPlot(vals$varplot)
+                        },
+                        "Factor plot"={plot(vals$factorsplot)},
+                        "histogram"={replayPlot(vals$phist)},
+                        "boxplot"={plot(vals$pbox_plot)},
+                        "pca"=   {plot(vals$ppca_plot)},
+                        "mds"= {plot(vals$pmds_plot)},
+                        "rda"={plot(vals$rda_plot)},
+                        "dp"={replayPlot(vals$plot_dp)},
+                        "we"={replayPlot(vals$plot_we)},
+                        "segrda"={plot(vals$seg_rda_plot)},
 
-                      "Confusion Matrix RF"={plot(vals$cm_rf)},
-                      "Confusion Matrix - test RF"={plot(vals$conf_rf)},
-                      "Minimal Depth distribution"={plot(vals$rfd_res)},
-                      "Multi-way importance"={plot(vals$rfm_res)},
-                      "RF interactions"={plot(vals$rf_inter)},
-                      "RF - Partial Dependence"=plot(vals$rfbiplot1),
-                      "RF ranking comparations"=plot(rf_rank$df),
-                      "RF measure comparations"=plot(rf_rel$df),
-                      "RF - Partial Dependence (classes)"=plot(vals$rfbiplot2),
-                      "florest plot"=replayPlot(vals$plot_florest),
-                      'florest plot (class)'=plot(vals$plot_florest_class),
-
-
-                      "NB - Confusion Matrix"={plot(vals$cm_nb)},
-                      "NB - Variable Importance plot"=plot(vals$nb_varImp_plot),
-                      "NB - Confusion Matrix (predictions)"=plot(vals$nb_cm_pred),
-                      "NB - DM plot"=replayPlot(vals$nb_densplot),
-
-                      "SVM - Confusion Matrix"={plot(vals$cm_svm)},
-                      "SVM - Variable Importance plot"=plot(vals$svm_varImp_plot),
-                      "SVM - Confusion Matrix (predictions)"=plot(vals$svm_cm_pred),
-                      "SVM - DM plot"=replayPlot(vals$svm_densplot),
-
-                      "knn - Confusion Matrix"={plot(vals$cm_knn)},
-                      "knn - Variable Importance plot"=plot(vals$knn_varImp_plot),
-                      "knn - Confusion Matrix (predictions)"=plot(vals$knn_cm_pred),
-                      "knn - DM plot"=replayPlot(vals$knn_densplot),
-
-                      "sgboost - Confusion Matrix"={plot(vals$cm_sgboost)},
-                      "sgboost - Variable Importance plot"=plot(vals$sgboost_varImp_plot),
-                      "sgboost - Confusion Matrix (predictions)"=plot(vals$sgboost_cm_pred),
-                      "sgboost - DM plot"=replayPlot(vals$sgboost_densplot),
-
-                      "som - Confusion Matrix"={plot(vals$cm_som)},
-                      "som - Confusion Matrix (predictions)"=plot(vals$som_cm_pred),
-                      "som (xyf)"=plot(vals$xyf_bmu),
-                      "som counts (xyf)"=replayPlot(vals$xyf_counts),
-                      "som changes (xyf)"=replayPlot(vals$xyf_changes),
+                        "Confusion Matrix RF"={plot(vals$cm_rf)},
+                        "Confusion Matrix - test RF"={plot(vals$conf_rf)},
+                        "Minimal Depth distribution"={plot(vals$rfd_res)},
+                        "Multi-way importance"={plot(vals$rfm_res)},
+                        "RF interactions"={plot(vals$rf_inter)},
+                        "RF - Partial Dependence"=plot(vals$rfbiplot1),
+                        "RF ranking comparations"=plot(rf_rank$df),
+                        "RF measure comparations"=plot(rf_rel$df),
+                        "RF - Partial Dependence (classes)"=plot(vals$rfbiplot2),
+                        "florest plot"=replayPlot(vals$plot_florest),
+                        'florest plot (class)'=plot(vals$plot_florest_class),
 
 
-                      "Training plot"={pchanges(vals$som_results)},
-                      "Couting plot"={  pcounts(vals$som_results)},
-                      "uMatrix"={   pUmatrix(vals$som_results)},
-                      "BMUs"={plot(vals$bmus_plot)},
-                      "BMUs predictions"={replayPlot(vals$bmus_pred_plot)},
-                      "property plot"={replayPlot(vals$pprop_plot)},
-                      "Confusion Matrix SOM"={plot(vals$conf_som)},
+                        "NB - Confusion Matrix"={plot(vals$cm_nb)},
+                        "NB - Variable Importance plot"=plot(vals$nb_varImp_plot),
+                        "NB - Confusion Matrix (predictions)"=plot(vals$nb_cm_pred),
+                        "NB - DM plot"=replayPlot(vals$nb_densplot),
+
+                        "SVM - Confusion Matrix"={plot(vals$cm_svm)},
+                        "SVM - Variable Importance plot"=plot(vals$svm_varImp_plot),
+                        "SVM - Confusion Matrix (predictions)"=plot(vals$svm_cm_pred),
+                        "SVM - DM plot"=replayPlot(vals$svm_densplot),
+
+                        "knn - Confusion Matrix"={plot(vals$cm_knn)},
+                        "knn - Variable Importance plot"=plot(vals$knn_varImp_plot),
+                        "knn - Confusion Matrix (predictions)"=plot(vals$knn_cm_pred),
+                        "knn - DM plot"=replayPlot(vals$knn_densplot),
+
+                        "sgboost - Confusion Matrix"={plot(vals$cm_sgboost)},
+                        "sgboost - Variable Importance plot"=plot(vals$sgboost_varImp_plot),
+                        "sgboost - Confusion Matrix (predictions)"=plot(vals$sgboost_cm_pred),
+                        "sgboost - DM plot"=replayPlot(vals$sgboost_densplot),
+
+                        "som - Confusion Matrix"={plot(vals$cm_som)},
+                        "som - Confusion Matrix (predictions)"=plot(vals$som_cm_pred),
+                        "som (xyf)"=plot(vals$xyf_bmu),
+                        "som counts (xyf)"=replayPlot(vals$xyf_counts),
+                        "som changes (xyf)"=replayPlot(vals$xyf_changes),
 
 
-                      "feature_importance_models"={plot(vals$plot_ensemble)},
-                      "ensemble_confusion_plot"={plot(vals$plot_ensemble)},
-                      "ensemble_predictions_class_plot"={plot(vals$plot_ensemble)},
-                      "ensemble_predictions_reg_plot"={plot(vals$plot_ensemble)},
-                      "ensemble_feature_importance_plot"={plot(vals$plot_ensemble)},
-                      "ensemble_interactions_plot"={plot(vals$plot_ensemble)}
+                        "Training plot"={pchanges(vals$som_results)},
+                        "Couting plot"={  pcounts(vals$som_results)},
+                        "uMatrix"={   pUmatrix(vals$som_results)},
+                        "BMUs"={plot(vals$bmus_plot)},
+                        "BMUs predictions"={replayPlot(vals$bmus_pred_plot)},
+                        "property plot"={replayPlot(vals$pprop_plot)},
+                        "Confusion Matrix SOM"={plot(vals$conf_som)},
 
-                    )
+
+                        "feature_importance_models"={plot(vals$plot_ensemble)},
+                        "ensemble_confusion_plot"={plot(vals$plot_ensemble)},
+                        "ensemble_predictions_class_plot"={plot(vals$plot_ensemble)},
+                        "ensemble_predictions_reg_plot"={plot(vals$plot_ensemble)},
+                        "ensemble_feature_importance_plot"={plot(vals$plot_ensemble)},
+                        "ensemble_interactions_plot"={plot(vals$plot_ensemble)}
+
+                      )
+                    }
+
 
 
                     dev.off()
@@ -404,8 +426,8 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
     )),
     div(uiOutput(ns('fig_specifications'))),
     div(uiOutput(ns('prevbutton'))),
-    div( id="figview_body",
-         div(style="margin: 4px; overflow-y: auto; overflow-x: auto;",
+    div( class="figview_body",
+         div(
              imageOutput(ns("plotoutput")))
     )
 
@@ -414,22 +436,17 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
 
 
 
+  observe({
+    if(is.null(vals$fheight)){vals$fheight<-15}
+    if(is.null(vals$fwidth)){vals$fwidth<-20}
+    if(is.null(vals$fres)){vals$fres<-100}
+    if(is.null(vals$pointsize)){vals$pointsize<-12}
+    if(is.null(vals$fformat)){vals$fformat<-"png"}
+  })
 
 
   modal_downfig<-function(){
     showModal({
-      if(is.null(vals$fheight)){vals$fheight<-15}
-      if(is.null(vals$fwidth)){vals$fwidth<-20}
-      if(is.null(vals$fres)){vals$fres<-100}
-      if(is.null(vals$pointsize)){vals$pointsize<-12}
-      if(is.null(vals$fformat)){vals$fformat<-"pdf"}
-
-      dims<-vals$dimension_display
-      # req(length(dims)>0)
-      xdim<-dims[1]*.65
-      ydim=dims[2]*.6
-      #ydim=dims[2]*xdim/dims[1]
-
       output$header<-renderUI({
         div(p(strong("action:"),"download", message),
             div(class="remove_modal", actionLink(ns("remove_modal"),"[x] close",style="position: absolute; top: 0px; right: 0px; padding: 10px; ")))
@@ -441,7 +458,15 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
       })
 
       tags$div(
-        tags$div(id="figview_dialog",
+        tags$style(HTML(
+          ".figview_body  {background: white;
+          height: calc(100vh - 240px);
+
+margin: 4px; overflow-y: auto; overflow-x: auto;
+
+          }"
+        )),
+        tags$div(class="figview_dialog",
                  modalDialog(
                    uiOutput(ns("figview")),
                    title=uiOutput(ns("header")),
@@ -449,27 +474,7 @@ module_server_figs<-function (input, output, session,vals,file="",datalist_name=
                    easyClose = T
 
                  )
-        ),
-
-        tags$style(paste0(
-          "#figview_dialog .modal-dialog  {
-        width:",xdim,"px; height:",ydim,"px;
-
-        }"
-        )),
-        tags$style(paste0(
-          "#figview_dialog .modal-content > div,#figview_dialog .modal-body > div {
-        min-width:",xdim,"px; min-height:",ydim,"px;background: white
-
-        }"
-        )),
-        tags$style(paste0(
-          "#figview_body  {background: white;
-        width:",xdim,"px; height:",ydim,"px;
-        max-width:",xdim,"px; max-height:",ydim,"px;
-        min-width:",xdim,"px; min-height:",ydim,"px;
-        }"
-        ))
+        )
       )
     })
   }

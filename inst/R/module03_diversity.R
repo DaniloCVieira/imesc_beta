@@ -4,12 +4,149 @@
 
 #' @export
 #'
+
+
+gg_indicators<-function(indicator_table,top_result,pal="turbo",theme="theme_bw",base_size=12,min_size=1,max_size=12,xlab="",ylab="",title="",axis.text.size=12,axis.size=12,alpha=0.75,newcolhabs=list(turbo=viridis::turbo)){
+  df<-indicator_table
+  df<-df[df$var%in%names(top_result),]
+  p<-ggplot(df, aes(x = group, y = var)) +
+    geom_point(aes(size = stat, fill = group), alpha = alpha, shape = 21) +   scale_fill_manual(values=newcolhabs[[pal]](nlevels(df$group)), guide = "none")+xlab(xlab)+ylab(ylab)+ggtitle(title)+scale_size_continuous(
+      range=c(min_size,max_size)
+    )
+  p<-add_ggtheme(p,theme,base_size )
+  p<-p+  theme(
+    axis.text = element_text(size=axis.text.size),
+    axis.title = element_text(size=axis.size))
+
+  return(p)
+}
+
+
+indicator_multipart<-function(data,hc,npic=5,func="IndVal.g",nperm=199){
+
+  indicator_r.g = indicspecies::multipatt(data, hc, func=func, duleg=T,control=permute::how(nperm=nperm))
+
+  attr(indicator_r.g,"y")<-hc
+
+  indicator_r.g
+}
+
+imesc_summary_multipatt<-function (object, alpha = 0.05, minstat = NULL, At = NULL, Bt = NULL,indvalcomp = FALSE, ...){
+  x <- object
+  ncomb = ncol(x$str)
+  ncolsign = ncol(x$sign)
+  nsps = nrow(x$sign)
+  c("\n Multilevel pattern analysis")
+  c("\n ---------------------------\n")
+  c("\n Association function:", x$func)
+  c("\n Significance level (alpha):", alpha)
+  if (!is.null(minstat))
+    c("\n Minimum statistic value (minstat):", minstat)
+  if (x$func == "IndVal" || x$func == "IndVal.g") {
+    if (!is.null(At))
+      c("\n Minimum positive predictive value (At):",
+        At)
+    if (!is.null(Bt))
+      c("\n Minimum sensitivity (Bt):", Bt)
+  }
+  c("\n\n Total number of species:", nsps)
+  sel = !is.na(x$sign$p.value) & x$sign$p.value <= alpha
+  if (!is.null(minstat))
+    sel = sel & (x$sign$stat >= minstat)
+  if (!is.null(Bt) && !is.null(x$B)) {
+    for (i in 1:nrow(x$sign)) sel[i] = sel[i] && (x$B[i,
+                                                      x$sign$index[i]] >= Bt)
+  }
+  if (!is.null(At) && !is.null(x$A)) {
+    for (i in 1:nrow(x$sign)) sel[i] = sel[i] && (x$A[i,
+                                                      x$sign$index[i]] >= At)
+  }
+  a = x$sign[sel, ]
+  c("\n Selected number of species:", nrow(a), "\n")
+  cols = (ncolsign - 1):ncolsign
+  if (indvalcomp && !is.null(x$B) && !is.null(x$A)) {
+    As = numeric(nrow(x$sign))
+    Bs = numeric(nrow(x$sign))
+    for (i in 1:nrow(x$sign)) {
+      As[i] = x$A[i, x$sign$index[i]]
+      Bs[i] = x$B[i, x$sign$index[i]]
+    }
+    y = cbind(x$sign, As, Bs)
+    cols = c(ncol(y) - 1, ncol(y), cols)
+    names(y) = c(names(x$sign), "A", "B")
+  }  else y = x$sign
+  for (k in 1:(ncolsign - 4)) {
+    c(" Number of species associated to", k, if (k == 1)
+      "group:"
+      else "groups:", sum(rowSums(a[, 1:(ncolsign - 3)]) ==
+                            k), "\n")
+  }
+  c("\n List of species associated to each combination: \n")
+  com_result<-list()
+  for (i in 1:ncomb) {
+    sel = x$sign$index == i & !is.na(x$sign$p.value) & x$sign$p.value <=
+      alpha
+    if (!is.null(minstat))
+      sel = sel & (x$sign$stat >= minstat)
+    if (!is.null(Bt) && !is.null(x$B)) {
+      for (j in 1:nrow(x$sign)) sel[j] = sel[j] && (x$B[j,
+                                                        x$sign$index[j]] >= Bt)
+    }
+    if (!is.null(At) && !is.null(x$A)) {
+      for (j in 1:nrow(x$sign)) sel[j] = sel[j] && (x$A[j,
+                                                        x$sign$index[j]] >= At)
+    }
+    m = y[sel, ]
+    if (nrow(m) > 0) {
+      c("\n Group", colnames(x$comb)[i], " #sps. ", nrow(m),
+        "\n")
+      m = m[order(m$stat, decreasing = TRUE), cols]
+      com_result[[colnames(x$comb)[i]]]<-m
+      #  printCoefmat(m, signif.stars = TRUE, signif.legend = FALSE,                   digits = 4, P.values = TRUE, has.Pvalue = TRUE)
+    }
+  }
+  Signif <- symnum(x$sign$p.value, corr = FALSE, na = FALSE,
+                   cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1), symbols = c("***",
+                                                                            "**", "*", ".", " "))
+  c("---\nSignif. codes: ", attr(Signif, "legend"), "\n")
+  # names(com_result)<-colnames(x$comb)
+  return(com_result)
+}
+
+summary_multipatt<-function(indicator_r.g){
+  hcs<-attr(indicator_r.g,"y")
+  y0<-hcs
+  # sss<-summary(indicator_r.g)
+  sss<-imesc_summary_multipatt(indicator_r.g)
+  sssdf<-do.call(rbind,sss)
+  hcs<-do.call(c, lapply(names(sss),function(x) rep(x,nrow(sss[[x]]))))
+  indresult<-data.frame(group=hcs,var=do.call(c,lapply(sss,function(x) rownames(x))),sssdf)
+
+  indresult$group<-factor(indresult$group,levels=levels(y0))
+  indresult
+}
+
+filter_multipart_result<-function(indicator_r.g,npic){
+  sss<-imesc_summary_multipatt(indicator_r.g)
+
+  top_result<-do.call(c,lapply(  seq_along(sss),function(i){
+    print(i)
+    x<-sss[[i]]
+    vec<-rownames(na.omit(x[1:npic,]))
+    vec1<-rep(i,length(vec))
+    names(vec1)<-vec
+    vec1
+  }))
+  top_result
+}
+
+
 diversity_tool<-list()
 diversity_tool$ui<-function(id){
 
   ns<-NS(id)
   div(tabsetPanel(
-
+    #selected="tab_isp",
     tabPanel(
       "1. Diversity indices",
       box_caret(ns("box_setup1"),inline=F,show_tittle=F,
@@ -25,7 +162,7 @@ diversity_tool$ui<-function(id){
 
                       uiOutput(ns('try_chao_fisher'))
 
-                      ))),
+                  ))),
 
       column(
         4,class="mp0",
@@ -37,19 +174,20 @@ diversity_tool$ui<-function(id){
                       ns("divInds"),
                       NULL,
                       choiceValues =list(
-                        "N","S","margalef","D","H","Hlog2","Hlog10","J'","Dom_rel","Skewness",'Chao1','Fisher','BP'
+                        "N","S","Margalef","Simpson","InvSimpson","Shannon","Hlog2","Hlog10","J'","Dom_rel","Skewness",'Chao1','Fisher','BP'
                       ),
                       selected=c(
-                        "N","S","margalef","D","H","Hlog2","Hlog10","J'","Dom_rel","Skewness",'Chao1','Fisher','BP'
+                        "N","S","Margalef","Simpson","InvSimpson","Shannon","Hlog2","Hlog10","J'","Dom_rel","Skewness",'Chao1','Fisher','BP'
                       ),
                       inline = F,
 
                       choiceNames =list(
                         span("N", actionLink(ns('Nhelp'),icon("fas fa-question-circle")), uiOutput(ns("Nhelp"))),
                         span("S",actionLink(ns('Shelp'),icon("fas fa-question-circle")), uiOutput(ns("Shelp"))),
-                        span("margalef",actionLink(ns('mhelp'),icon("fas fa-question-circle")), uiOutput(ns("mhelp"))),
-                        span("D",actionLink(ns('Dhelp'),icon("fas fa-question-circle")), uiOutput(ns("Dhelp"))),
-                        span("H",actionLink(ns('Hhelp'),icon("fas fa-question-circle")), uiOutput(ns("Hhelp"))),
+                        span("Margalef",actionLink(ns('mhelp'),icon("fas fa-question-circle")), uiOutput(ns("mhelp"))),
+                        span("Simpson",actionLink(ns('Dhelp'),icon("fas fa-question-circle")), uiOutput(ns("Dhelp"))),
+                        span("InvSimpson",actionLink(ns('InvDhelp'),icon("fas fa-question-circle")), uiOutput(ns("InvDhelp"))),
+                        span("Shannon",actionLink(ns('Hhelp'),icon("fas fa-question-circle")), uiOutput(ns("Hhelp"))),
                         span("Hlog2",actionLink(ns('Hloghelp'),icon("fas fa-question-circle")), uiOutput(ns("Hloghelp"))),
                         span("Hlog10",actionLink(ns('Hlog10help'),icon("fas fa-question-circle")), uiOutput(ns("Hlog10help"))),
                         span("J",actionLink(ns('Jhelp'),icon("fas fa-question-circle")), uiOutput(ns("Jhelp"))),
@@ -100,8 +238,8 @@ diversity_tool$ui<-function(id){
                          div(tipify(tags$div("Y",class="trailab"),"Predictors")),
                          pickerInput(ns("omi_X"),NULL, choices=NULL)),
                      div(style="text-align: center",
-                       div(strong("~")),
-                       div(actionLink(ns("rev_rda"),icon("arrow-right-arrow-left"),style=""))
+                         div(strong("~")),
+                         div(actionLink(ns("rev_rda"),icon("arrow-right-arrow-left"),style=""))
                      ),
                      div(style="display: flex;",
                          div(tipify(tags$div("X",class="trailab"),"Response data")),
@@ -153,15 +291,668 @@ diversity_tool$ui<-function(id){
                       )
                     ))
 
+    ),
+    tabPanel('3. Simper Analysis',value="tab_simper",
+
+             box_caret(
+               ns("box3"),inline=F,
+               color="#374061ff",
+               title="Model Setup",
+               div(
+                 div(style="display: flex;gap:15px",class="setup_box picker-flex",
+                     div(style="display: flex;",
+                         div(tipify(tags$div("X",class="trailab"),"Response data")),
+                         pickerInput(ns("simper_X"),NULL, choices=NULL)),
+
+
+                     div(style="display: flex;",
+                         div(tipify(tags$div("Y",class="trailab"),"Predictors")),
+                         pickerInput(ns("simper_Y"),NULL, choices=NULL),
+                         pickerInput(ns("simper_group"),NULL, choices=NULL)),
+
+
+                     actionButton(ns('run_simper'),"RUN"),
+                     div(align="right",
+                         div(pickerInput_fromtop(ns("simper_results"),"Results",choices=NULL)),
+                     ),
+                     div(
+                       id=ns('save_simper_btn'),
+                       class="save_changes",
+                       actionButton(ns("save_simper"),icon("fas fa-save"))
+
+                     )
+                 )
+               )
+
+             ),
+             column(
+               4,class="mp0",
+               box_caret(
+                 ns("box4"),
+                 title="Options",
+                 color="#c3cc74ff",
+                 div(
+                   numericInput(ns('simper_permutations'),"Permutations",99),
+                   pickerInput_fromtop(ns("simper_contrast"),"Show Contrast","All"),
+
+                   numericInput(ns('simper_top'),"Top",10),
+                   uiOutput(ns('simper_indicadoras')),
+                   actionLink(ns("download_indicadoras"),"Download",icon("download"))
+
+                 )
+               )
+
+
+             ),
+             column(8,class="mp0",
+                    box_caret(
+                      ns("box5"),
+                      title="Results",
+                      button_title = actionLink(ns('download_simper'),"Download",icon('download')),
+                      div(align="right", tipify(actionLink(ns('simper_create_dl'),span("Create Datalist",icon("fas fa-file-signature"))),"Create a datalist with the results", options=list(container="body")),
+
+                          uiOutput(ns('simper_tables'))
+
+                      )
+                    ))
+
+    ),
+    tabPanel('4. Indicator species analysis',value="tab_isp",
+             div(
+               id=ns("isp_install"),
+               div(emgray("This Tool requires",code('indicspecies'),emgray("package"))),
+               actionButton(ns("isp_install_run"),"Install")
+             ),
+             div(id=ns("isp_on"),
+                 box_caret(
+                   ns("box3"),inline=F,
+                   color="#374061ff",
+                   title="Model Setup",
+                   div(
+                     div(style="display: flex;gap:15px",class="setup_box picker-flex",
+                         div(style="display: flex;",
+                             div(tipify(tags$div("X",class="trailab"),"Response data")),
+                             pickerInput(ns("isp_X"),NULL, choices=NULL)),
+
+
+                         div(style="display: flex;",
+                             div(tipify(tags$div("Y",class="trailab"),"Predictors")),
+                             pickerInput(ns("isp_Y"),NULL, choices=NULL),
+                             pickerInput(ns("isp_group"),NULL, choices=NULL))
+
+
+
+
+                     )
+                   )
+
+                 ),
+                 column(
+                   4,class="mp0",
+                   box_caret(
+                     ns("box_isp1"),
+                     title="Options",
+                     color="#c3cc74ff",
+                     div(
+                       pickerInput(
+                         ns("isp_method"),span('Method',tipright("<p>This functionality uses<code>multipatt</code> function from <code>indicspecies</code> package</p>")),
+                         c("Multipart"="multipatt"
+                           #"Indicators"='indicators'
+                         )
+
+                       ),
+                       pickerInput(
+                         ns("isp_func"),
+                         "Indicator Value",
+                         choices = c("IndVal", "IndVal.g", "r", "r.g"),
+                         selected="IndVal.g",
+                         choicesOpt = list(
+
+                           subtext = list(
+                             "Classic IndVal method for single groups",
+                             "Generalized IndVal method for group combinations",
+                             "Correlation coefficient for single groups",
+                             "Generalized correlation coefficient for group combinations"
+                           )
+                         )
+                       ),
+                       numericInput(ns('isp_nperm'),span("nperm",tipright("Number of permutations")),value=199)
+
+                     )
+
+
+
+                   ),
+                   box_caret(
+                     ns("box_isp1"),
+                     title="Plot Options",
+                     color="#c3cc74ff",
+                     div(style="max-height: 250px; overflow-y: auto",
+                         pickerInput_fromtop(ns("isp_palette"),
+                                             label = "Palette:",
+                                             choices=NULL),
+
+                         pickerInput_fromtop(ns("isp_theme"),"Theme:",c('theme_bw','theme_grey','theme_linedraw','theme_light','theme_minimal','theme_classic')),
+                         numericInput(ns("isp_base_size"),"",value=12),
+                         numericInput(ns("isp_min_size"),"min_size",value=1),
+                         numericInput(ns("isp_max_size"),"max_size",value=12),
+                         textInput(ns('isp_title'),"title",""),
+                         textInput(ns('isp_xlab'),"xlab",""),
+                         textInput(ns('isp_ylab'),"ylab",""),
+                         numericInput(ns("isp_axis.size"),"Axis label size",value=11),
+                         numericInput(ns("isp_axis.text.size"),"Axis text size",value=11),
+
+
+
+
+
+
+
+
+                     )
+
+
+
+                   )
+
+
+                 ),
+
+column(
+  8,class="mp0",
+  box_caret(
+    ns("box5"),
+    title="Results:",
+    button_title2= radioGroupButtons(ns("isp_results"),NULL,c("Plot","Table")
+    ),
+
+    button_title = span(
+      actionLink(ns('download_plot_isp'),"Download",icon('download')),
+      actionLink(ns('isp_download_results'),"Download",icon("download"))
+    ),
+    div(
+      div(style="display: flex; gap: 20px",
+          actionButton(ns('run_isp'),"RUN >>"),
+          numericInput(ns('isp_top'),span("Top per group:",tipright("Number of species with highest indicator value to show")),value=10)
+      ),
+      div(style="position: absolute; top: 30px; right: 5px",align="right",
+          div(tipify(actionLink(ns('isp_create_dl'),span("Create Datalist"),icon("fas fa-file-signature")),"Create a datalist with the top species", options=list(container="body"))),
+
+      ),
+
+      uiOutput(ns('isp_plot')),
+      uiOutput(ns('isp_tables'))
     )
+  )
+)
+
+             ))
   ))
 
 }
 #' @export
 diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
 
+
+
   moduleServer(id,function(input,output,session){
 
+
+    ## isp
+
+    observeEvent(vals$newcolhabs,{
+      updatePickerInput(session,'isp_palette', choices = vals$colors_img$val,choicesOpt = list(content = vals$colors_img$img),)
+    })
+    observe({
+
+      shinyjs::toggle('isp_top',condition = input$isp_results=="Plot"&length(vals$indicators_on)>0 )
+      shinyjs::toggle('isp_create_dl',condition = input$isp_results=="Plot"&length(vals$indicators_on)>0 )
+
+
+
+      shinyjs::toggle('isp_plot',condition = input$isp_results=="Plot" )
+      shinyjs::toggle('isp_tables',condition = input$isp_results=="Table" )
+      shinyjs::toggle('download_plot_isp',condition = input$isp_results=="Plot" )
+      shinyjs::toggle('isp_download_results',condition = input$isp_results=="Table" )
+
+
+    })
+
+
+
+    observeEvent(input$isp_create_dl,{
+
+      data_o<-vals$saved_data[[input$isp_Y]]
+      data<-vals$saved_data[[input$isp_X]]
+      vars<-names(get_isp_top())
+      data<-data[,vars]
+      data<-data_migrate(data_o,data)
+      bag<-paste0(input$isp_group,"_",input$isp_top,"indicators")
+      attr(data,"bag")<-bag
+      vals$newdatalist<-data
+      module_save_changes$ui(ns("isp-create"), vals)
+    })
+    module_save_changes$server("isp-create", vals)
+
+    output$isp_tables<-renderUI({
+      div(
+        class="half-drop-inline",style="max-width: 100%;overflow-x: auto",
+        fixed_dt(
+          get_summary_multipatt()
+        )
+      )
+    })
+    observe({
+
+      shinyjs::toggle('isp_install',condition=!is_installed("indicspecies"))
+      shinyjs::toggle('isp_on',condition=is_installed("indicspecies"))
+    })
+
+    observeEvent(input$isp_install_run,ignoreInit = T,{
+      install.packages('indicspecies')
+      shinyjs::hide('isp_install')
+      shinyjs::show('isp_on')
+    })
+
+
+    observeEvent(vals$saved_data,{
+      choices=names(vals$saved_data)
+      selected<-get_selected_from_choices(vals$cur_isp_X,choices)
+      updatePickerInput(session,'isp_X',choices=choices,selected=selected)
+
+    })
+    observeEvent(input$isp_Y,{
+      req(input$isp_X)
+      req(input$isp_Y)
+      data<-vals$saved_data[[input$isp_Y]]
+      factors<-attr(data,"factors")
+      choices=colnames(factors)
+      selected<-get_selected_from_choices(vals$cur_isp_group,choices)
+      updatePickerInput(session,'isp_group',choices=choices,selected=selected)
+    })
+
+    observeEvent(input$isp_X,{
+      req(input$isp_X)
+      req(input$isp_X%in%names(vals$saved_data))
+      ids<-rownames(vals$saved_data[[input$isp_X]])
+      pic<-sapply(vals$saved_data,function(x){
+        all(rownames(x)%in%ids)
+      })
+      choices<-names(vals$saved_data)[pic]
+
+      selected<-get_selected_from_choices(vals$cur_isp_Y,choices)
+      updatePickerInput(session,'isp_Y',choices=choices,selected=selected)
+
+    })
+
+    observeEvent(input$isp_Y,{
+      vals$cur_isp_Y<-input$isp_Y
+    })
+    observeEvent(input$isp_X,{
+      vals$cur_isp_X<-input$isp_X
+    })
+
+    observeEvent(input$isp_group,{
+      vals$cur_isp_group<-input$isp_group
+    })
+
+
+
+    observeEvent(input$isp_method,ignoreInit = T,{
+      choices=c("IndVal", "IndVal.g", "r", "r.g")
+      subtext = list(
+        "Classic IndVal method for single groups",
+        "Generalized IndVal method for group combinations",
+        "Correlation coefficient for single groups",
+        "Generalized correlation coefficient for group combinations"
+      )
+
+      if(input$isp_method=="indicators"){
+        choices=choices[1:2]
+        subtext=subtext[1:2]
+      }
+      updatePickerInput(session,'isp_func',choices=choices,choicesOpt =list(
+        subtext=subtext
+      ))
+
+    })
+
+
+    get_indicator_r.g<-eventReactive(input$run_isp,{
+      comm<-vals$saved_data[[input$isp_X]]
+      data<-vals$saved_data[[input$isp_Y]]
+      factors<-attr(data,"factors")
+      req(input$isp_group%in%colnames(factors))
+      y=factors[rownames(data),input$isp_group]
+      withProgress(min=NA,max=NA,message="Running...",{
+        indicator_r.g<-indicator_multipart(comm,y,npic=5,func=input$isp_func,nperm=input$isp_nperm)
+      })
+      attr(indicator_r.g,'y')<-y
+      vals$indicators_on<-T
+      indicator_r.g
+    })
+    get_summary_multipatt<-reactive({
+      indicator_r.g<-get_indicator_r.g()
+      y<-attr(indicator_r.g,"y")
+      indicator_table<-summary_multipatt(indicator_r.g)
+      indicator_table
+    })
+
+    get_isp_top<-reactive({
+      indicator_r.g<-get_indicator_r.g()
+      top_result<-filter_multipart_result(indicator_r.g=indicator_r.g,npic=input$isp_top)
+      top_result
+    })
+
+
+    get_indicators_plot<-reactive({
+      indicator_table<-get_summary_multipatt()
+      top_result<-get_isp_top()
+      args<-list(
+        indicator_table=indicator_table,top_result=top_result,pal=input$isp_palette,
+        theme=input$isp_theme,
+        base_size=input$isp_base_size,
+        min_size=input$isp_min_size,
+        max_size=input$isp_max_size,
+        xlab=input$isp_xlab,
+        ylab=input$isp_ylab,
+        title=input$isp_title,
+        axis.text.size=input$isp_axis.text.size,
+        axis.size=input$isp_axis.size,
+        alpha=0.75,
+        newcolhabs=vals$newcolhabs
+      )
+
+      p<-do.call(gg_indicators,args)
+      print(p)
+      p
+    })
+
+
+
+    observeEvent(ignoreInit = T,input$download_plot_isp,{
+      req(get_indicators_plot())
+      vals$hand_plot<-"generic_gg"
+      module_ui_figs("downfigs")
+      generic=get_indicators_plot()
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Indicators plot", name_c="indicators_plot")
+    })
+
+    observeEvent(ignoreInit = T,input$isp_download_results,{
+
+      vals$hand_down<-"generic"
+      module_ui_downcenter("downcenter")
+      name<-paste0("Indicators-",input$isp_X,"-",input$isp_group)
+      data<-get_summary_multipatt()
+
+      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Indicators results",data=data, name=name)
+    })
+
+    output$isp_plot<-renderUI({
+
+      renderPlot(get_indicators_plot())
+
+    })
+
+    ###
+
+
+    observeEvent(ignoreInit = T,input$save_simper,{
+      vals$hand_save<-"Save SIMPER model"
+      vals$hand_save2<-NULL
+      vals$hand_save3<-NULL
+      showModal(
+        module_div()
+      )
+    })
+
+
+    bag_simpername<-reactive({
+      names<-names(get_simper_allresults())
+      bag<-c(names,"Simper_results")
+      newnames<-make.unique(c(names,bag))
+      newnames[length(newnames)]
+    })
+
+
+    savesimper<-reactive({
+
+      temp<-attr(vals$saved_data[[input$simper_X]],"simper")[["new simper"]]
+      if(input$hand_save=="create") {
+        attr(vals$saved_data[[input$simper_X]],"simper")[[input$newdatalist]]<-temp
+
+      } else{
+        attr(vals$saved_data[[input$simper_X]],"simper")[[input$over_datalist]]<-temp
+
+      }
+      attr(vals$saved_data[[input$simper_X]],"simper")[["new simper"]]<-NULL
+    })
+    observe({
+      req(input$simper_X)
+      req(input$simper_X%in%names(vals$saved_data))
+
+      sim_results<-attr(vals$saved_data[[input$simper_X]],"simper")
+      #  shinyjs::toggle('simper_results',)
+      shinyjs::toggle('save_simper',condition="new simper"%in%input$simper_results)
+    })
+    output$simper_tables<-renderUI({
+      div(class="half-drop-inline",style="max-width: 100%;overflow-x: auto",
+          fixed_dt( simper_result_selected(),scrollY="300px")
+      )
+    })
+
+
+
+
+    observeEvent(input$simper_Y,{
+      vals$cur_simper_Y<-input$simper_Y
+    })
+    observeEvent(input$simper_X,{
+      vals$cur_simper_X<-input$simper_X
+    })
+
+    observeEvent(input$simper_group,{
+      vals$cur_simper_group<-input$simper_group
+    })
+
+    observeEvent(input$simper_X,{
+      req(input$simper_X)
+      req(input$simper_X%in%names(vals$saved_data))
+      ids<-rownames(vals$saved_data[[input$simper_X]])
+      pic<-sapply(vals$saved_data,function(x){
+        all(rownames(x)%in%ids)
+      })
+      choices<-names(vals$saved_data)[pic]
+
+      selected<-get_selected_from_choices(vals$cur_simper_Y,choices)
+      updatePickerInput(session,'simper_Y',choices=choices,selected=selected)
+
+    })
+
+
+    observeEvent(vals$saved_data,{
+      choices=names(vals$saved_data)
+      selected<-get_selected_from_choices(vals$cur_simper_X,choices)
+      updatePickerInput(session,'simper_X',choices=choices,selected=selected)
+
+    })
+    observeEvent(input$simper_Y,{
+      req(input$simper_Y)
+      data<-vals$saved_data[[input$simper_Y]]
+      factors<-attr(data,"factors")
+      choices=colnames(factors)
+      selected<-get_selected_from_choices(vals$cur_simper_group,choices)
+      updatePickerInput(session,'simper_group',choices=choices)
+    })
+
+    get_simper_allresults<-reactive({
+      req(input$simper_X)
+      attr(vals$saved_data[[input$simper_X]],"simper")
+    })
+
+
+
+    observeEvent(get_simper_allresults(),{
+      choices=names(get_simper_allresults())
+      selected=choices[length(choices)]
+      updatePickerInput(session,"simper_results",choices=choices,selected=selected)
+    })
+
+    observeEvent(input$run_simper,ignoreInit = T,{
+      if(is.null(attr(vals$saved_data[[input$simper_X]],"simper"))){
+        attr(vals$saved_data[[input$simper_X]],"simper")<-list()
+      }
+      comm<-vals$saved_data[[input$simper_X]]
+      data<-vals$saved_data[[input$simper_Y]]
+      factors<-attr(data,"factors")
+      req(input$simper_group%in%colnames(factors))
+      y=factors[,input$simper_group]
+      withProgress(min=NA,max=NA,message="Running...",{
+        som<-vegan::simper(comm,y,permutations=input$simper_permutations)
+        som
+      })
+      attr(som,"group")<-factors[input$simper_group]
+      attr(vals$saved_data[[input$simper_X]],"simper")[["new simper"]]<-som
+      som
+    })
+
+    get_simper_result<-reactive({
+      req(input$simper_results)
+      get_simper_allresults()[[input$simper_results]]
+    })
+
+    simper_summary<-reactive({
+      summary(get_simper_result())
+    })
+    observeEvent(simper_summary(),{
+      updatePickerInput(session,'simper_contrast',choices=c("All",names(simper_summary())))
+    })
+
+
+
+    simper_result_selected<-reactive({
+      req(input$simper_contrast)
+      results<-simper_summary()
+      results<-do.call(rbind, lapply(names(results),function(i){
+        df<-cbind(group=i,var=rownames(results[[1]]),results[[i]])
+        rownames(df)<-NULL
+        df
+      }))
+
+      if(input$simper_contrast%in%results$contrast){
+        results<-subset(results,group==input$simper_contrast)
+      }
+
+      reshape2::melt(results)
+      results<-subset(results,var%in%df_simper_indicadoras()$var)
+      results
+    })
+    simper_indicadoras<-function(data,ss,npic=20,hc){
+      df<-do.call(rbind,lapply(seq_along(ss),function(i){
+        x<-ss[[i]]
+        contrast=names(ss)[i]
+        ccs<-do.call(c,strsplit(contrast,"_"))
+        df<-data.frame(contrast=names(ss)[i],var=rownames(x),average=x$average,c1=ccs[1],c2=ccs[2],p=x$p)
+        rownames(df)<-NULL
+        df
+      }))
+      df<-na.omit(df[df$p<=0.1,])
+      dfz<-data.frame(lapply(split(data,hc),function(x)
+        colMeans(x)))
+      colnames(dfz)<-levels(hc)
+      ag<-aggregate(data,data.frame(hc),mean)
+      x<-unlist(df$var[1])
+      contrast_list<-var<-df$var[1]
+      contrast_list<- lapply(df$var,function(var){
+        dfi<-df[df$var==var,]
+        dfi$vote<-NA
+        dfi$abund<-NA
+        result<-list()
+        for(i in 1:nrow(dfi)){
+          xx<-dfi[i,]
+          var=dfi$var[i]
+          ph<-c(dfi$c1[i],dfi$c2[i])
+          ag2<-ag[,var]
+          names(ag2)<-levels(hc)
+          pha<-ag2[ph]
+          pic<-names(which.max(pha))
+          dfi$vote[i]<-pic
+          dfi$abund[i]<-pha[pic]
+
+        }
+        dfi[which(!duplicated(dfi$vote)),]
+      })
+
+      npic0<-ncol(data)
+      ppic<-floor(npic/
+                    nlevels(hc))
+      contrastdf<-do.call(rbind,contrast_list)
+      contrastrelist<-split(contrastdf,contrastdf$vote)
+      inds<-lapply(seq_along(contrastrelist),function(i){
+        x<-contrastrelist[[i]]
+        data.frame(var=unique(x$var[order(x$average,decreasing=T)]),i)
+      })
+      ruv<-list()
+      uv<-do.call(rbind,lapply(inds,function(x)x[1:ppic,]))
+      for(var in unique(uv$var)){
+        ruv[[var]]<-paste0(paste(uv[uv==var,'i'],collapse = ", "))
+      }
+
+      unlist(ruv)
+    }
+
+    observeEvent(ignoreInit = T,input$download_indicadoras,{
+      vals$hand_down<-"generic"
+      module_ui_downcenter("downcenter")
+      name<-paste0("Simper_top",input$simper_top,"_",input$simper_X)
+      data<-df_simper_indicadoras()
+      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Simper Indicadoras",data=data, name=name)
+    })
+
+    df_simper_indicadoras<-reactive({
+      ss<-simper_summary()
+      data<-vals$saved_data[[input$simper_X]]
+      hc=attr(get_simper_result(),"group")
+      indicadoras<-simper_indicadoras(data,ss,input$simper_top,hc[,1])
+      data.frame(var=names(indicadoras),group=as.character(indicadoras))
+    })
+
+    output$simper_indicadoras<-renderUI({
+      indicadoras<-df_simper_indicadoras()
+
+      div(class="half-drop-inline",style="max-width: 100%;overflow-x: auto",
+          fixed_dt( indicadoras,scrollY="300px")
+      )
+
+    })
+    observeEvent(input$simper_create_dl,{
+
+      ss<-simper_summary()
+      data_o<-vals$saved_data[[input$simper_Y]]
+      data<-vals$saved_data[[input$simper_X]]
+      factors<-attr(data_o,"factors")
+      req(input$simper_group%in%colnames(factors))
+      hc=attr(get_simper_result(),"group")
+      indicadoras<-simper_indicadoras(data,ss,input$simper_top,hc[,1])
+
+      vars<-names(indicadoras)
+
+      data<-data[,vars]
+      data<-data_migrate(data_o,data)
+      attr(data,"factors")<-data.frame(attr(data,"factors"),hc)
+      bag<-paste0(input$simper_group,"_Simper",input$simper_top,"vars")
+      attr(data,"bag")<-bag
+      vals$newdatalist<-data
+      module_save_changes$ui(ns("simper-create"), vals)
+    })
+    module_save_changes$server("simper-create", vals)
+    observeEvent(ignoreInit = T,input$download_simper,{
+      vals$hand_down<-"generic"
+      module_ui_downcenter("downcenter")
+      name<-paste0("Simper_",input$simper_X)
+      data<-simper_summary()[[input$simper_contrast]]
+      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Simper results",data=data, name=name)
+    })
     observeEvent(input$rev_omi,{
       updatePickerInput(session,"omi_Y",selected=input$omi_X)
       updatePickerInput(session,"omi_X",selected=input$omi_Y)
@@ -252,6 +1043,15 @@ diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
       column(12,style="background: white",
              strong("Simpson diversity"),
              p("the probability that two individuals drawn at random from an infinite community would belong to the same species",withMathJax(helpText("$$ D = \\sum p^2$$")))
+      )
+    })
+    output$InvDhelp <- renderUI({
+      req(input$InvDhelp %% 2)  # Adjust to your logic for toggling UI display
+      column(12, style = "background: white",
+             strong("Inverse Simpson Diversity"),
+             p("The Inverse Simpson Index is a diversity measure that accounts for the probability that two individuals drawn at random from an infinite community would belong to different species.",
+               withMathJax(helpText("$$ 1 / D = \\frac{1}{\\sum p_i^2} $$"))),
+             p("Here, $$ p_i $$ represents the proportional abundance of each species in the community.")
       )
     })
     output$Hhelp<-renderUI({
@@ -370,9 +1170,10 @@ diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
       res=list()
       if("N"%in%choices){res$N<-rowSums(abund)}
       if("S"%in%choices){res$S<-specnumber(abund)}
-      if("margalef"%in%choices){res$margalef=(specnumber(abund)-1)/log(rowSums(abund))}
-      if("D"%in%choices){res$D<-diversity(abund, index="simpson")}
-      if("H"%in%choices){res$H<-diversity(abund)}
+      if("Margalef"%in%choices){res$Margalef=(specnumber(abund)-1)/log(rowSums(abund))}
+      if("Simpson"%in%choices){res$Simpson<-diversity(abund, index="simpson")}
+      if("InvSimpson"%in%choices){res$InvSimpson<-diversity(abund, index="invsimpson")}
+      if("Shannon"%in%choices){res$Shannon<-diversity(abund)}
       if("Hlog2"%in%choices){res$Hlog2<-diversity(abund, base=2)}
       if("Hlog10"%in%choices){res$Hlog10<-diversity(abund, base=10)}
       if("J'"%in%choices){
@@ -496,9 +1297,6 @@ diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
       req(length(input$observation_selection_rows_selected)>0)
 
       df0<-getebnb()[input$observation_selection_rows_selected,]
-      #df0<-readRDS("df0.rds")
-      #saveRDS(df0,"df0.rds")
-      #print("saved")
 
 
       df<-data.frame(id=rownames(df0),df0)
@@ -649,9 +1447,12 @@ diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
         vals$hand_save,
         ##RF
         "Save diversity results"= {bag_divname()},
-        "Create Datalist: Niche results"={name_niche()}
+        "Create Datalist: Niche results"={name_niche()},
+        "Save SIMPER model"={bag_simpername()}
 
       )})
+
+
 
     savediv<-reactive({
       divInds<-divI()
@@ -727,6 +1528,9 @@ diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
     output$data_over<-renderUI({
       data_overwritte$df<-F
       choices<-c(names(vals$saved_data))
+      if("Save SIMPER model"%in%vals$hand_save){
+        choices<-names(get_simper_allresults())
+      }
       req(input$hand_save=="over")
       res<-pickerInput(ns("over_datalist"), NULL,choices, width="350px")
       data_overwritte$df<-T
@@ -745,7 +1549,8 @@ diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
       switch(
         vals$hand_save,
         "Save diversity results"= { savediv()},
-        "Create Datalist: Niche results"={saveniche()}
+        "Create Datalist: Niche results"={saveniche()},
+        "Save SIMPER model"={savesimper()}
 
 
       )
@@ -796,4 +1601,5 @@ diversity_tool$server<-function (id,vals,df_colors,newcolhabs,df_symbol ){
   })
 
 }
+
 

@@ -459,6 +459,7 @@ table_results_tab1$server<-function(id,vals){
 
     observeEvent(input$create_codebook,ignoreInit = T,{
       pd0<-data<-create_coodebok_datalist()
+      m<-current_som_model()
 
       req(data_x())
       data<-data_migrate(vals$saved_data[[data_x()]],data)
@@ -477,7 +478,7 @@ table_results_tab1$server<-function(id,vals){
       module_save_changes$ui(ns("codebook-create"), vals)
     })
 
-    module_save_changes$server(ns("codebook-create"), vals)
+    module_save_changes$server("codebook-create", vals)
 
     output$som_errors<-renderUI({
       som_qualist<-errors_som(current_som_model())
@@ -1267,14 +1268,14 @@ table_results_tab3$server<-function(id,vals){
       temp
     })
 
+
+
     observeEvent(input$create_vfm_results,ignoreInit = T,{
       m<-current_som_model()
       pd0<-data<-create_som_vfm()
-
+      head(create_som_vfm())
       req(data_x())
       data<-data_migrate(vals$saved_data[[data_x()]],data)
-      attr(data,"coords")<-NULL
-      attr(data,"factors")<-data.frame(id=factor(rownames(pd0)))
 
       bag<-attr(m,'model_name')
       if(is.null(bag)){
@@ -1290,7 +1291,7 @@ table_results_tab3$server<-function(id,vals){
       module_save_changes$ui(ns("vfm-create"), vals)
     })
 
-    module_save_changes$server(ns("vfm-create"), vals,message="Note that the trained SOM is composed by multiple layers. Variables from different layers will be merged (cbind) into a single Datalist")
+    module_save_changes$server("vfm-create", vals,message="Note that the trained SOM is composed by multiple layers. Variables from different layers will be merged (cbind) into a single Datalist")
 
     observeEvent(ignoreInit = T,input$downp_bmu,{
       vals$hand_plot<-"generic_gg"
@@ -1916,8 +1917,7 @@ table_predict_som$server<-function(id,vals){
         req(input[[paste0("newdata_w",w)]])
         input[[paste0("newdata_w",w)]]
       })
-      #newdata_names<-readRDS("newdata_names.rds")
-      #newdata_names<-unlist(newdata_names)
+
       newdata_names<-newdata_names[which(newdata_names!="None")]
       news<-vals$saved_data[newdata_names]
       res<-lapply(news,as.matrix)
@@ -1950,8 +1950,7 @@ table_predict_som$server<-function(id,vals){
       do.call(rbind,res)
     })
     get_obs_peform<-reactive({
-      #newdata<-readRDS("newdata.rds")
-      #res<-readRDS("res.rds")
+
       newdata<-do.call(cbind,supersom_newdata())
       req(newdata)
       req(get_sompred())
@@ -1972,12 +1971,9 @@ table_predict_som$server<-function(id,vals){
 
     })
     get_var_peform<-reactive({
-      #newdata<-readRDS("newdata.rds")
-      #res<-readRDS("res.rds")
+
       newdata_list<-supersom_newdata()
       pred_list<-get_sompred()$predictions
-      #saveRDS(newdata_list,'newdata.rds')
-      #saveRDS(get_sompred(),'pred.rds')
 
       result<-lapply(seq_along(get_sompred()$predictions),function(layer){
         newdata<-newdata_list[[layer]]
@@ -2221,7 +2217,6 @@ table_predict_som$server<-function(id,vals){
     })
     getbmu_plot<-reactive({
       args<-ss2_argsplot()
-      #saveRDS(args,"args.rds")
 
       req(length(args)>0)
       bp<-args$bp
@@ -3587,13 +3582,17 @@ imesc_supersom$server<-function (id,vals ){
       })
 
       cur_data_som<-reactive({
-        traindat<-if(isTRUE(input$mysupersom)){
-          do.call(cbind,get_training_list())
-        } else{
-          req(input$data_som)
-          vals$saved_data[[input$data_som]]
-        }
-        traindat=traindat[get_partition()$train,,drop=F]
+        train_data<-try({
+          traindat<-if(isTRUE(input$mysupersom)){
+            do.call(cbind,get_training_list())
+          } else{
+            req(input$data_som)
+            vals$saved_data[[input$data_som]]
+          }
+          traindat=traindat[get_partition()$train,,drop=F]
+          traindat
+        },silent = T)
+        req(!inherits(train_data,"try-error"))
         traindat
       })
 

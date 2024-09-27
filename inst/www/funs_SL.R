@@ -83,7 +83,7 @@ strong_forest<-function(text){
 emforest<-function(text){
   em(text,style="color: darkgreen")
 }
-box_caret<-function(id,content=NULL,inline=T, class="train_box",click=T,title=NULL,button_title=NULL,tip=NULL,auto_overflow=F, color=NULL,show_tittle=T,hide_content=F){
+box_caret<-function(id,content=NULL,inline=T, class="train_box",click=T,title=NULL,button_title=NULL,tip=NULL,auto_overflow=F, color=NULL,show_tittle=T,hide_content=F,button_title2=NULL){
   ns<-NS(id)
 
   id0<-strsplit(id,"-")[[1]]
@@ -115,9 +115,17 @@ box_caret<-function(id,content=NULL,inline=T, class="train_box",click=T,title=NU
   }
   div_title<-NULL
   if(isTRUE(show_tittle)){
-    div_title<-div(class="box_title",
-                   actionButton(ns("show_hide"),hide_content,style=style),
-                   title,tip)
+    div_title<-div(
+      style="display: flex",class="box_title",
+      div(
+        actionButton(ns("show_hide"),hide_content,style=style),
+        title,tip),
+      div(
+        class="btn-title2",
+        button_title2
+      )
+
+    )
   } else{
     class='train_box ptop0'
   }
@@ -130,7 +138,6 @@ box_caret<-function(id,content=NULL,inline=T, class="train_box",click=T,title=NU
       )
   )
 }
-
 box_caret_server<-function(id, hide_content=F){
   moduleServer(id,function(input,output,session){
 

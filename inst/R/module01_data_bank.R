@@ -69,30 +69,7 @@ databank_module$ui<-function(id){
     div(id = ns("tab7"), icon("fas fa-comment"))
   )
 
-  div(tags$style(HTML(
-    "
-    .bank_attr .btn, .bank_attr i{
-    color: #333
-    }
-    .picker25 .bootstrap-select>.dropdown-toggle,.picker25 .form-control, .half-drop-inline .picker25 .form-group {
-        height: 20px;
-    padding:2px
-    margin: 0px
-    }
-    .picker25 .form-control {
-    margin-bottom: 5px
-    }
-    .dataTables_wrapper .dataTables_filter input {
-    border: 1px solid #aaa;
-    border-radius: 0px;
-    padding: 2px;
-    background-color: transparent;
-    color: inherit;
-    margin-left: 1px;
-    height: 25px;
-}
-    "
-  )),
+  div(
 div(
 
   box_caret(ns("bank_tools"),
@@ -922,12 +899,7 @@ databank_module$server<-function(id, vals){
       removeModal()
       updateRadioGroupButtons(session,"view_datalist", selected="extra_shape")
     })
-    observeEvent(ignoreInit = T,input$ddcogs2,{
-      vals$hand_down<-"Data-Attribute"
-      vals$data_bank_data<-getdata_bank()
-      module_ui_downcenter("downcenter")
-      mod_downcenter<-callModule(module_server_downcenter, "downcenter",  vals=vals,name=paste0(input$data_bank,"_","Numeric"))
-    })
+
     observeEvent(ignoreInit = T,input$trash_som ,{
       showModal(
         modalDialog(easyClose = T,
@@ -950,17 +922,30 @@ databank_module$server<-function(id, vals){
       removeModal()
       updateRadioGroupButtons(session,"view_datalist", selected="extra_shape")
     })
-    observeEvent(ignoreInit = T,input$dfcogs2,{
-      vals$hand_down<-"Factor-Attribute"
-      vals$data_bank_data<-attr(getdata_bank(),"factors")
+
+
+
+
+    observeEvent(ignoreInit = T,input$ddcogs2,{
+      vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
-      mod_downcenter<-callModule(module_server_downcenter, "downcenter",  vals=vals,name=paste0(input$data_bank,"_","Factors"))
+      data<-getdata_bank()
+      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, data=data, name=paste0(input$data_bank,"_","Numeric"))
     })
-    observeEvent(ignoreInit = T,input$downcenter_coords,{
-      vals$hand_down<-"Coords-Attribute"
-      vals$data_bank_data<-attr(getdata_bank(),"coords")
+
+    observeEvent(ignoreInit = T,input$dfcogs2,{
+      vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
-      mod_downcenter<-callModule(module_server_downcenter, "downcenter",  vals=vals,name=paste0(input$data_bank,"_","Coords"))
+      data<-attr(getdata_bank(),"factors")
+      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, data=data, name=paste0(input$data_bank,"_","Factors"))
+    })
+
+
+    observeEvent(ignoreInit = T,input$downcenter_coords,{
+      vals$hand_down<-"generic"
+      module_ui_downcenter("downcenter")
+      data<-attr(getdata_bank(),"coords")
+      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, data=data, name=paste0(input$data_bank,"_","Coords"))
     })
     observeEvent(ignoreInit = T,input$data_bank,{
       vals$cur_data<-input$data_bank

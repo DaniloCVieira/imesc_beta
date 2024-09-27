@@ -52,7 +52,7 @@
 #roxygen2::roxygenise()
 #' @export
 #' @noRd
-server<-app_server<-function(input, output, session) {
+app_server<-server<-function(input, output, session) {
   t0<-Sys.time()
   # init_server<-Sys.time()
   # IMPORTANT!
@@ -227,6 +227,7 @@ server<-app_server<-function(input, output, session) {
     insertbmu=F,
     sidebar=T,
 
+
     newcolhabs=list(
       "turbo" = get('turbo'),
       "matlab.like2"= get('matlab.like2'),
@@ -234,6 +235,7 @@ server<-app_server<-function(input, output, session) {
       "plasma" = get('plasma'),
       "Rushmore1"=colorRampPalette(wes_palette("Rushmore1",100,type ="continuous")),
       "FantasticFox1"=colorRampPalette(wes_palette("FantasticFox1",100,type ="continuous")),
+      "inferno"=colorRampPalette(viridis::inferno(7)[-1]),
       "Blues"=colorRampPalette(RColorBrewer::brewer.pal(9,"Blues")),
       "heat"=get('heat.colors'),
       "Purples"=colorRampPalette(RColorBrewer::brewer.pal(9,"Purples")),
@@ -574,7 +576,7 @@ server<-app_server<-function(input, output, session) {
   output$map_header<-renderUI({
     #validate(need(length(vals$saved_data)>0,"No Datalist found"))
 
-    ll_data$server('map_data',vals)
+    sptools_data$server('sptools_data',vals)
     NULL
   })
 
@@ -596,7 +598,7 @@ server<-app_server<-function(input, output, session) {
   })
 
   observe({
-    llet$server('llet',vals=vals)
+    sptools_panels$server('sptools_panels',vals=vals)
   })
 
 
@@ -932,7 +934,7 @@ server<-app_server<-function(input, output, session) {
   })
 
   once_savepoint<-reactiveVal(F)
-  observeEvent(input$savepoint_yes,{
+  observe({
     req(file.exists("savepoint.rds"))
     req(isFALSE(once_savepoint()))
     once_savepoint(TRUE)

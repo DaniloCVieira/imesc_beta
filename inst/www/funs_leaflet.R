@@ -10,22 +10,7 @@ mode_function <- function(x, na.rm = F) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
 }
-#' @export
-get_mean_resolution<-function(data){
-  coords<-attr(data,"coords")
 
-  dx<-sqrt(diff(unique(coords[,1]))^2)
-  res_x<-mean(dx)
-
-  dy<-sqrt(diff(unique(coords[,2]))^2)
-  res_y<-mean(dy)
-
-  min_res<-min(res_x,res_y)
-  max_res<-max(res_x,res_y)
-
-  res <-  max(min_res,max_res)
-  round(res,3)
-}
 
 rst0_nsample<-function(data,nsample){
   coords<-attr(data,"coords")
@@ -97,30 +82,7 @@ rst_factor<-function(my_rst,data){
 }
 #' @export
 
-map_rst<-function(data,cut_shape=T, crs="+proj=longlat +datum=WGS84 +no_defs",resolution){
 
-  coords<-attr(data,"coords")
-  my_rst<-rst0(data,resolution)
-  req(raster::nrow(my_rst)>1)
-  req(raster::ncol(my_rst)>1)
-  if(is.factor(data[,1])){
-    my_rst<-rst_factor(my_rst,data)
-  } else{
-    my_rst<-rst_num(my_rst,data)
-  }
-
-  base_shape0<-st_as_sf(x =  coords,coords = c(colnames( coords)))
-  base_shape0<-st_set_crs(base_shape0,crs)
-  if(isTRUE(cut_shape)){
-    base_shape<-attr(data,'base_shape')
-    if(!is.null(base_shape)) {
-      my_rst<-raster::mask( raster::crop(my_rst, raster::extent(base_shape)), base_shape)}
-  }
-
-  crs(my_rst) <- CRS(crs)
- # my_rst<-  raster::ratify(my_rst)
-  my_rst
-}
 #' @export
 get_chart_data <- function(data,factor_chart=2, distance = 50, fun="sum") {
   coords<-attr(data,"coords")
@@ -319,57 +281,7 @@ lab_maxdist<-span("maxdist:",tiphelp("for local kriging, only observations withi
 lab_idp<-span("idp:",tiphelp("numeric; specify the inverse distance weighting power"))
 lab_k<-span("k:",tiphelp("number of neighbours considered."))
 lab_resolution<-span("resolution:",tiphelp("Interpolation resolution"))
-#' @export
-get_idw_leaf<-function(data, cut_shape=T, resolution=3000,crs.info="+proj=longlat +datum=WGS84 +no_defs",...){
-  base_shape<-attr(data,"base_shape")
-  layer_shape<-attr(data,"layer_shape")
 
-
-  coords<-attr(data,"coords")
-  data<-na.omit(data)
-  coords<-coords[rownames(data),]
-colnames(coords)<-c("x","y")
-limits<-get_limits(limits=NULL,base_shape,layer_shape,coords)
-
-  newgrid<-get_grid(coords,limits,crs.info,resolution)
-  data_spat<-to_spatial(data.frame(cbind(coords,z=data[,1])))
-  interp_model=df_idw = gstat::idw(z~1, data_spat, newgrid)
-  df_raster <- raster::raster(df_idw)
-  if(isTRUE(cut_shape)){
-    if(!is.null(base_shape)){
-      df_raster<-  raster::mask(df_raster, base_shape)
-    }
-  }
-  df_raster<-  raster::ratify(df_raster)
-  return(df_raster)
-}
-#' @export
-get_knn_leaf<-function(data,k=5,cut_shape=T,resolution){
-  coords<-attr(data,"coords")
-  base_shape<-attr(data,"base_shape")
-  layer_shape<-attr(data,"layer_shape")
-  limits<-get_limits(limits=NULL,base_shape,layer_shape,coords)
-  coords<-attr(data,"coords")
-  data<-na.omit(data)
-  coords<-coords[rownames(data),]
-  newgrid<-get_grid(coords,limits,crs.info,resolution)
-  z=data[,1]
-  m<-caret::train(x=coords,y=z,method="knn",trControl =trainControl(method="cv"),kmax =k)
-  newdata<-data.frame(newgrid)
-  colnames(newdata)<-colnames(coords)
-  pred<-predict(m,newdata=newdata)
-  dfs<-data.frame(newdata,pred)
-  colnames(dfs)[3]<-colnames(data)
-  pred_spat<-to_spatial(dfs)
-  knn_raster <- raster::rasterFromXYZ(dfs)
-  rst<-cut_shape_fun(knn_raster,T,base_shape)
-  rst<-ratify(rst)
-  crs(rst)<-crs.info
-
-  return(rst)
-
-}
-#' @export
 interp_leaflet<-function(data, cut_shape=T, resolution=3000,crs.info="+proj=longlat +datum=WGS84 +no_defs",k=5,...){
   if(is.factor(data[,1])){
     get_knn_leaf(data,k,cut_shape,resolution)
@@ -379,100 +291,11 @@ interp_leaflet<-function(data, cut_shape=T, resolution=3000,crs.info="+proj=long
   }
 }
 
-gstat_predictions<-function(g,data,resolution, crs.info="+proj=longlat +datum=WGS84 +no_defs"){
-  req(g)
-  newdata<-data
-  args_pred<-list(g=g,newdata=newdata, crs.info=crs.info,resolution=resolution)
-  pred<-do.call(predict_cokrige2,args_pred)
-  pred
-}
 
 #' @export
-interp_leaflet2<-function(data, cut_shape=T, resolution=3000,crs.info="+proj=longlat +datum=WGS84 +no_defs",k=5,interp_type="knn",g=NULL,seed=NA,tuneLength=NULL,...){
 
-
-
-  if(!interp_type%in%c("krige","idw")){
-    method=interp_type
-    rst_result<-get_caret_leaf(data,cut_shape,resolution,tuneLength,method,seed,crs.info)
-  } else if(interp_type=="idw"){
-    rst_result<- get_idw_leaf(data, cut_shape, resolution,crs.info="+proj=longlat +datum=WGS84 +no_defs",...)
-  } else if(interp_type=="krige"){
-    rst_result<-gstat_predictions(g,data,resolution, crs.info="+proj=longlat +datum=WGS84 +no_defs")
-
-  }
-
-  rst<-migrate_rst(rst_result, data)
-  rst
-
-
-}
 #' @export
 
-get_caret_leaf<-function(data,cut_shape=T,resolution,tuneLength=5,method="knn",seed=NA,crs.info){
-  coords<-attr(data,"coords")
-  base_shape<-attr(data,"base_shape")
-  layer_shape<-attr(data,"layer_shape")
-  limits<-get_limits(limits=NULL,base_shape,layer_shape,coords)
-  coords<-attr(data,"coords")
-  data<-na.omit(data)
-  coords<-coords[rownames(data),]
-  newgrid<-get_grid(coords,limits,crs.info,resolution)
-  z=data[,1]
-  if(is.na(seed)){
-    set.seed(NULL)
-  } else{
-    set.seed(seed)}
-  if(is.factor(data[,1])){
-    y<-as.character(z)
-  } else{
-    y<-z
-  }
-  m<-caret::train(x=coords,y=y,method=method,trControl =trainControl(method="cv"),tuneLength  =tuneLength )
-  newdata<-data.frame(newgrid)
-  colnames(newdata)<-colnames(coords)
-  if(method=="gaussprRadial"){
-    if(is.factor(data[,1])){
-       out <-predict(m, newdata, type="prob")
-      pred<-kohonen::classmat2classvec(out)
-    } else{
-      pred<-predict(m,newdata=newdata)
-    }
-  } else{
-    pred<-predict(m,newdata=newdata)
-  }
-
-
-  dfs<-data.frame(newdata,pred)
-  colnames(dfs)[3]<-colnames(data)
-  pred_spat<-to_spatial(dfs)
-  if(is.factor(data[,1])){
-    levs<-levels(dfs[,3])
-    dfs[,3]<-as.numeric(dfs[,3])
-
-  }
-
-  knn_raster <- raster::rasterFromXYZ(dfs)
-
-
-  knn_raster<-ratify(knn_raster)
-  if(is.factor(data[,1])){
-
-
-
-    knn_raster@data@values<-factor(knn_raster@data@values, labels=levels(pred), levels=1:nlevels(pred))
-    knn_raster@data@attributes[[1]]$levels<-levs[  knn_raster@data@attributes[[1]]$ID]
-  }
-
-
-
-  rst<-cut_shape_fun(knn_raster,T,base_shape)
-  crs(rst)<-crs.info
-  attr(rst,"m")<-m
-
-  return(rst)
-
-}
 
 #' @export
 migrate_rst<-function(rst,data){
@@ -481,6 +304,7 @@ migrate_rst<-function(rst,data){
   attr(rst,"base_shape")<-attr(data,"base_shape")
   attr(rst,"layer_shape")<-attr(data,"layer_shape")
   attr(rst,"extra_shape")<-attr(data,"extra_shape")
+  attr(rst,"levels")<-attr(rst,"data_levels")
   attr(rst,'z_name')<-colnames(data[1])
   rst
 }
@@ -577,25 +401,7 @@ predict_cokrige<-function(g,newdata=NULL, crs.info="+proj=longlat +datum=WGS84 +
   result
 }
 
-#' @export
-predict_cokrige2<-function(g,newdata=NULL, crs.info="+proj=longlat +datum=WGS84 +no_defs",resolution=500,cut_shape=NULL){
-  coords<-attr(newdata,"coords")
-  base_shape<-attr(newdata,"base_shape")
-  layer_shape<-attr(newdata,"layer_shape")
-  limits<-get_limits(limits=NULL,base_shape,layer_shape,coords)
-  newgrid<-get_grid(coords,limits,crs.info,res=resolution)
-  grd<-to_spatial(data.frame(newgrid),crs.info=crs.info)
-  k.c <- predict(g, grd)
-  #pred1<-predict(g, newdata =newgrid )
-  result<-data.frame(k.c)
-  xyz<-result[1:3]
-  colnames(xyz)[3]<-colnames(newdata)
-  rst<-raster::rasterFromXYZ(xyz)
-  rst<-cut_shape_fun(rst,T,base_shape)
-  rst<-ratify(rst)
-  crs(rst)<-crs.info
-  rst
-}
+
 #' @export
 predict_cokrige_factors<-function(pred,g){
   isfac<-attr(g,"is_factor")
@@ -792,356 +598,67 @@ add_base_shape<-function(map,data,shape_attr="base_shape",color="blue",fillOpaci
   map
 }
 
-map_discrete<-function(data, pal=viridis(100),nbreaks=5,min_radius=1,max_radius=5,scale_radius=F,fillOpacity=0.8, providers="Esri.WorldTopoMap", addCircles=T,addMinicharts=F,factor_chart=2,buffer_zize=50, fun="sum",base_shape_args=NULL,layer_shape_args=NULL, rst=NULL,args_extra_shape=NULL,args_labels=NULL,newcolhabs=NULL,palette=NULL,custom_breaks=NULL,light=0,zoomSnap=0.25,...){
-  palette0<-palette
-  colors00<-lighten(newcolhabs[[palette]](256),light)
-  newcolhabs[[palette]]<-colorRampPalette(colors00)
-  pal<-lighten(pal,light)
 
 
-  if(is.factor(data[,1])){
-    max_radius<-max_radius-2
-  } else{
-    if(!is.null(rst)){
-      var<-colnames(data)
-      data<-get_data_rst(rst)
-      colnames(data)<-var
-    }
 
+
+
+
+
+get_bathy_lines<-function(lines){
+
+  lines_coords <- st_coordinates(lines)
+  contour_ids <- lines$Contour
+
+  # Combine the coordinates with their corresponding Contour ID
+  # This assumes that 'lines_coords' and 'contour_ids' have corresponding rows
+  # Extract the number of coordinates for each MULTILINESTRING
+  coord_lengths <- sapply(st_geometry(lines), function(geom) sum(lengths(st_coordinates(geom)[, 1])))
+
+  # Now, repeat the 'Contour' IDs according to the number of coordinates in each geometry
+  contour_ids_expanded <- rep(contour_ids, coord_lengths)
+
+  # Ensure the length matches
+  if (length(contour_ids_expanded) != nrow(lines_coords)) {
+    stop("The number of coordinates does not match the number of expanded Contour IDs.")
   }
 
+  # Combine the coordinates with the corresponding Contour ID
+  lines_coords <- cbind(lines_coords, Contour = contour_ids_expanded)
 
-  max_radius<-max_radius*3
-  min_radius=min_radius*3
-  radius<-max_radius
-  coords<-attr(data,"coords")
-  if(class(coords)[1]=="matrix"){
-    coords<-data.frame(coords)
-  }
-  colnames(coords)<-c("x","y")
-  var<-colnames(data)
-  df<-na.omit(cbind(coords,z=data[,var]))
-  coords<-df[,1:2]
-  data<-data[rownames(coords),,drop=F]
-  if(is.factor(df[,3])){
-    cols<-newcolhabs[[palette]](nlevels(df[,3]))
-    cols<-cols[levels(df[,3])%in%df[,3]]
-    palette <- leaflet::colorFactor(cols,domain = factor(df[,3]))
-    radius<-radius
-  } else{
-    radius<-if(isTRUE(scale_radius)){scales::rescale(df$z,c(min_radius,radius))}else{radius}
-
-    custom_breaks<-as.numeric(custom_breaks)
-    if(length(custom_breaks)<=2){
-      custom_breaks=2
-      palette <- leaflet::colorFactor(pal,domain = factor(df[,3]))
-    } else{
-      palette <- leaflet::colorBin(pal,domain = df[,3], bins = custom_breaks)
-    }
-
-  }
-
-  map <- leaflet::leaflet(df, options =leaflet::leafletOptions(
-    zoomSnap=zoomSnap,
-    zoomControl =T,
-    zoomDelta = 1
-  )  )
-
-  map<-add_shapes1(map,data,layer_shape_args,base_shape_args)
-
-  #map<-add_extraLL(map,data,args_extra_shape)
-
-  if(isTRUE(addCircles)){
-    map <- map |> leaflet::addCircleMarkers(
-      lng = ~x,
-      lat = ~y ,
-      fillOpacity = fillOpacity,
-      stroke =F,
-      radius =radius,
-      color = ~palette(z),
-      fillColor = ~palette(z),
-      popup = ~paste(var, z),
-      group="circles"
-    )
-  }
-
-  if(isTRUE(addMinicharts)){
-    map<-add_pie_chart(map,data,factor_chart,buffer_zize,fun, min_radius,max_radius, pal,light)
-  }
-  map <- map %>% leaflet::addTiles() %>%
-    leaflet::addProviderTiles(providers)
-
-
-  map0<-map
-  if(!is.null(rst)){
-    if(!is.factor(df[,3])){
-
-      pal <- leaflet::colorNumeric(pal,domain = df[,3], na.color ='#00000000')
-
-
-    } else{
-      colors_factor<-newcolhabs[[palette0]](nlevels(df[,3]))
-
-      pal<-colors_factor[levels(df[,3])%in%
-                           rst@data@attributes[[1]][,2]]
-    }
-
-
-    map <- map |> leaflet::addRasterImage(rst, colors = pal, opacity = fillOpacity, group="raster")
-  }
-
-
-
-  if(!is.null(args_labels)){
-    if(isTRUE(args_labels$show_labels)){
-      if(!is.null(args_labels$labels)){
-      labels<-attr(data,"factors")[,args_labels$labels]
-      map<- map |>
-        leaflet::addLabelOnlyMarkers ( lng = df$x,
-                             lat = df$y, label =  ~as.character(labels),
-                             group="labels",
-                             labelOptions = leaflet::labelOptions(
-                               style =list('color'=args_labels$col.fac),
-                               direction = 'center',
-
-                               noHide = T,
-                               textOnly = T,
-                               textsize=paste0(args_labels$cex.fac*2,"px")))}
-
-  }}
-
-
-  if(!isTRUE(addMinicharts)){
-    map <- map |> leaflet::addLegend("bottomright",
-                            pal = palette,
-                            values = ~z,
-                            title = var,
-                            opacity = 1)
-  }
-  overlayGroups<-control_layers(addCircles,addMinicharts,rst,base_shape_args,layer_shape_args,args_labels)
-  map <- map |> leaflet::addLayersControl(overlayGroups = overlayGroups)
-  map
+  # Proceed with the rest of your code
+  lines_list <- lapply(unique(lines_coords[, "L1"]), function(line_id) {
+    lapply(unique(lines_coords[lines_coords[, "L1"] == line_id, "L2"]), function(subline_id) {
+      line_coords <- lines_coords[lines_coords[, "L1"] == line_id & lines_coords[, "L2"] == subline_id, c("X", "Y", "Contour")]
+      df<-data.frame(line_coords)
+      colnames(df)<-c("x","y","z")
+      df
+    })
+  })
+  batdf<-unlist(lines_list,recursive = F)
+  batdf
 }
-gg_add_extra_shape<-function(p, rst,extra_shape_args  ){
-  if(is.null(extra_shape_args)){
-    return(p)
-  }
-  extralayers<-data.frame(extra_shape_args$args_extra)
+rect_angle<-function(co){
 
+  middle<-round(nrow(co)/2)
+  x1<-min(co[,1])
+  x2<-max(co[,1])
+  y1<-min(co[,2])
+  y2<-max(co[,2])
+  dx <- x2 - x1
+  dy <- y2 - y1
 
-  extralayers$layers<-as.logical(extralayers$layers)
+  # Calcula o ângulo em radianos
+  angle_radians <- atan2(dy, dx)
 
-  extras<-attr(rst,"extra_shape")
-  if(is.null(extras)){
-    return(p)
-  }
-  if(!any(extralayers$layers)){
-    return(p)
-  }
-  if(any(extralayers$layers)){
-    extralayers<-subset(extralayers,isTRUE(layers))
+  # Converte para graus
+  angle_degrees <- angle_radians * (180 / pi)
 
-    for(i in 1:length(  extralayers$layers)){
-      col_extra<-extralayers$colors[i]
-      p<-p+geom_sf(data=st_as_sf(extras[[i]]), col=mylighten(col_extra,as.numeric(extralayers$alphas[i])), lty=1)
-      names( p$layers)[length( p$layers)]<-paste0("extra",i)
-    }
-    return(p)
-  }
+  # xx<-max(co[,1])-min(co[,2])/2
+  cbind(  data.frame(as.list(colMeans(co))),angle_degrees)
 }
 
-gg_rst<-function(rst=NULL,data=NULL,limits=NULL,main="",subtitle="",axis.text_size=13,axis.title_size=13,plot.title_size=13,plot.subtitle_size=13,legend.text_size=13,layer_shape=NULL,extra_shape=NULL,breaks=T,nbreaks=5,pal="turbo",key.height=NULL,newcolhabs=list(turbo=viridis::turbo),add_extra_shape=F,add_base_shape=T,add_layer_shape=F,show_labels=F,labels=attr(rst,"factors")[1],cex.fac=13,col.fac="red",show_coords=F,col.coords="black",cex.coords=13,custom_breaks=NULL,
-                 show_guides=F,layer_col="gray",lighten=0.4,layer_shape_border="gray",
-                 keyscale=30,width_hint=0.15,cex_scabar=0.7,fillOpacity=1,reverse_palette=F,
-                 scale_radius=T,
-                 min_radius=1,max_radius=5,addCircles=T,addMinicharts=F,buffer_zize=1,
-                 fun="sum",factor_chart=1,args_extra_shape=NULL,data_depth=NULL,data_o=NULL,
-                 base_shape_args,layer_shape_args,factor=F,light=0,...) {
 
-  custom_breaks00<-as.numeric(custom_breaks)
-
-  {
-    crs.info="+proj=longlat +datum=WGS84 +no_defs"
-    req(!is.null(rst)|!is.null(data))
-    if(class(rst)[1]=="RasterLayer"){
-      crs.info<-crs(rst)
-      rasterpoints <-  rasterToPoints(rst) |> data.frame()
-      if(isTRUE(factor)){
-        rasterpoints[,3]<-factor(rasterpoints[,3], labels=rst@data@attributes[[1]][,2])
-        colnames(rasterpoints)[3]<-"z"
-      }
-
-
-
-      coords<-coordinates(rst) |> data.frame()
-    } else{
-      coords<-attr(data,"coords")
-      rasterpoints<-data.frame(cbind(coords,z=data[,1]))
-      rst<-data
-    }
-
-    validate(need(nrow(rasterpoints)>0,"Error"))
-
-
-    if(!is.factor(rasterpoints$z)){
-      custom_breaks0<-as.numeric(custom_breaks)
-      colnames(rasterpoints)<-c("x","y","z")
-      if(!is.null(custom_breaks)){
-        if(min(custom_breaks)<min(rasterpoints$z)){
-          custom_breaks[1]<-min(rasterpoints$z)
-        }
-        if(max(custom_breaks)<max(rasterpoints$z)){
-          custom_breaks[length(custom_breaks)]<-max(rasterpoints$z)
-        }
-      }
-    }
-
-
-    base_shape<-attr(rst,'base_shape')
-    layer_shape<-attr(rst,'layer_shape')
-    if(!exists('limits')){
-      limits<-NULL
-    }
-    if(is.null(limits)){
-      limits<-get_limits(NULL,base_shape,layer_shape,coords)
-      limits<-list(x_min=limits[1,1],x_max=limits[2,1], y_min=limits[1,2],y_max=limits[2,2])
-    }
-
-    if(!exists('breaks')){
-      breaks<-NULL
-    }
-
-
-
-    if(!is.factor(rasterpoints$z)){
-      #breaks=    breaks_interval(z=rasterpoints$z,nbreaks)
-      breaks= as.numeric(custom_breaks)
-    } else{ breaks=    levels(rasterpoints$z)}
-
-
-
-
-    base_shape0<-st_as_sf(coords,coords = colnames( coords),crs=crs.info)
-    p<-ggplot(base_shape0) #+ coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
-    xlim<-unlist(limits[1:2])
-    ylim<-unlist(limits[3:4])
-    p<-add_gg_shape(p,base_shape_args,base_shape,xlim,ylim,crs.info)
-
-
-}
-
-  if(class(rst)=="RasterLayer"){
-    breaks=NULL
-
-    if(isFALSE(factor)){
-      breaks<-as.numeric(custom_breaks)
-      custom_breaks0=as.numeric(custom_breaks0)
-    } else{
-      custom_breaks0=NULL
-    }
-
-    p<-rst_tile(p,rasterpoints,rst,newcolhabs,pal,fillOpacity,reverse_palette,name,breaks,factor, data_o=data_o,light, custom_breaks=custom_breaks0)
-
-  } else{
-
-
-    if(isTRUE(addCircles))
-
-      p<-gg_circles(p,rasterpoints,rst,newcolhabs,pal,fillOpacity,reverse_palette,name,custom_breaks=sort(custom_breaks00),min_radius,max_radius, scale_radius, light)
-
-
-    if(isTRUE(addMinicharts)){
-      p<-gg_pie(p,rst,factor_chart,buffer_zize,fun,min_radius,max_radius,newcolhabs,pal,reverse_palette, fillOpacity,light)
-    }
-  }
-  names( p$layers)[length( p$layers)]<-paste0('points')
-
-  extra_shape<-attr(rst,'extra_shape')
-  if(!is.null(args_extra_shape)){
-    p<-gg_add_extra_shape(p,rst,args_extra_shape)
-  }
-
-  p0<-p
-
-
-  p<-p+
-    xlab("Longitude") +
-    ylab("Latitude") +
-    ggtitle(main, subtitle = subtitle) +
-    theme(panel.grid.major = element_blank(),
-          panel.background = element_rect(fill = "white"),
-          panel.border = element_rect(fill=NA,
-                                      color="black",
-                                      linewidth=0.5,
-                                      linetype="solid"),
-          axis.text=element_text(size=axis.text_size),
-          axis.title=element_text(size=axis.title_size,face="bold"),
-          plot.title=element_text(size=plot.title_size),
-          plot.subtitle=element_text(size=plot.subtitle_size),
-          legend.text=element_text(size=legend.text_size),
-          legend.title=element_text(size=legend.text_size))
-  if(!is.null(key.height)){
-    p<-p+theme(legend.key.size=unit(key.height, 'pt'))
-  }
-
-
-  if(isTRUE(show_coords)){
-    coords_data<-attr(rst,"coords")
-    colnames(coords_data)<-c("x","y")
-    p<-p+geom_point( data=coords_data, aes(x=x, y=y),  size=cex.coords, pch=3, colour=col.coords)}
-  if(isTRUE(show_guides)){
-    coords_data<-attr(rst,"coords")
-    colnames(coords_data)<-c("x","y")
-
-    xcoords<-pretty(coords_data[,1])
-    ycoords<-pretty(coords_data[,2])
-    p<-p+geom_hline(yintercept=ycoords,color = gray(.5), linetype = "dashed", linewidth = .15)+
-      geom_vline(xintercept =xcoords,color = gray(.5), linetype = "dashed", linewidth = .15)
-  }
-
-
-
-  p<-p+annotation_scale(location = "br", width_hint = width_hint,text_cex=cex_scabar,height  =unit(cex_scabar/4,"cm")) +
-    annotation_north_arrow(location = "tl",
-                           which_north = "true",
-                           width = unit(keyscale, "pt"),
-                           height  = unit(keyscale, "pt"),
-                           pad_x = unit(.1, "in"),
-                           pad_y = unit(0.1, "in"),
-                           style = north_arrow_fancy_orienteering)
-
-
-
-  p<-add_gg_shape(p,layer_shape_args,layer_shape,xlim,ylim,crs.info)
-
-  #  point_layer<-p$layers[ grep("points",  names(p$layers))]
-  #  old_layer<-p$layers[-grep("points",  names(p$layers))]
-  #  new_p <- append(old_layer, point_layer, after=0)
-  # p$layers<-new_p
-
-
-
-  if(!is.null(data_depth)) {
-     point_layer<-p$layers[ grep("points",  names(p$layers))]
-     old_layer<-p$layers[-grep("points",  names(p$layers))]
-     new_p <- append(old_layer, point_layer, after=data_depth-1)
-      p$layers<-new_p
-
-  }
-  if(isTRUE(show_labels)){
-    labels=attr(data,"factors")[labels]
-    coords_labels<-attr(data,"coords")
-    labs<-labels[rownames(coords_labels),]
-    df_labels<-cbind(coords_labels,labs)
-    colnames(df_labels)<-c("x","y","label")
-    p<-p+  geom_text( data=df_labels, aes(x=x, y=y, label=label),size=cex.fac,colour=col.fac)
-  }
-
-  p<-p+ coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
-
-  return(p)
-
-}
 
 
 
@@ -1156,38 +673,6 @@ help_interp <- function(method){
   )
   tiphelp(res)
 }
-add_pie_chart<-function(map,data,factor_chart,buffer_zize,fun, min_radius,max_radius, pal,light=0){
-  max_radius<-max_radius*2
-  min_radius=min_radius*2
-  df0<-get_chart_data(data,factor_chart, distance=buffer_zize, fun=fun)
-  df<-data.frame(df0)
-  colnames(df)<-colnames(df0)
 
-  popup<-if(is.factor(data[,1])){
-    popupArgs(showTitle =F,showValues =F,supValues =get_popup_chart(df))
-  } else{
-    popupArgs()
-  }
-  facddf<-df[-c(1:2)]
-  fac<-attr(data,"factors")[factor_chart]
-  colors <- lighten(colorRampPalette(pal)(ncol(facddf)),light)
-  if(is.factor(data[,1])){
-    colors=   lighten(get_cols_factor_chart(df,data, pal),light)
-    width=max_radius
-  } else{
-    width = scales::rescale(rowSums(facddf),c(min_radius,max_radius))
-  }
-  colnames(facddf)<-gsub("_split_",".",colnames(facddf))
-  map |> addMinicharts(
-    lng = df[,1],
-    lat = df[,2] ,
-    type="pie",
-    chartdata = facddf,
-    #layerId=fac[,1],
-    colorPalette =colors,
-    popup = popup,
-    legend =T,
-    width=width
-  )
 
-}
+

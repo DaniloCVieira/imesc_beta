@@ -46,6 +46,8 @@ Imports:
     ggridges,
     golem,
     gstat,
+    grid,
+    gridExtra,
     htmlwidgets,
     igraph,
     kernlab,

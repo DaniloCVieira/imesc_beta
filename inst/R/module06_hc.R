@@ -1,390 +1,786 @@
 
+measure_time<-function(f,args) {
+  t1<-Sys.time()
+  res<-do.call(f,args)
+  t2<-Sys.time()
+  print(t2-t1)
+  res
+}
+
+segment_dd<-function (x) {
+  x$segments
+}
+plotNode<-function (x1, x2, subtree, type, center, leaflab, dLeaf, nodePar,edgePar, horiz = FALSE){
+  ddsegments <- NULL
+  ddlabels <- list()
+  wholetree <- subtree
+  depth <- 0L
+  llimit <- list()
+  KK <- integer()
+  kk <- integer()
+  repeat {
+    inner <- !is.leaf(subtree) && x1 != x2
+    yTop <- attr(subtree, "height")
+    bx <- plotNodeLimit(x1, x2, subtree, center)
+    xTop <- bx$x
+    depth <- depth + 1L
+    llimit[[depth]] <- bx$limit
+    hasP <- !is.null(nPar <- attr(subtree, "nodePar"))
+    if (!hasP) {
+      nPar <- nodePar}
+
+    Xtract <- function(nam, L, default, indx) rep(if (nam %in%
+                                                      names(L)) {L[[nam]] }else {default}, length.out = indx)[indx]
+    asTxt <- function(x) if (is.character(x) || is.expression(x) ||is.null(x)) {x}  else {as.character(x)}
+    i <- if (inner || hasP) {
+      1} else {2}
+    if (!is.null(nPar)) {
+      pch <- Xtract("pch", nPar, default = 1L:2, i)
+      cex <- Xtract("cex", nPar, default = c(1, 1), i)
+      col <- Xtract("col", nPar, default = par("col"),
+                    i)
+      bg <- Xtract("bg", nPar, default = par("bg"), i)
+      points(if (horiz)
+        cbind(yTop, xTop)
+        else cbind(xTop, yTop), pch = pch, bg = bg, col = col,
+        cex = cex)
+    }
+    if (leaflab == "textlike")
+      p.col <- Xtract("p.col", nPar, default = "white",
+                      i)
+    lab.col <- Xtract("lab.col", nPar, default = par("col"),
+                      i)
+    lab.cex <- Xtract("lab.cex", nPar, default = c(1, 1),
+                      i)
+    lab.font <- Xtract("lab.font", nPar, default = par("font"),
+                       i)
+    lab.xpd <- Xtract("xpd", nPar, default = c(TRUE, TRUE),
+                      i)
+    if (is.leaf(subtree)) {
+      if (leaflab == "perpendicular") {
+        if (horiz) {
+          X <- yTop + dLeaf * lab.cex
+          Y <- xTop
+          srt <- 0
+          adj <- c(0, 0.5)
+        }        else {
+          Y <- yTop - dLeaf * lab.cex
+          X <- xTop
+          srt <- 90
+          adj <- 1
+        }
+        nodeText <- asTxt(attr(subtree, "label"))
+        ddlabels$xy <- c(ddlabels$xy, X, 0)
+        ddlabels$text <- c(ddlabels$text, nodeText)
+      }
+    }    else if (inner) {
+      for (k in seq_along(subtree)) {
+        child <- subtree[[k]]
+        yBot <- attr(child, "height")
+        if (getOption("verbose"))
+          cat("ch.", k, "@ h=", yBot, "; ")
+        if (is.null(yBot))
+          yBot <- 0
+        xBot <- if (center) {
+          mean(bx$limit[k:(k + 1)])}else {bx$limit[k] + .midDend(child)}
+        hasE <- !is.null(ePar <- attr(child, "edgePar"))
+        if (!hasE)
+          ePar <- edgePar
+        i <- if (!is.leaf(child) || hasE) {
+          1}  else {2}
+        col <- Xtract("col", ePar, default = par("col"),
+                      i)
+        lty <- Xtract("lty", ePar, default = par("lty"),
+                      i)
+        lwd <- Xtract("lwd", ePar, default = par("lwd"),
+                      i)
+        if (type == "triangle") {
+          ddsegments <- c(ddsegments, xTop, yTop, xBot,
+                          yBot)
+        }        else {
+          ddsegments <- c(ddsegments, xTop, yTop, xBot,
+                          yTop)
+          ddsegments <- c(ddsegments, xBot, yTop, xBot,
+                          yBot)
+        }
+        vln <- NULL
+      }
+    }
+    if (inner && length(subtree)) {
+      KK[depth] <- length(subtree)
+      if (storage.mode(kk) != storage.mode(KK))
+        storage.mode(kk) <- storage.mode(KK)
+      kk[depth] <- 1L
+      x1 <- bx$limit[1L]
+      x2 <- bx$limit[2L]
+      subtree <- subtree[[1L]]
+    }    else {
+      repeat {
+        depth <- depth - 1L
+        if (!depth || kk[depth] < KK[depth])
+          break
+      }
+      if (!depth)
+        break
+      length(kk) <- depth
+      kk[depth] <- k <- kk[depth] + 1L
+      x1 <- llimit[[depth]][k]
+      x2 <- llimit[[depth]][k + 1L]
+      subtree <- wholetree[[kk]]
+    }
+  }
+  list(segments = ddsegments, labels = ddlabels)
+}
+
+imesc_dendrogram_data<-function (x, type = c("rectangle", "triangle"), ...) {
+  leaflab <- "perpendicular"
+  center <- FALSE
+  xlab <- ""
+  ylab <- ""
+  horiz <- FALSE
+  xaxt <- "n"
+  yaxt <- "s"
+  nodePar <- NULL
+  edgePar <- list()
+  dLeaf <- NULL
+  edge.root <- is.leaf(x) || !is.null(attr(x, "edgetext"))
+  type <- match.arg(type)
+  hgt <- attr(x, "height")
+  if (edge.root && is.logical(edge.root)) {
+    edge.root <- 0.0625 * if (is.leaf(x)) {
+      1}    else {hgt}
+  }
+  mem.x <- .memberDend(x)
+  yTop <- hgt + edge.root
+  if (center) {
+    x1 <- 0.5
+    x2 <- mem.x + 0.5
+  }  else {
+    x1 <- 1
+    x2 <- mem.x
+  }
+  xl. <- c(x1 - 1/2, x2 + 1/2)
+  yl. <- c(0, yTop)
+  if (edge.root) {
+    if (!is.null(et <- attr(x, "edgetext"))) {
+      my <- mean(hgt, yTop)
+    }
+  }
+  ret <- plotNode(x1, x2, x, type = type, center = center,
+                  leaflab = leaflab, dLeaf = dLeaf, nodePar = nodePar,                   edgePar = edgePar, horiz = FALSE)
+  ret$segments <- as.data.frame(matrix(ret$segments, ncol = 4,
+                                       byrow = TRUE, dimnames = list(NULL, c("x", "y", "xend",
+                                                                             "yend"))))
+  ret$labels <- cbind(as.data.frame(matrix(ret$labels$xy, ncol = 2,byrow = TRUE, dimnames = list(NULL, c("x", "y")))), data.frame(label = ret$labels$text))
+  ret
+}
+.memberDend<-function (x){
+  r <- attr(x, "x.member")
+  if (is.null(r)) {
+    r <- attr(x, "members")
+    if (is.null(r)) {
+      r <- 1L
+    }
+  }
+  r
+}
+plotNodeLimit<-function (x1, x2, subtree, center){
+  inner <- !is.leaf(subtree) && x1 != x2
+  if (inner) {
+    K <- length(subtree)
+    mTop <- .memberDend(subtree)
+    limit <- integer(K)
+    xx1 <- x1
+    for (k in 1L:K) {
+      m <- .memberDend(subtree[[k]])
+      xx1 <- xx1 + (if (center) {
+        (x2 - x1) * m/mTop
+      }      else {
+        m
+      })
+      limit[k] <- xx1
+    }
+    limit <- c(x1, limit)
+  }  else {
+    limit <- c(x1, x2)
+  }
+  mid <- attr(subtree, "midpoint")
+  center <- center || (inner && !is.numeric(mid))
+  x <- if (center) {
+    mean(c(x1, x2))
+  }  else {
+    x1 + (if (inner) {
+      mid
+    }    else {
+      0
+    })
+  }
+  list(x = x, limit = limit)
+}
+.midDend<-function (x){
+  if (is.null(mp <- attr(x, "midpoint")))
+    0  else mp
+}
+add_ggtheme<-function(p,theme,base_size){
+  p<-switch(theme,
+            'theme_grey'={p+theme_grey(base_size)},
+            'theme_bw'={p+theme_bw(base_size)},
+            'theme_linedraw'={p+theme_linedraw(base_size)},
+            'theme_light'={p+theme_light(base_size)},
+            'theme_dark'={p+theme_dark(base_size)},
+            'theme_minimal'={p+theme_minimal(base_size)},
+            'theme_classic'={p+theme_classic(base_size)},
+            'theme_void'={p+theme_void(base_size)})
+  p
+}
+gg_dendrogram<-function(obs.clusters,hc.clusters,hc.object, palette=NULL, labels=NULL, lwd=2, main="", xlab="Observations", ylab="Height", base_size=12, theme='theme_grey',offset_labels=-.1,xlab_adj=20, legend=c("outside","inside"),base_color="black",angle_label=0,log=F){
+  {
+    tree_data <- imesc_dendrogram_data(as.dendrogram(hc.object))
+    cols<-palette(nlevels(hc.clusters))
+    segtree<-segment_dd(tree_data)
+
+    tree_data$labels$group<-hc.clusters[tree_data$labels$label]
+
+    ranges<-data.frame(do.call(rbind,lapply(split(tree_data$labels,tree_data$labels$group),function(x) range(x$x)))
+    )
+
+    levs<-levels(hc.clusters)
+
+    group<-lapply(1:nrow(segtree),function(i){
+      pic<-as.numeric(which(apply(ranges,1,function(x) between(segtree$xend[i],x[1],x[2]))))
+      if(length(pic)==0){pic<-NA}
+      pic
+    })
+
+    segtree$group<-do.call(c,group)
+    segtree$group<-factor(segtree$group,levels=levs)
+    #segtree[tree_data$labels$x,"group"]<-hc.clusters[tree_data$labels$label]
+
+
+    num_clusters<-nlevels(hc.clusters)
+    heights <- sort(hc.object$height, decreasing = TRUE)
+    cut_height <- heights[num_clusters - 1]
+
+
+    #  e<-sapply(1:nrow(segtree) ,function(i) segtree$y[i]!=segtree$yend[i])
+    #segtree$group[segtree$y>=cut_height&e]<-NA
+    segtree2<-segtree
+    segtree2$group[segtree$yend>=cut_height]<-NA
+  }
+
+  {
+    labels_dend<-do.call(rbind,lapply(split(segtree2,segtree2$group),function(x){
+      data.frame(x=x$x[which.max(x$y)],y=max(x$y),group=x$group[1])
+    }))
+
+    labels_dend$y<-min(labels_dend$y)
+    if(!is.null(labels)){tree_data$labels$label<-labels}
+    segtree_head<-segtree_a<-segtree[segtree$y>=cut_height,]
+
+    minv<-segtree_a[segtree_a$yend<cut_height,]
+    rownames(labels_dend)<-labels_dend$group
+    rownames(minv)<-minv$group
+    minv[rownames(labels_dend),"y"]<-labels_dend$y
+    maxv<-segtree_a[sapply(1:nrow(segtree_a),function(i){
+      segtree_a$x[i]!=segtree_a$xend[i]
+    }),]
+    maxv2<-segtree_a[segtree_a$y>=cut_height,]
+    maxv<-maxv[maxv$y<=cut_height,]
+    segtree_a<-minv
+    segtree_b<-segtree[!is.na(segtree$group),]
+    segtree_b<-segtree_b
+    segtree_a<-rbind(segtree_a,maxv)
+    maxv2$yend[which(maxv2$yend<=cut_height)]<-labels_dend$y[1]
+    maxv2<-maxv2[maxv2$y!=cut_height,]
+
+    segtree_head<-maxv2
+    p<-ggplot()
+    # if(FALSE)
+    p<-p+geom_segment(
+      data=segtree_b,
+      lineend="square",
+      aes(x = x,
+          y = y,
+          xend = xend,
+          yend = yend,
+          color=group),
+      linewidth=lwd
+    )
+    #if(FALSE)
+    p<-p+
+      geom_segment(
+        data=segtree_head,
+        lineend="square",
+        aes(x = x,
+            y = y,
+            xend = xend,
+            yend = yend),
+        color=base_color,
+        linewidth=lwd
+
+
+      )
+    #if(FALSE)
+    p<-p+geom_segment(
+      data=segtree_a,
+      lineend="square",
+      aes(x = x,
+          y = y,
+          xend = xend,
+          yend = yend,
+          color=group),
+
+      linewidth=lwd)
+
+    p<-p+scale_color_manual(values=cols,name="")
+
+
+  }
+
+  p<-p+geom_text(aes(x=x,y=y,label=label),data=tree_data$labels,size=base_size*.2,nudge_y=offset_labels,angle=angle_label)
+
+
+
+  p<-p+geom_label(data=labels_dend,aes(x,y,label=group),color=cols,nudge_y=-0.1)
+
+  p<-add_ggtheme(p,theme,base_size)+xlab(xlab)+ylab(ylab)+ggtitle(main)
+  if(isTRUE(log)){
+    p<-p+scale_y_continuous(transform="log")
+  }
+  p
+}
+
+
+
+
+
+
 hc_module<-list()
 #' @export
 hc_module$ui<-function(id){
   ns<-NS(id)
   column(12,class="mp0",style="width: 100%",
-         box_caret(ns("box_setup"),
-                   title="Model setup",
-                   color="#374061ff",
-                   inline=F,
-                   fluidRow(style="display: flex; flex-flow: row wrap;",
-                            column(12,div(style="gap: 10px",class="som_grid",
-                                          pickerInput_fromtop(ns("data_hc"),
-strong("Datalist:"),choices = NULL, options=shinyWidgets::pickerOptions(liveSearch =T)),
-                                          radioButtons(ns("model_or_data"), strong("Clustering target:"), choiceValues = c("data", "som codebook"), choiceNames = c("Numeric-Attribute", "SOM-codebook"),width="150px"),
-                                          pickerInput_fromtop(ns("som_model_name"), strong("Som model:"), choices=NULL, selected=NULL),
-                                          pickerInput_fromtop(ns("hc_fun"), strong("HC function:", actionLink(ns("help_hc_fun"), icon("fas fa-question-circle"))), choices = list("Hierarchical Clustering" = "hclust", "Agglomerative Nesting" = "agnes", "Divisive hierarchical clustering" = "diana")),
-                                          div(id=ns("disthc_id"),
-                                              pickerInput_fromtop(ns("disthc"), strong("Distance:"), choices = c('bray', "euclidean", 'jaccard'))
-                                          ),
-                                          pickerInput_fromtop(ns("method.hc0"),strong( "Method:"), choices = c("ward.D2", "ward.D", "single", "complete", "average", "mcquitty", "median", "centroid"))
-                            ))
-                   )
-         ),
-         uiOutput(ns('teste')),
-         uiOutput(ns('hc_error')),
-         tabsetPanel(id=ns("tabs_view"),title=NULL,
-                     #selected="tab4",
-                     tabPanel("1. Dendrogram",value="tab1"),
-                     tabPanel("2. Scree Plot",value="tab2"),
-                     tabPanel("3. Cut Dendrogram",value="tab3")),
 
-         tabsetPanel(
-           id=ns("tabs"),
-           type="hidden",
-           #selected="tab4",
+#actionLink(ns('save_bug'),"save_bug"),
+box_caret(
+  ns("box_setup"),
+  title="Model setup",
+  color="#374061ff",
+  inline=F,
+  fluidRow(
+    style="display: flex; flex-flow: row wrap;font-size: 12px",class="picker13",
+    column(
+      12,style="margin-bottom: 0px;",div(
+        style="gap: 10px;margin-bottom: 5px",class="som_grid",
+        virtualPicker_unique(
+          ns("data_hc"),
+          strong("Datalist:"),choices = NULL
+        ),
+        radioButtons(ns("model_or_data"), strong("Clustering target:"), choiceValues = c("data", "som codebook"), choiceNames = c("Numeric-Attribute", "SOM-codebook"),width="130px"),
+        div(
+          virtualPicker_unique(ns("som_model_name"), strong("Som model:"), choices=NULL, selected=NULL),
+          div(class="small_check",style="",
 
-           header=column(12,class="mp0",id=ns("Kcustom"),
-                         column(
-                           4,class="mp0",
-                           box_caret(
-                             ns("box_nclust"),
-                             title="Number of Clusters",
-                             color="#c3cc74ff",
-                             div(numericInput(ns("customKdata"),"Number of clusters: ",value = 3,step = 1),
-                                 uiOutput(ns("saveHC"))),
+              checkboxInput(ns('show_hcsom_fine'),em("Select layers"))
+          ),
+          div(class="picker_fit inline_pickers",
+              style="background:white;padding: 5px;display:none",
+              id=ns("hcsom_fine"),
+              #checkboxInput(ns("use_weights"),span("Use weights",tipright("Use user weights from som model to calculate a weighted mean distance matrix")),width="250px"),
+              virtualPicker_unique(
+                ns("som_whatmap"),
+                strong("Whatmap",tipright("SOM Layers for clustering")), choices = NULL,search=F,multiple=T,allOptionsSelectedText="All layers",
+                alwaysShowSelectedOptionsCount=F
+              )
+          ),
+        ),
 
 
-                           )
-                         )
-           ),
-           tabPanel(
-             "1. Dendrogram",
-             value="tab1",
-             column(
-               4,class="mp0",
-               box_caret(ns("box1_a"),
-                         title="Options",
-                         color="#c3cc74ff",
-                         div(textInput(ns("hc_title"), "Title", value =NULL),
-                             uiOutput(ns("labhc_out")))
-               )
-             ),
+        pickerInput_fromtop(ns("hc_fun"), strong("HC function:", actionLink(ns("help_hc_fun"), icon("fas fa-question-circle"))), choices = list("Hierarchical Clustering" = "hclust", "Agglomerative Nesting" = "agnes", "Divisive hierarchical clustering" = "diana")),
+        div(id=ns("disthc_id"),
+            pickerInput_fromtop(ns("disthc"), strong("Distance:"), choices = c('bray', "euclidean", 'jaccard'))
+        ),
+        pickerInput_fromtop(ns("method.hc0"),strong( "Method:"), choices = c("ward.D2", "ward.D", "single", "complete", "average", "mcquitty", "median", "centroid"))
 
-             column(
-               8,class="mp0",style="position: absolute; right: 0px; padding-left: 6px",
-               box_caret(ns("box1_b"),
-                         title="Plot",
-                         button_title=actionLink(ns("download_plot1"),"Download",icon("download")),
+      )
+    ),
+    column(12,style="margin-top: -5px;margin-bottom: 0px;",
+           uiOutput(ns("som_layers"))
+    )
 
-                         div(
-                           div(id=ns("hcut_btn1"),class="save_changes",
-                               actionButton(ns("run_hc1"),"RUN >>")
-                           ),
-                           uiOutput(ns("hcdata_plot"))
-                         )
-               )
-             )
-           ),
-           tabPanel(
-             "2. Scree Plot",
-             value="tab2",
-             column(
-               4,class="mp0",
-               box_caret(
-                 ns("box2_a"),
-                 title="Options",
-                 color="#c3cc74ff",
-                 div(
-                   div(style="display: flex",
-                       numericInput(ns("screeplot_hc_k"), span("k", tipright("maximum number of clusters to be tested")),NULL),
-                       div(id=ns('run_screeplot_hc_btn'),style="display: inline-block; vertical-align: top;", class="save_changes",actionButton(ns("run_screeplot_hc"), "Run screeplot"))
-                   ),
-                   div(style="margin-top: 20px; border-top: 1px solid gray",
-                       div(style="display: flex",
-                           checkboxInput(ns("show_smw_hc"), value = F,
-                                         strong(
-                                           "split moving window",
-                                           tipright("Performs split moving window to detect significant discontinuities in the relationship between the number of clusters and WSS values. Click for more information.")
-                                         )),
-                           div(id=ns('run_smw_hc_btn'),class="save_changes",actionButton(ns("run_smw_hc"),"RUN smw")),
-                           inline(uiOutput(ns("smw_validate")))
-                       ),
-                       div(id=ns("hc_smw_control"),
-                           # uiOutput("smw_hc_seed_out"),
-                           uiOutput(ns("smw_hc_w_out")),
-                           numericInput(ns("smw_hc_rand"),"N randomizations",50),
-                           numericInput(ns("smw_hc_tol"), span("tol", tiphelp("Adjusts sensitivity when identifying potential breakpoints. If the dissimilarity score (DS) exceeds -tol- times the standard deviation, a breakpoint is suggested.")), 1.5, step=0.1)
-                       )),
-                   div(
-                     actionLink(ns('down_results_screeplot'),"Download Results")
-                   )
-                 )
+  )
 
-               )
-             ),
+),
+#actionLink(ns('save_bug'),"save_bug"),
 
-             column(
-               8,class="mp0",style="position: absolute; right: 0px; padding-left: 6px",
-               box_caret(ns("box2_b"),
-                         title="Plot",
-                         button_title=actionLink(ns("download_plot2"),"Download",icon("download")),
-                         div(
-                           uiOutput(ns('smw_error')),
-                           uiOutput(ns('smw_error2')),
-                           uiOutput(ns("hc_tab2_out")))
-               )
-             )
+uiOutput(ns('hc_error')),
+tabsetPanel(id=ns("tabs_view"),title=NULL,
+            #selected="tab4",
+            tabPanel("1. Dendrogram",value="tab1"),
+            tabPanel("2. Scree Plot",value="tab2"),
+            tabPanel("3. Cut Dendrogram",value="tab3")),
 
-           ),
-           tabPanel(
-             '3. Cut Dendrogram',
-             value="tab3",
-             column(
-               4,class="mp0",style="margin-left: -1px; padding-right: 3px",
-               div(style="overflow-y: auto;height: calc(100vh - 200px); padding-left: 1px",
-                   box_caret(
-                     ns("box3_a"),
-                     title="Options",
-                     color="#c3cc74ff",
-                     div(
-                       div(
+tabsetPanel(
+  id=ns("tabs"),
+  type="hidden",
+  #selected="tab4",
 
-                         div(style='border-bottom: 1px solid gray; border-top: 1px solid gray; padding-bottom: 5px',
-                             div(
-                               checkboxInput(ns("hc_sort"),span("Sort clusters",tiphelp("Sort clusters by a  variable")),value=F),
-                               div(style="margin-left: 15px;",
-                                   uiOutput(ns("hc_sort_datalist")) ,
+  header=column(12,class="mp0",id=ns("Kcustom"),
+                column(
+                  4,class="mp0",
+                  box_caret(
+                    ns("box_nclust"),
+                    title="Number of Clusters",
+                    color="#c3cc74ff",
+                    div(numericInput(ns("customKdata"),"Number of clusters: ",value = 3,step = 1),
+                        uiOutput(ns("saveHC")),
 
-                                   uiOutput(ns("hc_ord_factor")))
-
-                             )
-                         ),
-                         pickerInput_fromtop(inputId = ns("hcdata_palette"),label = "HC Palette:",NULL),
-                         pickerInput_fromtop(ns("hcut_labels"),"Factor",NULL),
-                         div(
-                           pickerInput_fromtop(ns("hcut_theme"),"Theme:",c('theme_minimal','theme_grey','theme_linedraw','theme_light','theme_bw','theme_classic')),
-                           numericInput(ns("hcut_cex"),"Size",value = 12,step = 1),
-                           numericInput(ns("hcut_lwd"),"Line width",value = .5,step = .5),
-                           textInput(ns("hcut_main"),"Title","Cluster Dendrogram"),
-                           textInput(ns("hcut_ylab"),"y label","Height"),
-                           textInput(ns("hcut_xlab"),"x label","Observations"),
-                           numericInput(ns("hcut_xlab_adj"),"xlab v-adj",value = 30,step = 1),
-                           numericInput(ns("hcut_offset"),"offset",value = -.1,step = 0.05),
-                           radioButtons(ns("hcut_legend_type"),"Legend:",c("inside","outside"), inline=T)
-                         )
-                       )
-                     )
-
-                   )
-               )),
-
-             column(
-               8,class="mp0",style="position: absolute; right: 12px; padding-left: 15px",
-               box_caret(ns("box3_b"),
-                         title="Plot",
-                         button_title=actionLink(ns("download_plot3"),"Download",icon("download")),
-                         div(
-                           div(id=ns("hcut_btn"),class="save_changes",
-                               actionButton(ns("run_hc"),"RUN >>")
-                           ),
-
-                           uiOutput(ns("hcut_plot"))
-                         )
-               )
-             )),
-           tabPanel('4. Codebook clusters',
-                    value="tab4",
-                    column(
-                      4,class="mp0",style="margin-left: -1px; padding-right: 3px",
-                      div(style="overflow-y: auto;height: calc(100vh - 200px); padding-left: 1px",
-                          box_caret(
-                            ns("box_4mapping"),
-                            color="#c3cc74ff",
-                            tip=tiphelp("Add predictions from new data to the trained SOM", "bottom"),
-                            title=span(style="display: inline-block",
-                                       class="checktitle",
-                                       checkboxInput(ns("hcsom_newdata") ,label =strong(span("Predict")),F,width="80px")
-                            ),
+                        div(style='border-bottom: 1px solid gray; border-top: 1px solid gray; padding-bottom: 5px',
                             div(
-                              uiOutput(ns("hc_save_tab4")),
-                              uiOutput(ns("hcsom_newdata_mess")),
-                              uiOutput(ns("out_hcsom_whatmap")))
-                          ),
-                          box_caret(
-                            ns("box4_a"),
-                            title="Neurons",
-                            color="#c3cc74ff",
-                            div(
+                              checkboxInput(ns("hc_sort"),span("Sort clusters",tiphelp("Sort clusters by a  variable")),value=F),
+                              div(style="margin-left: 15px;",
+                                  pickerInput_fromtop(ns("hc_ord_datalist"),"Datalist:",choices=NULL,width="200px", options=shinyWidgets::pickerOptions(liveSearch =T)),
 
-                              checkboxInput(ns("fill_neurons"),"Fill",T),
-                              pickerInput_fromtop(ns("bg_palette"),label ="Palette",NULL),
-                              div(id=ns("neu_options"),
-
-
-                                  numericInput(ns("pcodes_bgalpha"),"Lightness",value = 0,min = 0,max = 1,step = .1),
-                                  pickerInput_fromtop(ns("pclus_border"),label ='Border:',choices = NULL),
-                              ),
-                              numericInput(ns("border_width"),"Border width",value = 0.5,step=0.1),
-                              textInput(ns("neuron_legend_text"),"Legend text","Group")
-
-                            )),
-                          box_caret(
-                            ns("box4_points"),
-                            color="#c3cc74ff",
-                            title=span(style="display: inline-block",
-                                       class="checktitle",
-                                       checkboxInput(ns("pclus_addpoints"),"Points",value=T,width="80px")
-                            ),
-                            div(id=ns("pclus_points_inputs"),
-                                pickerInput_fromtop(inputId = ns("pclus_points_palette"),label ="Palette",choices =NULL),
-                                div(
-                                  id=ns("options_points_factor"),
-                                  pickerInput_fromtop(ns("pclus_points_factor"),"Factor",
-                                                      choices = NULL),
-                                  tags$div(id=ns("color_factor"),
-                                           class="form-group shiny-input-container",
-                                           tags$label(class = "control-label", " + Factor"),
-                                           tags$div(class="dummy-input",
-                                                    "Choose a gradient palette for adding a factor",style="color: gray"
-                                           )
-                                  ),
-
-                                  pickerInput_fromtop(inputId = ns("pclus_symbol"),label = "Shape",choices=NULL),
-                                  numericInput(ns("pclus_points_size"),"Size",value = 1,min = 0.1,max = 3,step = .1),
-                                  checkboxInput(ns("pclus_show_legend"),"Show legend",T),
-                                  textInput(ns("pclus_points_legend_text"),"Legend text","Observations"),
-
-                                ))
-                          ),
-                          box_caret(
-                            ns("box4_text"),
-                            color="#c3cc74ff",
-                            title=span(style="display: inline-block",
-                                       class="checktitle",
-                                       checkboxInput(ns("pclus_addtext"),"Labels",value=F,width="80px")
-                            ),
-                            div(id=ns('pclus_addtext_out'),
-                                pickerInput_fromtop(ns("pclus_text_palette"),label ="Palette",NULL),
-                                pickerInput_fromtop(ns("pclus_text_factor"),"Factor",choices = NULL),
-                                numericInput(ns("pclus_text_size"),"Size",value = 1,min = 0.1,max = 3,step = .1),
-                                checkboxInput(ns("text_repel"),"Repel Labels",F),
-                                numericInput(ns("max.overlaps"),"max.overlaps",value = 10,min = 1,step = 1)
-                            )),
-                          box_caret(
-                            ns("box4_vfm"),
-                            color="#c3cc74ff",
-                            button_title=tipify(actionLink(ns("varfacmap"), icon("fas fa-question-circle")),"Click for details","right"),
-                            title=span(style="display: inline-block",
-                                       class="checktitle",
-
-                                       checkboxInput(ns("varfacmap_action"),span("Variable factor map"),value =T,width="210px"),
-
-                            ),
-                            div(id=ns('varfac_out'),
-                                pickerInput_fromtop(ns("vfm_type"),"Show correlation:",choices =list("Highest"='var', "Chull"="cor","Cluster"="cor_hc")),
-
-                                numericInput(ns("npic"), span(tiphelp("Number of variables to display"),"Number"), value = 10, min = 2),
-                                numericInput(ns("pclus.cex.var"), "Var size", value = 1, min = 2),
-                                div(class="palette",
-                                    pickerInput_fromtop(ns("p.clus.col.text"),label = "Var text color",choices =NULL )),
-                                pickerInput_fromtop(ns("var_bg"),label = "Var background",choices = NULL),
-                                numericInput(ns("var_bg_transp"), "Var transparency", value = 0, min = 2))
-                          ),
-                          box_caret(
-                            ns("box_var_pie"),
-                            color="#c3cc74ff",
-                            button_title=tipify(actionLink(ns("var_pie_help"), icon("fas fa-question-circle")),"Click for details","right"),
-                            title=span(style="display: inline-block",
-                                       class="checktitle",
-
-                                       checkboxInput(ns("var_pie"),strong("Variable pies"),value =F,width="210px"),
-
-                            ),
-
-                            div(id=ns('var_pie_out'),
-                                pickerInput_fromtop(ns("var_pie_type"),"Show:",choices =list("Top importance by cluster"='top_hc', "Top importance"="top","Top weight"="top_w","Manual"="manual")),
-                                pickerInput_fromtop(ns("var_pie_layer"),"Layer",NULL),
-                                div(class="virtual-130",
-                                    virtualPicker(ns("var_pie_manual"),"variables selected")
-                                ),
-
-                                numericInput(ns("var_pie_n"), span(tipright("Number of variables to display"),"Number"), value = 10, min = 2),
-                                pickerInput_fromtop(ns("var_pie_bg"),label = "Palette",choices = NULL),
-                                numericInput(ns("var_pie_transp"), "Transparency", value = 0, min = 2))
-                          ),
-
-
-                          box_caret(
-                            ns("box4_more"),
-                            title = "General options",
-                            color="#c3cc74ff",
-                            div(
-                              numericInput(ns("base_size"),"Base size",value = 12),
-                              textInput(ns("hcs_title"), "Title: ", ""),
-                              checkboxInput(ns("hcs_theme"),label = "show neuron coordinates",value = F),
-                              div(actionLink(ns('create_codebook'),"Create Datalist with the Codebook and HC class")),
-                              div(tipify(downloadLink(ns('down_hc_model'),"Download HC model", style="button_active"),"Download file as .rds"))
-                            )
-                          )
-
-                      )),
-                    column(
-                      8,class="mp0",style="right: 12px;margin-top: -80px; padding-left: 15px",
-                      box_caret(
-                        ns("box4_b"),
-                        title="Plot",
-                        button_title=actionLink(ns("download_plot4"),"Download",icon("download")),
-                        div(
-                          id=ns("hc_tab4_out"),
-                          div(
-                            div(id=ns("run_bmu_btn"),
-                                actionButton(ns("run_bmu"),"RUN >>")
-                            ),
-                            div(
-                              style="position: absolute;top: 25px; right: 0px",
-                              uiOutput(ns("importance_results")),
-                              uiOutput(ns("create_importance_results"))
-
+                                  pickerInput_fromtop(ns("hc_ord_factor"),"Variable:",choices = NULL,selected=NULL,options=shinyWidgets::pickerOptions(liveSearch=T))
+                              )
 
                             )
-                          ),
-                          plotOutput(ns("BMU_PLOT")),
-
-
                         )
-
-                      )
-                    )
+                    ),
 
 
-           ),
-           tabPanel(
-             '5. Codebook screeplot',
-             value='tab5',
-             column(
-               4,class="mp0",
-               box_caret(
-                 ns("box5_a"),
-                 title="Options",
+                  )
+                )
+  ),
+  tabPanel(
+    "1. Dendrogram",
+    value="tab1",
+    column(
+      4,class="mp0",
+      box_caret(ns("box1_a"),
+                title="Options",
+                color="#c3cc74ff",
+                div(textInput(ns("hc_title"), "Title", value =NULL),
+                    uiOutput(ns("labhc_out")))
+      )
+    ),
 
-                 color="#c3cc74ff",
-                 div(
-                   numericInput(ns("mapcode_loop_K"), "K", 20),
-                   checkboxGroupInput(ns("show_mapcode_errors"), 'Show error: ',
-                                      choices = c("Within Sum of Squares", "Dendrogram Height"), selected=c("Within Sum of Squares", "Dendrogram Height")),
-                   textInput(ns('code_screeplot_title'), "Title", ""),
-                   pickerInput_fromtop(ns('code_screeplot_agg'), "Aggregate Errors", c("Mean", "Median", "Sum"))
+    column(
+      8,class="mp0",style="position: absolute; right: 0px; padding-left: 6px",
+      box_caret(ns("box1_b"),
+                title="Plot",
+                button_title=actionLink(ns("download_plot1"),"Download",icon("download")),
 
+                div(
+                  div(id=ns("hcut_btn1"),class="save_changes",
+                      actionButton(ns("run_hc1"),"RUN >>")
+                  ),
+                  uiOutput(ns("hcdata_plot"))
+                )
+      )
+    )
+  ),
+  tabPanel(
+    "2. Scree Plot",
+    value="tab2",
+    column(
+      4,class="mp0",
+      box_caret(
+        ns("box2_a"),
+        title="Options",
+        color="#c3cc74ff",
+        div(
+          div(style="display: flex",
+              numericInput(ns("screeplot_hc_k"), span("k", tipright("maximum number of clusters to be tested")),NULL),
+              div(id=ns('run_screeplot_hc_btn'),style="display: inline-block; vertical-align: top;", class="save_changes",actionButton(ns("run_screeplot_hc"), "Run screeplot"))
+          ),
+          div(style="margin-top: 20px; border-top: 1px solid gray",
+              div(style="display: flex",
+                  checkboxInput(ns("show_smw_hc"), value = F,
+                                strong(
+                                  "split moving window",
+                                  tipright("Performs split moving window to detect significant discontinuities in the relationship between the number of clusters and WSS values. Click for more information.")
+                                )),
+                  div(id=ns('run_smw_hc_btn'),class="save_changes",actionButton(ns("run_smw_hc"),"RUN smw")),
+                  inline(uiOutput(ns("smw_validate")))
+              ),
+              div(id=ns("hc_smw_control"),
+                  # uiOutput("smw_hc_seed_out"),
+                  uiOutput(ns("smw_hc_w_out")),
+                  numericInput(ns("smw_hc_rand"),"N randomizations",50),
+                  numericInput(ns("smw_hc_tol"), span("tol", tiphelp("Adjusts sensitivity when identifying potential breakpoints. If the dissimilarity score (DS) exceeds -tol- times the standard deviation, a breakpoint is suggested.")), 1.5, step=0.1)
+              )),
+          div(
+            actionLink(ns('down_results_screeplot'),"Download Results")
+          )
+        )
+
+      )
+    ),
+
+    column(
+      8,class="mp0",style="position: absolute; right: 0px; padding-left: 6px",
+      box_caret(ns("box2_b"),
+                title="Plot",
+                button_title=actionLink(ns("download_plot2"),"Download",icon("download")),
+                div(
+                  uiOutput(ns('smw_error')),
+                  uiOutput(ns('smw_error2')),
+                  uiOutput(ns("hc_tab2_out")))
+      )
+    )
+
+  ),
+  tabPanel(
+    '3. Cut Dendrogram',
+    value="tab3",
+    column(
+      4,class="mp0",style="margin-left: -1px; padding-right: 3px",
+      div(style="overflow-y: auto;height: calc(100vh - 200px); padding-left: 1px",
+          box_caret(
+            ns("box3_a"),
+            title="Options",
+            color="#c3cc74ff",
+            div(
+              div(
+                pickerInput_fromtop(inputId = ns("hcdata_palette"),label = "HC Palette:",NULL),
+                pickerInput_fromtop(ns("hcut_labels"),"Factor",NULL),
+                div(
+                  pickerInput_fromtop(ns("hcut_theme"),"Theme:",c('theme_minimal','theme_grey','theme_linedraw','theme_light','theme_bw','theme_classic')),
+                  numericInput(ns("hcut_cex"),"Size",value = 12,step = 1),
+                  numericInput(ns("hcut_lwd"),"Line width",value = .5,step = .5),
+                  textInput(ns("hcut_main"),"Title","Cluster Dendrogram"),
+                  textInput(ns("hcut_ylab"),"y label","Height"),
+                  textInput(ns("hcut_xlab"),"x label","Observations"),
+                  numericInput(ns("hcut_xlab_angle"),"rotate labels",value = 0,step =15),
+                  numericInput(ns("hcut_offset"),"offset",value = -.1,step = 0.05),
+                  checkboxInput(ns("hcut_log"),"Log Scale:",F)
+                )
+              )
+            )
+
+          )
+      )),
+
+    column(
+      8,class="mp0",style="position: absolute; right: 12px; padding-left: 15px",
+      box_caret(ns("box3_b"),
+                title="Plot",
+                button_title=actionLink(ns("download_plot3"),"Download",icon("download")),
+                div(
+                  div(id=ns("hcut_btn"),class="save_changes",
+                      actionButton(ns("run_hc"),"RUN >>")
+                  ),
+
+                  uiOutput(ns("hcut_plot"))
+                )
+      )
+    )),
+  tabPanel('4. Codebook clusters',
+           value="tab4",
+           column(
+             4,class="mp0",style="margin-left: -1px; padding-right: 3px",
+             div(style="overflow-y: auto;height: calc(100vh - 200px); padding-left: 1px",
+                 box_caret(
+                   ns("box_4mapping"),
+                   color="#c3cc74ff",
+                   tip=tiphelp("Add predictions from new data to the trained SOM", "bottom"),
+                   title=span(style="display: inline-block",
+                              class="checktitle",
+                              checkboxInput(ns("hcsom_newdata") ,label =strong(span("Predict")),F,width="80px")
+                   ),
+                   div(
+                     uiOutput(ns("hc_save_tab4")),
+                     uiOutput(ns("hcsom_newdata_mess")),
+                     uiOutput(ns("out_hcsom_whatmap")))
+                 ),
+                 box_caret(
+                   ns("box4_a"),
+                   title="Neurons",
+                   color="#c3cc74ff",
+                   div(
+
+                     checkboxInput(ns("fill_neurons"),"Fill",T),
+                     pickerInput_fromtop(ns("bg_palette"),label ="Palette",NULL),
+                     div(id=ns("neu_options"),
+
+
+                         numericInput(ns("pcodes_bgalpha"),"Lightness",value = 0,min = 0,max = 1,step = .1),
+                         pickerInput_fromtop(ns("pclus_border"),label ='Border:',choices = NULL),
+                     ),
+                     numericInput(ns("border_width"),"Border width",value = 0.5,step=0.1),
+                     textInput(ns("neuron_legend_text"),"Legend text","Group")
+
+                   )),
+                 box_caret(
+                   ns("box4_points"),
+                   color="#c3cc74ff",
+                   title=span(style="display: inline-block",
+                              class="checktitle",
+                              checkboxInput(ns("pclus_addpoints"),"Points",value=T,width="80px")
+                   ),
+                   div(id=ns("pclus_points_inputs"),
+                       pickerInput_fromtop(inputId = ns("pclus_points_palette"),label ="Palette",choices =NULL),
+                       div(
+                         id=ns("options_points_factor"),
+                         pickerInput_fromtop(ns("pclus_points_factor"),"Factor",
+                                             choices = NULL),
+                         tags$div(id=ns("color_factor"),
+                                  class="form-group shiny-input-container",
+                                  tags$label(class = "control-label", " + Factor"),
+                                  tags$div(class="dummy-input",
+                                           "Choose a gradient palette for adding a factor",style="color: gray"
+                                  )
+                         ),
+
+                         pickerInput_fromtop(inputId = ns("pclus_symbol"),label = "Shape",choices=NULL),
+                         numericInput(ns("pclus_points_size"),"Size",value = 1,min = 0.1,max = 3,step = .1),
+                         checkboxInput(ns("pclus_show_legend"),"Show legend",T),
+                         textInput(ns("pclus_points_legend_text"),"Legend text","Observations"),
+
+                       ))
+                 ),
+                 box_caret(
+                   ns("box4_text"),
+                   color="#c3cc74ff",
+                   title=span(style="display: inline-block",
+                              class="checktitle",
+                              checkboxInput(ns("pclus_addtext"),"Labels",value=F,width="80px")
+                   ),
+                   div(id=ns('pclus_addtext_out'),
+                       pickerInput_fromtop(ns("pclus_text_palette"),label ="Palette",NULL),
+                       pickerInput_fromtop(ns("pclus_text_factor"),"Factor",choices = NULL),
+                       numericInput(ns("pclus_text_size"),"Size",value = 1,min = 0.1,max = 3,step = .1),
+                       checkboxInput(ns("text_repel"),"Repel Labels",F),
+                       numericInput(ns("max.overlaps"),"max.overlaps",value = 10,min = 1,step = 1)
+                   )),
+                 box_caret(
+                   ns("box4_vfm"),
+                   color="#c3cc74ff",
+                   button_title=tipify(actionLink(ns("varfacmap"), icon("fas fa-question-circle")),"Click for details","right"),
+                   title=span(style="display: inline-block",
+                              class="checktitle",
+
+                              checkboxInput(ns("varfacmap_action"),span("Variable factor map"),value =T,width="210px"),
+
+                   ),
+                   div(id=ns('varfac_out'),
+                       pickerInput_fromtop(ns("vfm_layer"),"Layer:",choices =NULL),
+                       pickerInput_fromtop(ns("vfm_type"),"Show correlation:",choices =list("Highest"='var', "Chull"="cor","Cluster"="cor_hc")),
+
+                       numericInput(ns("npic"), span(tiphelp("Number of variables to display"),"Number"), value = 10, min = 2),
+                       numericInput(ns("pclus.cex.var"), "Var size", value = 1, min = 2),
+                       div(class="palette",
+                           pickerInput_fromtop(ns("p.clus.col.text"),label = "Var text color",choices =NULL )),
+                       pickerInput_fromtop(ns("var_bg"),label = "Var background",choices = NULL),
+                       numericInput(ns("var_bg_transp"), "Var transparency", value = 0, min = 2),
+
+                       div(actionLink(ns("create_dl_vfm"),span("Create Datalist",tiphelp("Create Datalist with variables from VFM")),icon("creative-commons-share")))
+                   )
+                 ),
+                 box_caret(
+                   ns("box_var_pie"),
+                   color="#c3cc74ff",
+                   button_title=tipify(actionLink(ns("var_pie_help"), icon("fas fa-question-circle")),"Click for details","right"),
+                   title=span(style="display: inline-block",
+                              class="checktitle",
+
+                              checkboxInput(ns("var_pie"),strong("Variable pies"),value =F,width="210px"),
+
+                   ),
+
+                   div(id=ns('var_pie_out'),
+                       pickerInput_fromtop(ns("var_pie_type"),"Show:",choices =list("Top importance by cluster"='top_hc', "Top importance"="top","Top weight"="top_w","Manual"="manual")),
+                       pickerInput_fromtop(ns("var_pie_layer"),"Layer",NULL),
+                       div(class="virtual-130",
+                           virtualPicker(ns("var_pie_manual"),"variables selected")
+                       ),
+
+                       numericInput(ns("var_pie_n"), span(tipright("Number of variables to display"),"Number"), value = 10, min = 2),
+                       pickerInput_fromtop(ns("var_pie_bg"),label = "Palette",choices = NULL),
+                       numericInput(ns("var_pie_transp"), "Transparency", value = 0, min = 2))
+                 ),
+
+
+                 box_caret(
+                   ns("box4_more"),
+                   title = "General options",
+                   color="#c3cc74ff",
+                   div(
+                     numericInput(ns("base_size"),"Base size",value = 12),
+                     textInput(ns("hcs_title"), "Title: ", ""),
+                     checkboxInput(ns("hcs_theme"),label = "show neuron coordinates",value = F),
+                     div(actionLink(ns('create_codebook'),"Create Datalist with the Codebook and HC class")),
+                     div(tipify(downloadLink(ns('down_hc_model'),"Download HC model", style="button_active"),"Download file as .rds"))
+                   )
                  )
 
-               )
-             ),
+             )),
+           column(
+             8,class="mp0",style="position: absolute;right: 0px",
+             box_caret(
+               ns("box4_b"),
+               title="Plot",
+               button_title=actionLink(ns("download_plot4"),"Download",icon("download")),
+               div(
+                 id=ns("hc_tab4_out"),
+                 div(
+                   div(id=ns("run_bmu_btn"),
+                       actionButton(ns("run_bmu"),"RUN >>")
+                   ),
+                   div(
+                     style="position: absolute;top: 25px; right: 0px",
+                     uiOutput(ns("importance_results")),
+                     uiOutput(ns("create_importance_results"))
 
-             column(
-               8,class="mp0",style="position: absolute; right: 0px; padding-left: 6px",
-               box_caret(ns("box5_b"),
-                         title="Plot",
-                         button_title=actionLink(ns("download_plot5"),"Download",icon("download")),
-                         div(
-                           actionButton(ns("mapcode_loop_go"), "Run loop"),
-                           uiOutput(ns("plot5")))
+
+                   )
+                 ),
+                 plotOutput(ns("BMU_PLOT")),
+
+
                )
+
              )
-
            )
-         )
+
+
+  ),
+  tabPanel(
+    '5. Codebook screeplot',
+    value='tab5',
+    column(
+      4,class="mp0",
+      box_caret(
+        ns("box5_a"),
+        title="Options",
+
+        color="#c3cc74ff",
+        div(
+          numericInput(ns("mapcode_loop_K"), "K", 20),
+          checkboxGroupInput(ns("show_mapcode_errors"), 'Show error: ',
+                             choices = c("Within Sum of Squares", "Dendrogram Height"), selected=c("Within Sum of Squares", "Dendrogram Height")),
+          textInput(ns('code_screeplot_title'), "Title", ""),
+          pickerInput_fromtop(ns('code_screeplot_agg'), "Aggregate Errors", c("Mean", "Median", "Sum"))
+
+        )
+
+      )
+    ),
+
+    column(
+      8,class="mp0",style="position: absolute; right: 0px; padding-left: 6px",
+      box_caret(ns("box5_b"),
+                title="Plot",
+                button_title=actionLink(ns("download_plot5"),"Download",icon("download")),
+                div(
+                  actionButton(ns("mapcode_loop_go"), "Run loop"),
+                  uiOutput(ns("plot5")))
+      )
+    )
+
+  )
+)
   )
 }
 
@@ -393,30 +789,307 @@ hc_module$server<-function(id, vals){
   moduleServer(id,function(input, output, session) {
     ns<-session$ns
 
+    ##
+
+
+    som.hc.object<-reactive({
+      res<-phc()$hc.object
+      req(res)
+      res
+    })
+    som.hc.clusters<-reactive({
+      res<-phc()$som.hc
+      req(res)
+      res
+    })
+    som.obs.clusters<-reactive({
+      res<-phc()$somC
+      req(res)
+      attr(res,"order")<-list(
+        hc_sort=input$hc_sort,
+        hc_ord_datalist=input$hc_ord_datalist,
+        hc_ord_factor=input$hc_ord_factor
+      )
+
+      res
+    })
+    cluster_already<-reactive({
+      req(input$data_hc)
+      datao<-vals$saved_data[[input$data_hc]]
+      factors<-attr(datao,"factors")
+      req(rownames(factors)%in%names(phc()$somC))
+      hc<-as.character(phc()$somC[rownames(factors)])
+      fac<-as.list(factors)
+      fac<-lapply(fac,function(x) as.character(x))
+      cluster_already<-which(sapply(fac, function(x) identical(x, hc)))
+      names(cluster_already)
+    })
+    output$saveHC<-renderUI({
+
+      clu_al<-cluster_already()
+      if (length(cluster_already()) > 0) {
+        class1<-"button_normal"
+        class2<-"div"
+        class3<-'divnull'
+      } else {
+        class1<-"save_changes"
+        class2<-"divnull"
+        class3<-'div'
+      }
+
+      div(style="display: flex",
+          div(style="display: flex",
+              div(class = class1,style="padding-right: 5px",
+                  actionButton(ns("tools_savehc"), icon("fas fa-save"),  type = "action", value = FALSE)), span(style = "font-size: 12px", icon("fas fa-hand-point-left"), "Save Clusters in Datalist ", strong("X"), class = class3)
+          )
+          ,
+          div(style = "margin-bottom: 5px", class = class2,style="text-direction: normal",em(paste0("The current clustering is saved in the Factor-Attribute as '", paste0(clu_al, collapse = "; "), "'"))))
+    })
+
+    observeEvent(som.hc.object(),{
+      model_name=hcargs()$model_name
+      attr_hc=hcargs()$attr_hc
+      attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"hc.object")<-som.hc.object()
+    })
+
+    observeEvent(phc(),{
+      model_name=hcargs()$model_name
+      attr_hc=hcargs()$attr_hc
+      nl<-as.character(nlevels(som.hc.clusters()))
+      attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"hc.clusters")[[nl]]<-som.hc.clusters()
+      attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"obs.clusters")[[nl]]<-som.obs.clusters()
+    })
+    observeEvent(getdata_hc(),{
+
+      if(is.null(attr(vals$saved_data[[input$data_hc]],"hc"))){
+        attr(vals$saved_data[[input$data_hc]],"hc")<-list()
+        attr(vals$saved_data[[input$data_hc]],"hc")[["Numeric-hc"]]<-"hc-models"
+      }
+    })
+    hcargs<-reactive({
+      if(input$model_or_data == "som codebook"){
+        attr_hc="som"
+        model_name=input$som_model_name
+      } else{
+        attr_hc="hc"
+        model_name='Numeric-hc'
+      }
+      list(attr_hc=attr_hc,model_name=model_name)
+    })
+    cur_som.hc.object<-reactive({
+      vals$cur_hc<-NULL
+      model_name=hcargs()$model_name
+      attr_hc=hcargs()$attr_hc
+      cur<-attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"hc.object")
+      #vals$cur_hc<-cur
+
+
+      req(cur)
+      cur
+    })
+
+
+    observe({
+      model_name=hcargs()$model_name
+      attr_hc=hcargs()$attr_hc
+      req(input$data_hc)
+      cur<-attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"obs.clusters")[[ as.character(input$customKdata)]]
+      shinyjs::toggleClass("hcut_btn","save_changes",condition = is.null(cur))
+
+    })
+    cur_som.obs.clusters<-reactive({
+      model_name=hcargs()$model_name
+      attr_hc=hcargs()$attr_hc
+      cur<-attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"obs.clusters")[[ as.character(input$customKdata)]]
+      req(cur)
+      cur
+    })
+    cur_som.hc.clusters<-reactive({
+      model_name=hcargs()$model_name
+      attr_hc=hcargs()$attr_hc
+      cur<-attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"hc.clusters")[[ as.character(input$customKdata)]]
+      req(cur)
+      cur
+    })
+
+    observeEvent(cur_som.obs.clusters(),{
+      res<-attr(cur_som.obs.clusters(),"order")
+      updateCheckboxInput(session,'hc_sort',value=res$hc_sort)
+      updatePickerInput(session,'hc_ord_factor',selected=res$hc_ord_factor)
+      updatePickerInput(session,'hc_ord_factor',selected=res$hc_ord_factor)
+    })
+
+
+
+
+
+
+
+    hcplot3<-reactiveVal()
+    hcut_argsplot<-reactive({
+      hc.object<-cur_som.hc.object()
+      hc.clusters<-cur_som.hc.clusters()
+      obs.clusters<-cur_som.obs.clusters()
+      args<-list(
+        obs.clusters=obs.clusters,
+        hc.object=hc.object,
+        hc.clusters=hc.clusters,
+        palette=vals$newcolhabs[[input$hcdata_palette]],
+        labels=get_hcut_labels(),
+        lwd=input$hcut_lwd,
+        base_size=input$hcut_cex,
+        main=input$hcut_main,
+        xlab=input$hcut_xlab,
+        ylab=input$hcut_ylab,
+        theme=input$hcut_theme,
+        offset_labels=input$hcut_offset,
+        angle=input$hcut_xlab_angle,
+        log=input$hcut_log
+      )
+      args
+    })
+    output$hcut_plot<-renderUI({
+      renderPlot({
+        args<-hcut_argsplot()
+
+        p<-do.call(gg_dendrogram,args)
+
+        hcplot3(p)
+        p
+
+
+      })
+    })
+    observeEvent(args_hc2(),{
+      vals$hc_messages<-NULL
+      hcplot3(NULL)
+      #  shinyjs::addClass("hcut_btn","save_changes")
+
+    })
+    observeEvent(ignoreInit = T,input$download_plot3,{
+      vals$hand_plot<-"generic_gg"
+      module_ui_figs("downfigs")
+      generic=hcplot3()
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Dendrogram - cut", name_c="dendcut")
+    })
+
+    argsplot_somplot<-reactive({
+
+
+      req(input$pclus_points_palette)
+      req(input$pcodes_bgalpha)
+
+
+      indicate=indicate_hc()
+      m<-getmodel_hc()
+      som.hc<-cur_som.hc.clusters()
+
+      tryco<-try(copoints_scaled(), silent = T)
+      req(class(tryco)!='try-error')
+      trybp<-try( bp_som(), silent = T)
+      req(class(trybp)!='try-error')
+      errors<-NULL
+      copoints2<-vals$copoints2
+      copoints3<-copoints2
+      args<-list(m=m,
+                 hexs=get_network(),
+                 points_tomap=copoints_scaled(),
+                 bp=bp_som(),
+                 points=input$pclus_addpoints,
+                 points_size=input$pclus_points_size,
+                 points_palette=input$pclus_points_palette,
+                 pch=as.numeric(input$pclus_symbol),
+                 text=input$pclus_addtext,
+                 text_size=input$pclus_text_size,
+                 text_palette=input$pclus_text_palette,
+                 bg_palette=input$bg_palette,
+                 newcolhabs=vals$newcolhabs,
+                 bgalpha=input$pcodes_bgalpha,
+                 border=input$pclus_border,
+                 indicate=indicate$indicate,
+                 cex.var=as.numeric(input$pclus.cex.var),
+                 col.text=input$p.clus.col.text,
+                 col.bg.var=input$var_bg,
+                 col.bg.var.alpha=1-input$var_bg_transp,
+                 show_error=errors,
+                 base_size=input$base_size,
+                 show_neucoords=input$hcs_theme,
+                 newdata=input$newdata_hc,
+                 title=input$hcs_title,
+                 hc=som.hc,
+                 var_pie=input$var_pie,
+                 var_pie_type=input$var_pie_type,
+                 n_var_pie=input$var_pie_n,
+                 Y_palette=input$var_pie_bg,
+                 var_pie_transp=input$var_pie_transp,
+                 var_pie_layer=input$var_pie_layer,
+                 pie_variables=input$var_pie_manual,
+                 border_width=input$border_width,
+                 fill_neurons=input$fill_neurons,
+                 text_repel=input$text_repel,
+                 max.overlaps=input$max.overlaps,
+                 show_legend=input$pclus_show_legend,
+                 neuron_legend=input$neuron_legend_text,
+                 points_legend=input$pclus_points_legend_text
+      )
+
+      args
+
+    })
+
+    output$BMU_PLOT<-renderPlot({
+
+      args<-argsplot_somplot()
+
+      args$hc<-cur_som.hc.clusters()
+      p<-do.call(bmu_plot_hc,args)
+      hcplot4(p)
+      p
+
+
+    })
+    observeEvent(argsplot_somplot(),{
+      vals$hc_messages<-NULL
+      shinyjs::addClass("run_bmu_btn","save_changes")
+    })
+    hcplot4<-reactiveVal()
+    observeEvent(hcplot4(),{
+      shinyjs::removeClass("run_bmu_btn","save_changes")
+    })
+    ##
+
+    observeEvent(input$show_hcsom_fine,ignoreInit = T,{
+      shinyjs::toggle("hcsom_fine")
+    })
+
+
+
+
     output$importance_results<-renderUI({
       imp_results<-attr(hcplot4(),"imp_results")
-      req(imp_results)
+      #req(imp_results)
       actionLink(ns("show_hc_imp"),"Importance results",icon("expand"))
     })
     output$create_importance_results<-renderUI({
       p<-hcplot4()
-      imp_results<-attr(p,"imp_results")
-      imp_layer<-attr(p,"imp_layer")
-      req(imp_layer%in%names(vals$saved_data))
-      req(imp_results)
+      #imp_results<-attr(p,"imp_results")
+      imp_vars<-attr(p,"imp_vars")
+      req(imp_vars)
+      #req(imp_results)
       div(actionLink(ns("create_hc_imp"),span("Create Datalist",tiphelp("Create Datalist with selected variables for pies")),icon("creative-commons-share")))
     })
 
     observeEvent(input$create_hc_imp,{
 
       p<-hcplot4()
-      imp_results<-attr(p,"imp_results")
+
       imp_layer<-attr(p,"imp_layer")
       imp_vars<-attr(p,"imp_vars")
+
       req(imp_layer)
       req(imp_vars)
       req(imp_layer%in%names(vals$saved_data))
-
+      imp_vars<-attr(p,"imp_vars")
       data_o<-vals$saved_data[[imp_layer]]
       req(data_o)
       req(imp_vars%in%colnames(data_o))
@@ -432,6 +1105,11 @@ hc_module$server<-function(id, vals){
       module_save_changes$ui(ns("som-imp-create"), vals)
 
     })
+
+    observe({
+      rownames(bp_som())
+    })
+
     module_save_changes$server("som-imp-create", vals)
     observeEvent(input$show_hc_imp,{
       data<-attr(hcplot4(),"imp_results")
@@ -453,7 +1131,7 @@ hc_module$server<-function(id, vals){
       )
     })
     observeEvent(input$download_hc_imp,{
-      data<-attr(hcplot4(),"imp_results")
+      data<-data.frame(attr(hcplot4(),"imp_results"))
       req(data)
       vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
@@ -464,7 +1142,10 @@ hc_module$server<-function(id, vals){
     observeEvent(input$var_pie_layer,{
       m<-getmodel_hc()
 
-      choices<-colnames(m$data[[input$var_pie_layer]])
+
+      order<-order(colMeans(abs( m$codes[[input$var_pie_layer]])),decreasing=T)
+      choices<-colnames(m$codes[[input$var_pie_layer]])[order]
+
 
       shinyWidgets::updateVirtualSelect(
         "var_pie_manual",
@@ -596,7 +1277,7 @@ hc_module$server<-function(id, vals){
       layers<-getsom_layers()
       div(style = "margin-left: 20px;",
           tags$style(HTML(
-            ".label_none label{display: none}"
+            ""
           )),
           strong("New Data:"),
           lapply(layers, function(x) {
@@ -635,42 +1316,17 @@ hc_module$server<-function(id, vals){
     output$smw_hc_seed_out<-renderUI({
       numericInput(ns("smw_hc_seed"),"Seed",NA)
     })
-    cluster_on<-reactiveVal(F)
-
-
-    hcplot3<-reactiveVal()
-
-    observeEvent(input$run_hc,{
-      cluster_on(T)
-
-      args<-hcut_argsplot()
-
-
-      p<-do.call('hc_plot',args)
-
-      shinyjs::removeClass("hcut_btn","save_changes")
-      hcplot3(p)
-    })
 
 
 
-    cutsom.reactive<-get_hc<-reactive({
-
-      req(input$model_or_data)
-      req(input$method.hc0)
-      args<-list(data=getdata_hc(), k= input$customKdata,hc_fun=input$hc_fun,hc_method=input$method.hc0,distance_metric=input$disthc,model_name=as.character(input$som_model_name),target=input$model_or_data)
 
 
 
-      somC<-do.call(imesc_hclutering,args)
-      vals$hc_messages<-attr(somC,"logs")
-
-      somC
-
-    })
 
 
-    output$BMU_PLOT<-renderPlot({hcplot4()})
+
+
+
     output$hc_tab2_out<-renderUI({
 
       req(!is.null(vals$screeplot_results))
@@ -686,26 +1342,34 @@ hc_module$server<-function(id, vals){
     observeEvent(input$hc_ord_datalist,{
       vals$cur_hc_ord_datalist<-input$hc_ord_datalist
     })
-    output$hc_sort_datalist<-renderUI({
-      req(isTRUE(input$hc_sort))
-      div(
 
-        pickerInput_fromtop(ns("hc_ord_datalist"),"Datalist:",choices = c(names(vals$saved_data[getdata_for_hc()])),selected=vals$cur_hc_ord_datalist,width="200px", options=shinyWidgets::pickerOptions(liveSearch =T)))
+
+
+    observe({
+      shinyjs::toggle('hc_ord_factor',condition=isTRUE(input$hc_sort))
+
+      shinyjs::toggle('hc_ord_datalist',condition=isTRUE(input$hc_sort))
     })
-    output$hc_ord_factor<-renderUI({
-      req(isTRUE(input$hc_sort))
+
+
+    observeEvent(getdata_for_hc(),{
+      selected=vals$cur_hc_ord_datalist
+      choices = c(names(vals$saved_data[getdata_for_hc()]))
+      selected=get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'hc_ord_datalist',choices=choices,selected=selected)
+    })
+
+
+    observeEvent(input$hc_ord_datalist,{
       req(input$hc_ord_datalist)
       data<-vals$saved_data[[input$hc_ord_datalist]]
-
       choices=c(colnames(data))
-
-      div(
-
-        pickerInput_fromtop(ns("hc_ord_factor"),"Variable:",
-                            choices = choices,selected=vals$cur_hc_ord_factor,options=shinyWidgets::pickerOptions(liveSearch=T))
-      )
+      selected=vals$cur_hc_ord_factor
+      selected<-get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'hc_ord_factor',choices=choices,selected=selected)
 
     })
+
     observeEvent(input$hc_ord_factor,{
       vals$cur_hc_ord_factor<-input$hc_ord_factor
     })
@@ -735,27 +1399,7 @@ hc_module$server<-function(id, vals){
           tipify(bsButton(ns("savemapcode"), icon(verify_fa = FALSE, name = NULL, class = "fas fa-save"), style = "button_active", type = "action", value = FALSE),"Create Datalist with prediction results","right"), span(style = "font-size: 12px", icon(verify_fa = FALSE, name = NULL, class = "fas fa-hand-point-left"), "Create Datalist")
       )
     })
-    output$saveHC<-renderUI({
-      req(cluster_on())
-      clu_al<-cluster_already()
-      if (length(cluster_already()) > 0) {
-        class1<-"button_normal"
-        class2<-"div"
-        class3<-'divnull'
-      } else {
-        class1<-"save_changes"
-        class2<-"divnull"
-        class3<-'div'
-      }
 
-      div(style="display: flex",
-          div(style="display: flex",
-              div(class = class1,style="padding-right: 5px",
-                  actionButton(ns("tools_savehc"), icon("fas fa-save"),  type = "action", value = FALSE)), span(style = "font-size: 12px", icon("fas fa-hand-point-left"), "Save Clusters in Datalist ", strong("X"), class = class3)
-          )
-          ,
-          div(style = "margin-bottom: 5px", class = class2,style="text-direction: normal",em(paste0("The current clustering is saved in the Factor-Attribute as '", paste0(clu_al, collapse = "; "), "'"))))
-    })
     output$down_hc_model<-downloadHandler(
       filename = function() {
         paste0("HC","_", Sys.Date(),".rds")
@@ -770,27 +1414,7 @@ hc_module$server<-function(id, vals){
       span("select a gradient palette in 'Points' to differentiate between training and the new data", style="color: gray")
 
     })
-    hcut_argsplot<-reactive({
 
-
-      somC<-phc()
-      req(somC$hc.object)
-      args<-list(
-        somC=somC,
-        col=getcolhabs(vals$newcolhabs,input$hcdata_palette,input$customKdata),
-        labels=get_hcut_labels(),
-        lwd=input$hcut_lwd,
-        base_size=input$hcut_cex,
-        main=input$hcut_main,
-        xlab=input$hcut_xlab,
-        ylab=input$hcut_ylab,
-        theme=input$hcut_theme,
-        offset_labels=input$hcut_offset,
-        xlab_adj=input$hcut_xlab_adj,
-        legend=input$hcut_legend_type
-      )
-      args
-    })
     getgrad_col<-reactive({
       res<-lapply(vals$newcolhabs, function(x) x(2))
       res1<-unlist(lapply(res, function(x) x[1]==x[2]))
@@ -860,13 +1484,18 @@ hc_module$server<-function(id, vals){
 
     })
 
-    hc_screeplot<-function(data,model_or_data="som codebook",model_name=1,disthc,screeplot_hc_k){
+    hc_screeplot<-function(data,model_or_data="som codebook",model_name=1,disthc,screeplot_hc_k,whatmap=NULL,use_weights=F){
       cmd_log_type<-d_log_type<-p_log_type<-NULL
       cmd_log_message<-d_log_message<-p_log_message<-NULL
 
+
       if(model_or_data=="som codebook"){
         m<- attr(data,"som")[[model_name]]
-        dist<-object.distances(m,"codes")
+        weights<-rep(1,length(whatmap))
+        if(isTRUE(use_weights)){
+          weights<-NULL
+        }
+        dist=get_somdist_weighted(m,weights=weights,whatmap)
         data_log<-capture_log1(cmdscale)(dist, k=30)
         data<-data_log[[1]]
         cmd_log_message<-sapply(data_log$logs,function(x) x$message)
@@ -932,26 +1561,7 @@ hc_module$server<-function(id, vals){
     }
 
 
-    get_hc_screeplot<-reactive({
 
-      args<-list(
-        data=getdata_hc(),
-        model_or_data=input$model_or_data,
-        model_name=input$som_model_name,
-        disthc=input$disthc,
-        screeplot_hc_k=input$screeplot_hc_k
-      )
-
-      re<-do.call(hc_screeplot,args)
-
-      vals$smw_message<-attr(re,"logs")
-      req(!isFALSE(re[1]))
-
-
-      result<-attr(re,"result")
-      vals$screeplot_results0<-vals$screeplot_results<-result
-      vals$scree_plot_hc<- vals$scree_plot_hc0<-re
-    })
     getsmw_plot<-reactive({
       tol=input$smw_hc_tol
       p<-   vals$scree_plot_hc0
@@ -994,7 +1604,14 @@ hc_module$server<-function(id, vals){
     observeEvent(input$run_hc,ignoreInit = T,{
       # phc(phc_root())
     })
-    phc<-eventReactive(list(input$run_hc,input$run_bmu),{
+
+
+
+
+
+
+    hierarc_cluster<-reactive({
+
       req(input$model_or_data)
       req(input$method.hc0)
       req(length(input$hc_sort)>0)
@@ -1036,6 +1653,16 @@ hc_module$server<-function(id, vals){
       }
 
 
+      hc
+
+    })
+
+    phc<-reactiveVal()
+    observeEvent(input$run_bmu,ignoreInit = T,{
+      phc(hierarc_cluster())
+    })
+    observeEvent(input$run_hc,ignoreInit = T,{
+      phc(hierarc_cluster())
     })
 
 
@@ -1051,17 +1678,65 @@ hc_module$server<-function(id, vals){
       iind=list(indicate=indicate,npic=npic)
       iind
     })
+    observe({
+      m<-getmodel_hc()
+      datalists<-attr(m,"Datalist")
+      if(is.null(datalists)){
+        datalists<-input$data_hc
+      }
+      ord<-1:length(datalists)
+      if(length(unique(m$user.weights))>1){
+        ord<-ord[order(m$user.weights,decreasing=T)]
+      }
+      choices<-datalists[ord]
+      selected<-vals$cur_vfm_layer
+      selected=get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'vfm_layer',choices=choices,selected=selected)
+    })
+
+
+
     bp_som<-reactive({
+      req(input$vfm_layer)
       iind=indicate_hc()
       m<-getmodel_hc()
+      not<-which(!names(m$data)%in%input$vfm_layer)
+      req(length(not)>0)
+      m$data[[not]]<-NULL
+      m$codes[[not]]<-NULL
       bp<-getbp_som2(m=m,indicate=iind$indicate,npic=iind$npic,hc=vals$cutsom)
       bp
     })
+
+    observeEvent(input$create_dl_vfm,{
+      m<-getmodel_hc()
+      vars<-rownames(bp_som())
+      data_o<-vals$saved_data[[names(m$data)[1]]]
+      data_n<-data.frame(m$data[[input$vfm_layer]])
+      colnames(data_n)<-colnames(m$data[[input$vfm_layer]])
+      data_n<-data_n[,vars,drop=F]
+      data_n<-data_migrate(data_o,data_n)
+      npic=input$npic
+
+      type<-switch(input$vfm_type,
+                   "var"='Highest',
+                   "cor"="Chull",
+                   "cor_hc"="Cluster")
+      bag<-paste0(input$vfm_layer,"_vfm",type,npic,"vars")
+
+      attr(data_n,"bag")<-bag
+      vals$newdatalist<-data_n
+      module_save_changes$ui(ns("som-vfm-create"), vals)
+    })
+
+
+    module_save_changes$server("som-vfm-create", vals)
+
     get_network<-reactive({
       backtype=NULL
       property=NULL
       m<-getmodel_hc()
-      hc<-phc()$som.hc
+      hc<-cur_som.hc.clusters()
       hexs<-get_neurons(m,background_type="hc",property=NULL,hc=hc)
       hexs
     })
@@ -1112,67 +1787,7 @@ hc_module$server<-function(id, vals){
 
       points_tomap
     })
-    argsplot_somplot<-reactive({
 
-
-      req(input$pclus_points_palette)
-      req(input$pcodes_bgalpha)
-
-
-      indicate=indicate_hc()
-      m<-getmodel_hc()
-      tryco<-try(copoints_scaled(), silent = T)
-      req(class(tryco)!='try-error')
-      trybp<-try( bp_som(), silent = T)
-      req(class(trybp)!='try-error')
-      errors<-NULL
-      copoints2<-vals$copoints2
-      copoints3<-copoints2
-      args<-list(m=m,
-                 hexs=get_network(),
-                 points_tomap=copoints_scaled(),
-                 bp=bp_som(),
-                 points=input$pclus_addpoints,
-                 points_size=input$pclus_points_size,
-                 points_palette=input$pclus_points_palette,
-                 pch=as.numeric(input$pclus_symbol),
-                 text=input$pclus_addtext,
-                 text_size=input$pclus_text_size,
-                 text_palette=input$pclus_text_palette,
-                 bg_palette=input$bg_palette,
-                 newcolhabs=vals$newcolhabs,
-                 bgalpha=input$pcodes_bgalpha,
-                 border=input$pclus_border,
-                 indicate=indicate$indicate,
-                 cex.var=as.numeric(input$pclus.cex.var),
-                 col.text=input$p.clus.col.text,
-                 col.bg.var=input$var_bg,
-                 col.bg.var.alpha=1-input$var_bg_transp,
-                 show_error=errors,
-                 base_size=input$base_size,
-                 show_neucoords=input$hcs_theme,
-                 newdata=input$newdata_hc,
-                 title=input$hcs_title,
-                 hc=phc()$som.hc,
-                 var_pie=input$var_pie,
-                 var_pie_type=input$var_pie_type,
-                 n_var_pie=input$var_pie_n,
-                 Y_palette=input$var_pie_bg,
-                 var_pie_transp=input$var_pie_transp,
-                 var_pie_layer=input$var_pie_layer,
-                 pie_variables=input$var_pie_manual,
-                 border_width=input$border_width,
-                 fill_neurons=input$fill_neurons,
-                 text_repel=input$text_repel,
-                 max.overlaps=input$max.overlaps,
-                 show_legend=input$pclus_show_legend,
-                 neuron_legend=input$neuron_legend_text,
-                 points_legend=input$pclus_points_legend_text
-      )
-
-      args
-
-    })
     getdata_for_hc<-reactive({
       req(input$data_hc)
       datalist<-vals$saved_data
@@ -1197,22 +1812,14 @@ hc_module$server<-function(id, vals){
       res<-c(a, b)
       res
     })
-    cluster_already<-reactive({
-      req(input$data_hc)
-      datao<-vals$saved_data[[input$data_hc]]
-      factors<-attr(datao,"factors")
-      req(rownames(factors)%in%names(phc()$somC))
-      hc<-as.character(phc()$somC[rownames(factors)])
-      fac<-as.list(factors)
-      fac<-lapply(fac,function(x) as.character(x))
-      cluster_already<-which(sapply(fac, function(x) identical(x, hc)))
-      names(cluster_already)
-    })
+
     getmodel_hc<-reactive({
       req(input$data_hc)
       req(input$som_model_name)
+      req(input$model_or_data=="som codebook")
       data<-getdata_hc()
       m<-attr(data,"som")[[as.character(input$som_model_name)]]
+      req(m)
       m
     })
     getmodel_hc0<-reactive({
@@ -1431,8 +2038,8 @@ hc_module$server<-function(id, vals){
       data<-getdata_hc()
       m<-getmodel_hc()
       codes<-data.frame(do.call(cbind,m$codes))
-      somC<-phc()
-      factors<-data.frame(somC$som.hc)
+
+      factors<-data.frame(som.hc.clusters())
 
       rownames(factors)<-rownames(codes)<-paste0("unit_",1:nrow(codes))
       colnames(factors)<-paste0("Class",input$customKdata)
@@ -1468,11 +2075,7 @@ hc_module$server<-function(id, vals){
       )
 
     })
-    output$hcut_plot<-renderUI({
-      renderPlot({
-        hcplot3()
-      })
-    })
+
     output$plot_hc_screeplot <-renderUI({
       vals$scree_plot_hc<-getsmw_plot()
       renderPlot({print(vals$scree_plot_hc)})
@@ -1491,41 +2094,20 @@ hc_module$server<-function(id, vals){
       renderPlot(hcplot5())
     })
 
-    args_hc1<-reactive({
-      list(data=getdata_hc(), k= 1,hc_fun=input$hc_fun,hc_method=input$method.hc0,distance_metric=input$disthc,model_name=as.character(input$som_model_name),target=input$model_or_data)
-    })
+
     observeEvent(args_hc1(),{
       vals$hc_messages<-NULL
       vals$hc_tab1_plot<-NULL
       shinyjs::addClass("hcut_btn1","save_changes")
     })
-    observeEvent(args_hc2(),{
-      vals$hc_messages<-NULL
-      hcplot3(NULL)
-      shinyjs::addClass("hcut_btn","save_changes")
-
-    })
 
 
 
 
-    observeEvent(argsplot_somplot(),{
-      vals$hc_messages<-NULL
-      shinyjs::addClass("run_bmu_btn","save_changes")
-    })
-    hcplot4<-reactiveVal()
-    observeEvent(hcplot4(),{
-      shinyjs::removeClass("run_bmu_btn","save_changes")
-    })
-    observeEvent(input$run_bmu,ignoreInit = T,{
-      hcplot4(NULL)
-      m<-getmodel_hc()
-      somC<-phc()
-      args<-argsplot_somplot()
-      args$hc<-phc()$som.hc
-      hcplot4(do.call(bmu_plot_hc,args))
 
-    })
+
+
+
 
     args_hc2<-reactive({
       list(
@@ -1540,43 +2122,25 @@ hc_module$server<-function(id, vals){
         ylab=input$hcut_ylab,
         theme=input$hcut_theme,
         offset_labels=input$hcut_offset,
-        xlab_adj=input$hcut_xlab_adj,
-        legend=input$hcut_legend_type,
+        angle=input$hcut_xlab_angle,
+        log=input$hcut_log,
         hc_fun=input$hc_fun,hc_method=input$method.hc0,distance_metric=input$disthc,model_name=input$som_model_name,target=input$model_or_data
 
       )
     })
 
-    args_hc3<-reactive({
-      list(data=getdata_hc(),
-           input$customKdata,
-           hc_fun=input$hc_fun,
-           hc_method=input$method.hc0,
-           distance_metric=input$disthc,
-           model_name=as.character(input$som_model_name),
-           target=input$model_or_data,
-           input$hcdata_palette,
-           lwd=input$hcut_lwd,
-           base_size=input$hcut_cex,
-           main=input$hcut_main,
-           xlab=input$hcut_xlab,
-           ylab=input$hcut_ylab,
-           theme=input$hcut_theme,
-           offset_labels=input$hcut_offset,
-           xlab_adj=input$hcut_xlab_adj,
-           legend=input$hcut_legend_type)
+    hc_model<-reactive({
+      args<-args_hc1()
+      somC<-do.call(imesc_hclutering,args)
+      somC
     })
-
 
 
     observeEvent(input$run_hc1,ignoreInit = T,{
       shinyjs::removeClass("hcut_btn1","save_changes")
       req(input$model_or_data)
       req(input$method.hc0)
-      args<-args_hc1()
-
-
-      somC<-do.call(imesc_hclutering,args)
+      somC<-hc_model()
       vals$hc_messages<-attr(somC,"logs")
 
       hc<-somC$hc.object
@@ -1607,7 +2171,7 @@ hc_module$server<-function(id, vals){
 
 
     observeEvent(vals$saved_data,{
-      updatePickerInput(session,"data_hc",choices=names(vals$saved_data), selected=vals$cur_data)
+      shinyWidgets::updateVirtualSelect("data_hc",choices=names(vals$saved_data), selected=vals$cur_data)
     })
 
     observe(shinyjs::toggle("hcut_labels",condition=input$model_or_data=="data"))
@@ -1635,22 +2199,20 @@ hc_module$server<-function(id, vals){
     })
 
 
-    observe({
+    observeEvent(names(attr(getdata_hc(), "som")),{
       choices= names(attr(getdata_hc(), "som"))
       selected=vals$cur_som_model_name
 
       selected<-get_selected_from_choices(selected,choices)
+      if(is.null(selected)){
+        selected<-choices[1]
+      }
 
-      updatePickerInput(session,'som_model_name',selected=selected,choices=choices)
+      shinyWidgets::updateVirtualSelect('som_model_name',selected=selected,choices=choices)
     })
 
 
-    observeEvent(ignoreInit = T,input$download_plot3,{
-      vals$hand_plot<-"generic_gg"
-      module_ui_figs("downfigs")
-      generic=hcplot3()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Dendrogram - cut", name_c="dendcut")
-    })
+
     observeEvent(ignoreInit = T,input$download_plot4,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
@@ -1836,26 +2398,8 @@ hc_module$server<-function(id, vals){
     observeEvent(ignoreInit = T,input$hc_results,{
       vals$hc_results<-input$hc_results
     })
-    observeEvent(ignoreInit = T,input$mapcode_loop_go,{
-
-      somC<-phc()
-      vals$mapcode_loop_res<-NULL
-      m<-getmodel_hc()
-
-      k.max<-input$mapcode_loop_K
-      hc_fun=input$hc_fun;hc_method=input$method.hc0
-      result<-screeplot_som(m,k.max,hc_fun,hc_method)
-      dend_hei<-somC$hc.object$height
-      result$dh<-rev(dend_hei)[1:k.max]
-      colnames(result)<-c("k","Within Sum of Squares","Dendrogram Height")
-      #qe2[,2:3]<-decostand(qe[,2:3],"max",2)
-      result<-reshape2::melt(result,"k")
-
-      attr(result,"class_result")<-"som screeplot"
-      attr(attr(vals$saved_data[[input$data_hc]],"som")[[input$som_model_name]],"codebook_screeplot")<-result
 
 
-    })
     observeEvent(ignoreInit = T,input$data_hc,{
       vals$show_mapcode_errors<-c("Within Sum of Squares","Dendrogram Height")
     })
@@ -2029,7 +2573,164 @@ hc_module$server<-function(id, vals){
       shinyjs::toggle('disthc_id',condition=input$model_or_data=="data")
 
     })
-    observe({ shinyjs::toggle('som_model_name',condition=input$model_or_data=="som codebook")})
+    observe({
+      shinyjs::toggle('som_model_name',condition=input$model_or_data=="som codebook")
+
+
+
+
+    })
+
+    observe({
+      m<-getmodel_hc()
+      shinyjs::toggle('som_whatmap',condition=input$model_or_data=="som codebook"&length(m$codes)>1)
+
+
+    })
+
+
+    observe({
+      shinyjs::toggle('show_hcsom_fine',condition=!is.null(vals$som_whatmap))
+    })
+
+
+
+
+    observe({
+      if(is.null(vals$cur_whatmap)){
+        m<-getmodel_hc()
+        choices=names(m$codes)
+        vals$cur_whatmap<-choices
+      }
+    })
+
+
+    {
+
+      observeEvent(getmodel_hc(),{
+        m<-getmodel_hc()
+        choices=names(m$codes)
+
+        if(length(choices)==1){
+          choices=1
+        }
+        selected<-vals$som_whatmap
+        if(is.null(selected)){
+          selected=choices
+        }
+        #updateCheckboxInput(session,"show_hcsom_fine",value=F)
+        shinyWidgets::updateVirtualSelect('som_whatmap',choices=choices,selected=selected)
+      })
+
+
+
+
+      observe({
+        m<-getmodel_hc()
+        choices=names(m$codes)
+
+        if(length(choices)==1){
+          vals$som_whatmap<-NULL
+        } else{
+          vals$som_whatmap<-input$som_whatmap
+        }
+
+      })
+
+      cutsom.reactive<-get_hc<-reactive({
+
+        req(input$model_or_data)
+        req(input$method.hc0)
+
+        args<-list(data=getdata_hc(), k= input$customKdata,hc_fun=input$hc_fun,hc_method=input$method.hc0,distance_metric=input$disthc,model_name=as.character(input$som_model_name),target=input$model_or_data,whatmap=vals$som_whatmap,use_weights=F)
+
+
+
+        somC<-do.call(imesc_hclutering,args)
+        vals$hc_messages<-attr(somC,"logs")
+
+        somC
+
+      })
+      get_hc_screeplot<-reactive({
+
+        args<-list(
+          data=getdata_hc(),
+          model_or_data=input$model_or_data,
+          model_name=input$som_model_name,
+          disthc=input$disthc,
+          screeplot_hc_k=input$screeplot_hc_k,
+          use_weights=F,
+          whatmap=vals$som_whatmap
+        )
+
+        re<-do.call(hc_screeplot,args)
+
+        vals$smw_message<-attr(re,"logs")
+        req(!isFALSE(re[1]))
+
+
+        result<-attr(re,"result")
+        vals$screeplot_results0<-vals$screeplot_results<-result
+        vals$scree_plot_hc<- vals$scree_plot_hc0<-re
+      })
+
+      args_hc1<-reactive({
+        list(data=getdata_hc(), k= 1,hc_fun=input$hc_fun,hc_method=input$method.hc0,distance_metric=input$disthc,model_name=as.character(input$som_model_name),target=input$model_or_data,whatmap=vals$som_whatmap,use_weights=F)
+      })
+
+      observeEvent(ignoreInit = T,input$mapcode_loop_go,{
+
+
+        somC<-hc_model()
+
+        vals$mapcode_loop_res<-NULL
+
+        m<-getmodel_hc()
+
+        k.max<-input$mapcode_loop_K
+        hc_fun=input$hc_fun;hc_method=input$method.hc0
+
+
+        result<-screeplot_som(m,k.max,hc_fun,hc_method,whatmap=vals$som_whatmap,use_weights=F)
+
+        dend_hei<-somC$hc.object$height
+        result$dh<-rev(dend_hei)[1:k.max]
+        colnames(result)<-c("k","Within Sum of Squares","Dendrogram Height")
+        #qe2[,2:3]<-decostand(qe[,2:3],"max",2)
+        result<-reshape2::melt(result,"k")
+
+        attr(result,"class_result")<-"som screeplot"
+        attr(attr(vals$saved_data[[input$data_hc]],"som")[[input$som_model_name]],"codebook_screeplot")<-result
+
+
+
+      })
+
+
+      output$som_layers<-renderUI({
+        m<-getmodel_hc()
+        req(length(m$codes)>1)
+        req(input$model_or_data=="som codebook")
+        div(style="display: flex; justify-content: flex-start;;align-items: flex-end",
+            div(strong("SOM layers:",style="white-space: nowrap;")),
+            div(style="white-space: normal;max-width: 350px; padding-left: 2px",
+                emgreen(
+                  paste(vals$som_whatmap, collapse="; ")
+                ))
+        )
+      })
+
+
+
+    }
+
+
+
+
+
+
+
     observe({
       shinyjs::toggle("hc_side4",condition = input$model_or_data == "som codebook")
     })

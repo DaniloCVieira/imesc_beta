@@ -25,26 +25,44 @@ intra_var<-function(m,whatmap,somC,wins=m$unit.classif){
   q_intra*intra0/sum(q_intra)
 }
 #' @export
-qe_class<-function(m,somC){
-  qes<-sapply(names(m$data),function(whatmap){
+qe_class<-function(m,somC,whatmap=NULL){
+  if(is.null(whatmap)){
+    whatmap<-names(m$data)
+  }
+  layers<-names(m$data)[names(m$data)%in%whatmap]
+  qes<-sapply(layers,function(whatmap){
     intra_var(m,whatmap,somC)
   })
   # apply(qes,1,function(x) weighted.mean(x,m$distance.weights))
   qes
 }
 #' @export
-screeplot_som<-function(m,k.max,hc_fun,hc_method, session = getDefaultReactiveDomain()) {
+screeplot_som<-function(m,k.max,hc_fun,hc_method, session = getDefaultReactiveDomain(),whatmap=NULL,use_weights=F) {
   t0<-Sys.time()
+  if(is.null(whatmap)){
+    whatmap<-names(m$codes)
+  }
+
   withProgress(min=2,max=k.max,session=session,{
+
     rel<-lapply(1:k.max,function(k) {
+
       incProgress(1,message=paste0(round(k/k.max,2)*100,'%'), session=session)
       message(k)
-      somC_temp<-cutsom_new(m,k,hc_fun,hc_method)
-      if(k==1){ q<-colMeans(data.frame(as.list(qe_class(m,somC_temp))))} else{
-        q<-colMeans(qe_class(m,somC_temp))
+      somC_temp<-cutsom_new(m,k,hc_fun,hc_method,whatmap=whatmap,use_weights=F)
+      if(k==1){ q<-colMeans(data.frame(as.list(
+        qe_class(m,somC_temp,whatmap=whatmap)
+      )))} else{
+        q<-colMeans(qe_class(m,somC_temp,whatmap = whatmap))
+      }
+      weights<-rep(1,length(whatmap))
+      if(isTRUE(use_weights)){
+        weights<-m$user.weights
+        pic_w<-names(m$codes)%in%whatmap
+        weights<-weights[pic_w]
       }
 
-      qe<-weighted.mean(q,m$distance.weights)
+      qe<-weighted.mean(q,weights)
       data.frame(k=k,qe)
     })
   })

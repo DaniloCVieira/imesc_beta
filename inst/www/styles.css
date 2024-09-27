@@ -1080,7 +1080,9 @@ margin: 0px;
  color: yellow;
 }
 
+
 .tooltip-inner {
+
   text-align: left;
 background-color: MidnightBlue;
 z-index: 99999;

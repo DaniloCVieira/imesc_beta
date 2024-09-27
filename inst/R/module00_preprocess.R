@@ -29,13 +29,14 @@ confirm_changes$server<-function(id){
 confirm_changes$server_cancel<-function(id){
   moduleServer(id,function(input,output,session){
     return(reactive(input$cancel_changes))})}
-done_modal<-function(){
+done_modal<-function(...){
   showModal(
     modalDialog(
       easyClose = T,
       size="s",
       title=NULL,
-      h4(emgreen("Success!"))
+      h4(emgreen("Success!")),
+      div(...)
     )
   )
 }
@@ -1136,38 +1137,397 @@ tool2_tab4$server<-function(id,vals){
 tool2_tab5<-list()
 tool2_tab5$ui<-function(id){
   ns<-NS(id)
-  div(class="pp_input p20",
+  tabsetPanel(
+    tabPanel(strong("Edit columns"),
+             tags$style(HTML(
+               "
+               .editdata .train_box .virtual-select{
+               min-width: 100%
+               }
+               "
+             )),
+             div(class="editdata",
+                 column(12,class="train_box inline_pickers",style="width: 100%",
+                        div(
+                          div(
+                            uiOutput(ns('editdata')),
 
-      div(strong("Edit column names")),
-      div(
-        div(
-          div(style="display: flex; width: 100%",
-              uiOutput(ns('editdata')),
+                            pickerInput(ns("editattr"),strong("Attribute:"),choices=c("Numeric","Factors")),
 
-              selectInput(ns("editattr"),"2. Attribute:",choices=c("Numeric","Factors")),
-              div(id=ns("editdat_go_btn"),
-                  tipify(actionButton(ns("editdat_go"),icon("fas fa-save"),style="margin-top: 25px"),"Save changes")
-              ),
-              tipify(actionButton(ns("reset"),icon("undo"),style="margin-top: 25px"),"Reset")
+                            div(style="display: flex",
+                              uiOutput(ns("remove_columns")),
 
-          ),
+                              div(style="position: absolute;right: 30px",
+                                div(id=ns("trash_cols_btn"),class="save_changes",style="margin-top:5px;",
+                                    actionButton(ns("trash_cols"),icon("fas fa-trash"))
+                                ),
+                                uiOutput(ns('validate_remove'))
+                              )
+
+                            ),
 
 
-          div(div(strong("3. Double-click the variable names to edit them:")),
-              div(class="half-drop-inline",
-                  DT::DTOutput(ns("tabcolnames"))
-              )
-          ),
-          uiOutput(ns("teste"))
+                            column(12,div(style="display: flex; align-items: flex-start;gap: 10px",
+                                          div(
+                                            style="min-width: 200px",
+                                            tags$label("Edit names:",tipright("Double-click the variable names to edit them:"),style="color: #05668D;"),
+                                            div(
+                                              class="half-drop-inline",
+                                              DT::DTOutput(ns("tabcolnames"))
+                                            )
+                                          ),
+                                          div(id=ns("editdat_go_btn"),
+                                              tipify(actionButton(ns("editdat_go"),icon("fas fa-save"),style="margin-top: 25px"),"Save new names")
+                                          ),
+                                          tipify(actionButton(ns("reset"),icon("undo"),style="margin-top: 25px"),"Reset")
+                            ))
 
-        )
-      )
+                          ),
+                          uiOutput(ns("teste"))
+
+                        )
+
+                 )
+             )
+    ),
+
+    tabPanel("Concatenate Factors",
+             div(id=ns("show_conc_out"),
+                 fluidRow(class="train_box inline_pickers",
+
+                          column(12,
+                                 column(6,class="mp0",
+                                        uiOutput(ns('datalist_conc')),
+                                        uiOutput(ns('concac_factors')),
+                                        textInput(ns("collapse"),"Colappse:","-"),
+
+                                        checkboxInput(ns('col_as_pref'),span("Use column names as prefix:",style="color: #05668D;"),F),
+                                        div(style="padding-left: 15px",
+                                            uiOutput(ns('col_suff'))
+                                        ),
+                                        checkboxInput(ns("add_prefsuf"),"Add Prefix/Suffix",F),
+                                        div(style="padding-left: 15px",
+                                            textInput(ns("prefix"),"Prefix:",""),
+                                            textInput(ns("suffix"),"Suffix:","")
+                                        ),
+                                        checkboxInput(ns("add_replace"),"Replace pattern",F),
+                                        div(style="padding-left: 15px",
+                                            textInput(ns("gsub_pattern"),"Pattern:",""),
+                                            textInput(ns("gsub_by"),"Replacement:",""),
+                                        ),
+
+                                        uiOutput(ns('newcolumn')),
+
+
+
+                                 ),
+                                 column(6,class="mp0",
+                                        div(
+                                          style="display: flex",
+                                          div(id=ns("concatane_go_btn"),
+                                              class="save_changes",
+                                              actionButton(ns("concatane_go"),"concatenate",icon=icon("code-merge"),style="margin-top: 25px")
+                                          ),
+                                          div(id=ns("concatane_save_btn"),
+                                              class="save_changes",
+                                              style="display:none",
+                                              actionButton(ns("concatane_save"),icon("fas fa-save"),style="margin-top: 25px")
+                                          )
+                                        ),
+                                        uiOutput(ns("preview_conc")))
+
+                          )
+                 )
+             ))
   )
-
 }
+
 tool2_tab5$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
     ns<-session$ns
+
+    data_edit<-reactive({
+      req(input$editdata)
+      data<-vals$saved_data[[input$editdata]]
+      req(input$editattr)
+      data<-switch(input$editattr,
+                   'Numeric'=data,
+                   "Factors"=attr(data,"factors"))
+    })
+
+    observeEvent(data_edit(),{
+      shinyjs::removeClass('editdat_go_btn',"save_changes")
+
+    })
+
+    output$remove_columns<-renderUI({
+      req(input$editdata)
+      data<-vals$saved_data[[input$editdata]]
+      req(input$editattr)
+      data<-switch(input$editattr,
+                   'Numeric'=data,
+                   "Factors"=attr(data,"factors"))
+      choices=colnames(data)
+      div(
+
+        div(
+          shinyWidgets::virtualSelectInput(
+            ns("remove_columns"),
+            strong("Remove Columns:",tipright("Select and remove columns")),choices=choices,multiple = T,  search =T,
+            optionHeight='24px',position="bottom",   optionsSelectedText="Columns selected",
+
+            alwaysShowSelectedOptionsCount=T,
+            optionSelectedText="Columns selected"
+          )
+        ),
+
+      )
+    })
+
+    output$validate_remove<-renderUI({
+      req(isTRUE(validate_remove()))
+      div(style="width: 150px;margin-left: 0px;white-space: normal; background: white",
+          embrown("Removing all columns from Factor/Numeric attribute is not allowed")
+      )
+
+    })
+
+
+
+    validate_remove<-reactive({
+      req(input$editdata)
+      data0<-data<-vals$saved_data[[input$editdata]]
+      req(input$editattr)
+      data<-switch(input$editattr,
+                   'Numeric'=data,
+                   "Factors"=attr(data,"factors"))
+      length(input$remove_columns)==ncol(data)
+    })
+    observeEvent(input$trash_cols,ignoreInit = T,{
+
+      confirm_modal(session$ns,action=h4("Are you sure?"),
+                    data1=NULL,
+                    data2= NULL,
+                    arrow=F,
+                    left=paste("Remove", 'selected columns from the',paste0(input$editattr,"-Attribute")),
+                    right="",
+                    from=renderPrint(input$remove_columns),
+                    to='')
+    })
+
+    observeEvent(input$confirm,ignoreInit = T,{
+      removeModal()
+      data0<-data<-vals$saved_data[[input$editdata]]
+      req(input$editattr)
+      data<-switch(input$editattr,
+                   'Numeric'=data,
+                   "Factors"=attr(data,"factors"))
+      data[,input$remove_columns]<-NULL
+      if(input$editattr=="Numeric"){
+        data<-data_migrate(data0,data)
+        vals$saved_data[[input$editdata]]<-data
+      } else{
+        attr(vals$saved_data[[input$editdata]],"factors")<-data
+      }
+
+    })
+
+    observe({
+      shinyjs::toggle('trash_cols_btn',condition=length(input$remove_columns)>0&isFALSE(validate_remove()))
+      shinyjs::toggleClass('trash_cols_btn','save_changes',condition=length(input$remove_columns)>0)
+
+      shinyjs::toggle('col_suff',condition=isTRUE(input$col_as_pref))
+
+      shinyjs::toggle('gsub_pattern',condition=isTRUE(input$add_replace))
+      shinyjs::toggle('gsub_by',condition=isTRUE(input$add_replace))
+
+      shinyjs::toggle('prefix',condition=isTRUE(input$add_prefsuf))
+      shinyjs::toggle('suffix',condition=isTRUE(input$add_prefsuf))
+    })
+    observeEvent(input$save_bug,{
+      saveRDS(reactiveValuesToList(input),"input.rds")
+    })
+
+
+    ##
+
+    observeEvent(ignoreInit = T,input$datalist_conc,{
+      vals$datalist_conc<-input$datalist_conc
+    })
+
+    factors_to_conc<-function(){
+
+
+      req(input$datalist_conc%in%names(vals$saved_data))
+      data<-vals$saved_data[[input$datalist_conc]]
+      factors<-attr(data,"factors")
+      req(input$conc_cols%in%colnames(factors))
+      #validate(need(length(input$conc_cols)>1,"Select two or more columns to concatanate"))
+      fac<-factors[,input$conc_cols,drop=F]
+      fac
+    }
+
+    output$newcolumn<-renderUI({
+
+      value=paste(colnames(factors_to_conc()),collapse  ="_")
+      textInput(ns("newcolumn_name"),"New column name:",value=value)
+    })
+
+
+    output$datalist_conc<-renderUI({
+      pickerInput_fromtop(ns("datalist_conc"),"Datalist:",choices=names(vals$saved_data),selected = vals$datalist_conc)
+    })
+
+
+
+    output$concac_factors<-renderUI({
+      req(input$datalist_conc)
+      data<-vals$saved_data[[input$datalist_conc]]
+      factors<-attr(data,"factors")
+      choices=colnames(factors)
+      shinyWidgets::virtualSelectInput(ns("conc_cols"),span("Columns:",tiphelp("Select the columns to concatenate")),choices=choices, selected=choices[1],multiple = T,position="bottom",    search =T,    optionHeight='24px')
+    })
+
+    output$col_suff<-renderUI({
+      req(input$datalist_conc)
+      fac<-factors_to_conc()
+
+      choices=colnames(fac)
+      pickerInput_fromtop(ns("suff_cols"),span("Use:",tiphelp("Columns names to be used as level prefix")),T, multiple = T,choices=choices,selected=choices[1])
+    })
+
+
+    observeEvent(input$factors_conc,{
+      shinyjs::addClass("concatane_go_btn", "save_changes")
+    })
+    # input$datalist_conc<-'Coords+Depth_scaled'
+    # input$conc_cols<-c('superSOM (1)_HC8',"cruise")
+    concatanete_factors<-function(data,prefix="[",suffix="]",collapse=",",suff_cols=colnames(data)[1],gsub_pattern="",gsub_by=""){
+      pref_cols<-colnames(data)
+      pref_cols[!colnames(data)%in%suff_cols]<-"no_preff_"
+      pref_cols<-as.list(pref_cols)
+      result<-apply( data ,1,function(x){
+        n<-paste(pref_cols,x,sep = collapse)
+        labels<-gsub(paste0('no_preff_',collapse),"",n)
+        paste0(paste(labels,collapse = collapse))
+      })
+      if(prefix!="")
+        result<-paste(prefix,as.character(result),sep = collapse)
+      if(suffix!="")
+        result<-paste(result,suffix,sep = collapse)
+      result<-gsub(gsub_pattern,
+                   gsub_by,result)
+      result
+    }
+    observeEvent(input$concatane_save,ignoreInit = T,{
+      data<-vals$saved_data[[input$datalist_conc]]
+      factors<-attr(data,"factors")
+      newfac<-run_concate()
+      factors<-cbind(factors,newfac)
+      colnames(factors)<-make.unique(colnames(factors))
+      attr(vals$saved_data[[input$datalist_conc]],"factors")<-factors
+      removeClass("concatane_save_btn","save_changes")
+      run_concate(NULL)
+      updateCheckboxInput(session,"show_conc",value=F)
+      done_modal(
+        emgray("A new column named "),
+        strong(emgreen(input$newcolumn_name)),
+        emgray(" was created in the Factor-Attribute of the Datalist "),
+        strong(emgreen(input$datalist_conc))
+      )
+    })
+
+    args_conc<-reactive({
+      fac<-factors_to_conc()
+      gsub_by=input$gsub_by
+      if(isFALSE(input$col_as_pref)){
+        suff_cols<-NULL
+      }
+
+      list(
+        fac=factors_to_conc(),
+        add_prefsuf=input$add_prefsuf,
+        add_replace=input$add_replace,
+        suffix=input$suffix,
+        prefix=input$prefix,
+        conc_cols=input$conc_cols,
+        collapse=input$collapse,
+        data_levels=expand.grid(lapply(fac,levels)),
+        suff_cols=input$suff_cols,
+        gsub_pattern=input$gsub_pattern,
+        gsub_by=gsub_by
+
+      )})
+
+    observeEvent(args_conc(),{
+      shinyjs::addClass("concatane_go_btn", "save_changes")
+      run_concate(NULL)
+      shinyjs::hide('concatane_save_btn')
+    })
+    run_concate<-reactiveVal()
+    observeEvent(input$concatane_go,{
+      req(input$datalist_conc)
+      req(input$newcolumn_name)
+      fac<-factors_to_conc()
+      suffix=input$suffix
+      prefix=input$prefix
+      conc_cols=input$conc_cols
+      data_levels<-expand.grid(lapply(fac,levels))
+      suff_cols=input$suff_cols
+      gsub_pattern=input$gsub_pattern
+      gsub_by=input$gsub_by
+      if(isFALSE(input$col_as_pref)){
+        suff_cols<-NULL
+      }
+      prefix = input$prefix
+      suffix = input$suffix
+      if(isFALSE(input$add_prefsuf)){
+        prefix<-""
+        suffix<-""
+      }
+      if(isFALSE(input$add_replace)){
+        gsub_pattern<-""
+        gsub_by<-""
+      }
+
+
+
+      levels<-concatanete_factors(data_levels,
+                                  prefix = prefix,
+                                  suffix = suffix,
+                                  collapse=input$collapse,
+                                  suff_cols=suff_cols,
+                                  gsub_pattern=gsub_pattern,
+                                  gsub_by=gsub_by
+      )
+      newfac<-concatanete_factors(fac,
+                                  prefix = prefix,
+                                  suffix = suffix,
+                                  collapse=input$collapse,
+                                  suff_cols=suff_cols,
+                                  gsub_pattern=gsub_pattern,
+                                  gsub_by=gsub_by
+      )
+      newfac<-data.frame(factor(newfac,levels=levels))
+      colnames(newfac)<-input$newcolumn_name
+      shinyjs::removeClass("concatane_go_btn", "save_changes")
+      shinyjs::show('concatane_save_btn')
+      run_concate(newfac)
+
+    })
+    output$preview_conc<-renderUI({
+      req(run_concate())
+
+      div(
+
+        head_data$ui(session$ns("table-conc"),1:3),
+        head_data$server('table-conc',run_concate())
+
+      )
+
+    })
+
+    ##
     observeEvent(ignoreInit = T,input$editdata,{
       vals$previousSelection<-NULL
       vals$previousPage<-NULL
@@ -1176,25 +1536,21 @@ tool2_tab5$server<-function(id,vals){
       vals$editattr<-input$editattr
     })
     observeEvent(ignoreInit = T,input$editdata,{
-      vals$editdata<-input$editdata
+      vals$cur_data<-input$editdata
     })
 
     output$editdata<-renderUI({
-      selectInput(ns("editdata"),"1. Select the Datalist:",choices=names(vals$saved_data),selected = vals$editdata)
+      selectInput(ns("editdata"),strong("Datalist:"),choices=names(vals$saved_data),selected = vals$cur_data)
     })
     # output read checkboxes
 
     delcol_values<-reactiveValues()
-    observeEvent(vals$updeldata,{
-      req(length(vals$updeldata)>0)
-      pic<-vals$updeldata
-      vals$updeldata<-NULL
-      data<-attr(delcol_values$tab,'data')[,pic, drop=F]
-      colnames(data)<-delcol_values$tab[,1]
-      attr(delcol_values$tab,'data')<- data
-    })
+
+
+
+
     output$tabcolnames<-{DT::renderDT(
-      data.frame(delcol_values$tab[,-c(2:3)]),
+      data.frame(Var_name=delcol_values$tab),
       escape = FALSE,
       editable=T,
       options = list(
@@ -1208,24 +1564,6 @@ tool2_tab5$server<-function(id,vals){
       selection = list(mode = "single", target = "row", selected = vals$previousSelection),
       class ='cell-border compact stripe'
     )}
-    observeEvent(ignoreInit = T,input$remove_button_Tab1, {
-      try({
-
-        tabcolnames<-delcol_values$tab
-        s<-as.numeric(strsplit(input$remove_button_Tab1, "_")[[1]][2])
-        pic<-tabcolnames$id!=s
-        tabcolnames<- tabcolnames[pic,, drop=F]
-
-        #colnames(attr(delcol_values$tab,'data'))<-tabcolnames[pic,1]
-        #DT::replaceData(proxyTable, tabcolnames, resetPaging = FALSE)
-        delcol_values$tab<-tabcolnames
-        vals$updeldata<-pic
-
-      })
-    })
-    Clicked<-eventReactive(input$tabcolnames_rows_selected,{
-      input$tabcolnames_rows_selected
-    })
 
     observeEvent(ignoreInit = T,input$tabcolnames_cell_edit, {
       vals$previousSelection<-input$tabcolnames_rows_selected
@@ -1271,15 +1609,11 @@ tool2_tab5$server<-function(id,vals){
                    "Factors"=attr(data,"factors"))
 
       datavars<-vals$olddatnames<-data.frame(Var_name=colnames(data))
-      delcol_values$tab<-data.frame(datavars,data.frame(Row=1:nrow(datavars), id=1:nrow(datavars)),Remove=do.call(rbind,lapply(1:nrow(datavars),function(id) {
-        getRemoveButton(id, idS = ns(""), lab = "Tab1")
-      })))
+      delcol_values$tab<-data.frame(datavars)
 
 
 
 
-
-      delcol_values$row<-0
       attr(delcol_values$tab,'data')<-data
 
 
@@ -1309,7 +1643,7 @@ tool2_tab5$server<-function(id,vals){
     observeEvent(delcol_values$tab$Var_name,{
       req(input$editdata)
 
-      condition<-!all(colnames(vals$saved_data[[input$editdata]])%in%delcol_values$tab$Var_name)
+      condition<-!all(colnames(data_edit())%in%delcol_values$tab$Var_name)
       shinyjs::toggleClass("editdat_go_btn",class="save_changes",condition=condition)
 
     })
@@ -1318,6 +1652,9 @@ tool2_tab5$server<-function(id,vals){
 
 
 }
+
+
+
 tool2_tab6<-list()
 tool2_tab6$ui<-function(id){
   ns<-NS(id)
@@ -3066,6 +3403,8 @@ tool2_tab11$server<-function(id,vals){
     observeEvent(input$confirm,{
       shinyjs::removeClass('run_deldatalist_btn',"save_changes")
       vals$saved_data[input$deldatalist]<-NULL
+
+
       removeModal()
     })
 
@@ -4018,10 +4357,14 @@ tool5$ui<-function(id){
 
   ns<-NS(id)
   div(style="padding: 15px",
-      div(class="half-drop half-drop-inline",
-          selectInput(ns("transf"),
-                      label=span(strong("Transformation"),actionLink(ns("transf_help"),icon("fas fa-question-circle"))),
-                      choices=transf_value),
+      div(class="half-drop half-drop-inline picker150",
+          div(style='display: flex',
+            div(style="width: 55%",
+              pickerInput_fromtop_live(ns("transf"),
+                                       label=span(strong("Transformation"),actionLink(ns("transf_help"),icon("fas fa-question-circle"))),choices=transf_value)
+            ),
+            virtualPicker_unique(ns("cols"),choices="All", label=NULL,multiple = T,allOptionsSelectedText="All columns",width='150px')
+          ),
 
           uiOutput(ns('print_transf'))
 
@@ -4054,6 +4397,11 @@ tool5$server<-function(id,vals){
     data<-reactive({
       req(vals$pp_data)
       vals$pp_data
+    })
+
+
+    observeEvent(data(),{
+      shinyWidgets::updateVirtualSelect("cols",choices=colnames(data()),selected=colnames(data()))
     })
 
 
@@ -4095,6 +4443,7 @@ tool5$server<-function(id,vals){
       req(isTRUE(input$scale)|input$transf!="None")
       transfs<-attr(r_transf_end(),"transf")
       men<-gsub("ee","e",paste0(names(transfs),"ed"))
+      req(men)
       if('center'%in%names(transfs)){
         men<-men[-which(men=="centered")]
         if(isTRUE(transfs["center"])){
@@ -4148,10 +4497,11 @@ tool5$server<-function(id,vals){
     })
 
 
-    run_transf<-eventReactive(list(input$transf,input$scale,input$center,input$transf_ord),{
+    run_transf<-eventReactive(list(input$transf,input$scale,input$center,input$transf_ord,input$cols),{
       res<-list()
+      req(input$cols)%in%colnames(data())
       args_list<-list(
-        Transf=list(transf=input$transf,fun_name='transf_data'),
+        Transf=list(transf=input$transf,cols=input$cols,fun_name='transf_data'),
         Scale=list(scale=input$scale,center=input$center,fun_name='get_scale')
 
       )
@@ -4642,7 +4992,7 @@ tool7$server<-function(id,vals=NULL){
       # selected<-get_selected_from_choices(vals$cur_split_y,choices_factors)
       #selectInput(session$ns("split_y"),SelectedText="Columns selected", label=span(tiphelp("Select the target variable",'left'),'Y:'),choices=choices_factors,selected=vals$cur_split_y)
 
-      pickerInput(session$ns("split_y"),tags$label(span(tiphelp("Select the target variable. Choose multiple variables for creating multiple partition columns",'left'),'Y:'),style=""),choices_factors,selected=choices_factors[1],multiple =T)
+      virtualPicker_unique(session$ns("split_y"),tags$label(span(tiphelp("Select the target variable. Choose multiple variables for creating multiple partition columns",'left'),'Y:'),style=""),choices_factors,selected=choices_factors[1],multiple =T)
     })
 
     observeEvent(input$split_y,{
@@ -4706,21 +5056,25 @@ tool7$server<-function(id,vals=NULL){
 
 
     observeEvent(args_part(),{
-      args<-args_part()
-      condition<-if(args$split_t=="Classification"){
-        TRUE
-      } else{
-        req(args$split_y%in%colnames(args$data))
-        y<-args$data[, args$split_y]
-        if(anyNA(y)){
-          FALSE
-        }else{
+      try({
+
+        args<-args_part()
+        condition<-if(args$split_t=="Classification"){
           TRUE
+        } else{
+          req(args$split_y%in%colnames(args$data))
+          y<-args$data[, args$split_y]
+          if(anyNA(y)){
+            FALSE
+          }else{
+            TRUE
+          }
         }
-      }
-      shinyjs::toggle('create_partition',condition = condition)
+        shinyjs::toggle('create_partition',condition = condition)
 
 
+
+      })
     })
 
     observeEvent(args_part(),{
@@ -6073,7 +6427,7 @@ tool2_tab3$server<-function(id,vals){
       showModal(
         modalDialog(
           easyClose = T,
-          h4("Sucess!"),
+          h4("Success!"),
           get_basic_compare(data1=NULL,data2=data2(),left="",right="New:",to=paste(paste0(input$import_to_data,">"),paste0(first_upper(input$import_to_attr),"-Attribute")))
 
         )
