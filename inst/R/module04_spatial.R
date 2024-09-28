@@ -1252,7 +1252,7 @@ sptools_gg_opts$server_update<-function(id,vals,scatter3d=F,surface=F,stack=F){
 
     })
     observeEvent(results(),{
-      print("add")
+
       addClass(selector=".run_map_btn",class= "save_changes")
     })
     return(NULL)
@@ -1673,37 +1673,7 @@ ll_down_plot$server<-function(id, map){
     ll_down_modal$server("download",map)
   })
 }
-ll_down_gg<-list()
-ll_down_gg$ui<-function(id){
-  ns<-NS(id)
-  div(
-    actionButton(ns("download_gg"),span(icon("download")))
-  )
 
-}
-ll_down_gg$server<-function(id, map){
-  moduleServer(id,function(input, output, session){
-    print('ll_down_gg$server')
-    vplot<-reactiveValues(newggplot=NULL)
-    ns<-session$ns
-    observeEvent(input$download_gg,ignoreInit = T,{
-      vplot$hand_plot<-NULL
-      module_ui_figs(session$ns("downfigs"))
-      req(map)
-      vplot$newggplot<-map
-      vplot$hand_plot<-"ggplot map"
-
-    })
-
-    observeEvent(vplot$hand_plot,ignoreInit=T,{
-      req(vplot$hand_plot)
-      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vplot)
-    })
-
-
-
-  })
-}
 ll_interp<-list()
 ll_interp$ui<-function(id){
   choices=list(
@@ -2329,13 +2299,10 @@ sptools_gg_scalebar$server_update<-function(id,vals){
 
     observeEvent(data(),{
       data<-data()
-      req(get_shapes())
-      req(vals$extra_shapes)
-      req('base_shape_args'%in%names(get_shapes()))
-      req('layer_shape_args'%in%names(get_shapes()))
 
-      base_shape_args=get_shapes()$base_shape_args
-      layer_shape_args=get_shapes()$layer_shape_args
+
+      base_shape_args=vals$shape_args$base_shape_args
+      layer_shape_args=vals$shape_args$layer_shape_args
       args_extra_shape=vals$extra_shapes
 
 
@@ -2348,6 +2315,7 @@ sptools_gg_scalebar$server_update<-function(id,vals){
       updateNumericInput(session,'bins_km',value=value)
       attr(value,"unit")<-value_unit
       cur_unit(value)
+
     })
 
     cur_unit<-reactiveVal()
@@ -2638,9 +2606,8 @@ sptools_tab$ui<-function(id, circles=F, pie=F, radius=F,raster=F,interp=F,  shap
 
 sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surface=F,stack=F,scatter3d=F){
   moduleServer(id,function(input, output, session){
-    cat("\014")
+
     ns<-session$ns
-    time0<-Sys.time()
 
 
 
@@ -2706,7 +2673,7 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
       sptools_gg_opts$server_axes('sptools_gg_opts')
     })
     observeEvent(ignoreInit = T,input$down_ggplot,{
-      print("here")
+
       generic<-map_result2()
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
@@ -3506,9 +3473,7 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
             args$base_shape_args=get_shapes()$base_shape_args
             args$layer_shape_args=get_shapes()$layer_shape_args
             args$args_extra_shape=vals$extra_shapes
-            #  saveRDS(args,"args_interp.rds")
-            # args<-readRDS("args_interp.rds")
-            # print("saved")
+
             rst<- do.call(capture_log2(interp_leaflet2),args)
             vals$error_rst<-attr(rst,"logs")
             req(!inherits(rst,"error"))
@@ -3568,8 +3533,7 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
 
               g<-vals$interp_gstat
               observed<-data.frame(lapply(g$data,function(x) data.frame(x$data)[3]))
-              #  print(colnames(g$data))
-              #print(colnames(observed))
+
               if(is.na(seed)){
                 set.seed(NULL)
               } else{
@@ -3707,7 +3671,7 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
         args_title_axes<-c(gg_title_args(),gg_axes_args())
 
         args$args[names(args_title_axes)]<-args_title_axes
-        args$args[names(args_scale_bar())]<-args_scale_bar()
+        args$args_barscale<-args_scale_bar()
         args$args[names(gg_north_args())]<-gg_north_args()
 
         withProgress(min=NA,max=NA,message="Creating Grid Layout....",{
@@ -3802,9 +3766,7 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
       observeEvent(map_result2_final(),{
         removeClass("divnull","down_btn_gg")
       })
-      observeEvent(map_result2_final(),{
-        ll_down_gg$server('gg_png', map=map_result2_final())
-      })
+
 
 
 
@@ -4031,8 +3993,6 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
       })
 
       output$print_ap_color<-renderUI({
-        # p<-get_surfpoints()
-        #renderPrint(head(p))
 
 
 
@@ -4611,15 +4571,11 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
 
 
     }
-    observe({
-      print(gg_axes_args()$xlab)
-    })
+
 
     ll_down_plot$server('save_png', map=map_result1_final())
 
-    time1<-Sys.time()
-    cat("\n")
-    message(time1-time0)
+
     return(NULL)
 
   })

@@ -2590,7 +2590,7 @@ hc_module$server<-function(id, vals){
 
 
     observe({
-      shinyjs::toggle('show_hcsom_fine',condition=!is.null(vals$som_whatmap))
+      shinyjs::toggle('show_hcsom_fine',condition=!is.null(vals$som_whatmap)&input$model_or_data=="som codebook")
     })
 
 
@@ -2875,10 +2875,6 @@ hc_module$server<-function(id, vals){
     observe(shinyjs::toggle("run_smw_hc_btn",condition = vals$screeplot_results0$WSS))
 
 
-
-    observeEvent(vals$hc_tab3_plot,{
-
-    })
 
     observeEvent(list(choices_hc(),vals$cur_model_or_data),{
       req(choices_hc())

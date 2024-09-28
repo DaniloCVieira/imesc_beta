@@ -2,20 +2,65 @@ options(shiny.autoload.r=FALSE)
 #' @noRd
 #'
 #' @export
+
 module_ui_downcenter<-function(id){
   ns<-NS(id)
+  uiOutput(ns("teste"))
 
 
 }
 
+
 #' @export
 module_server_downcenter<-function (input, output, session,vals, name=NULL,message=NULL,data=NULL){
   ns<-session$ns
+  print("server")
+
+
+
+  output$page<-renderUI({
+    choices=c(".xlsx",".csv")
+    selected=get_selected_from_choices(vals$cur_down_type,choices)
+    div(
+
+      class="inline_pickers radio_search radio-btn-green",
+
+      radioGroupButtons(
+        ns("down_type"),
+        strong(tiphelp("file extension"),
+               "Format:"),
+        choices=choices,
+        selected=selected
+      ),
+      uiOutput(ns('out_down_sep')),
+      uiOutput(ns('out_down_dec'))
+
+    )
+  })
+
   if(is.null(message)){
     message<-vals$hand_down
   }
+  observeEvent(input$down_dec,ignoreInit = T,{
+    vals$down_dec<-input$down_dec
+  })
+  observeEvent(input$down_sep,ignoreInit = T,{
+    vals$down_sep<-input$down_sep
+  })
+  observeEvent(input$down_type,ignoreInit = T,{
+    vals$cur_down_type<-input$down_type
+  })
+  observeEvent(input$down_sep,ignoreInit = T,{
+    if(input$down_sep==','){
+      choices =c(dot='.')
+    } else{
+      choices =c("dot"=".","comma"=',')
+      # choiceNames=list("dot","comma")
+    }
 
-  getdown<-reactive({
+    updateRadioGroupButtons(session,'down_dec',choices=choices)
+  })
+  getdown<-eventReactive(vals$hand_down,{
     switch(vals$hand_down,
            "generic"=data,
            "SOM - summary table"=vals$comb_som,
@@ -121,60 +166,37 @@ module_server_downcenter<-function (input, output, session,vals, name=NULL,messa
     )
   })
 
-  observeEvent(input$down_sep,{
-    vals$down_sep<-input$down_sep
+  output$out_down_type<-renderUI({
+
   })
-  output$csv_format<-renderUI({
-    req(input$down_type=='.csv')
-    splitLayout(
-      column(12,
-             radioButtons(ns("down_sep"),strong("sep",tipify(icon("fas fa-question-circle"),"the field separator string. Values within each row of x are separated by this string.", options=list(container="body"))),
-                          choiceValues =list(",",";"),
-                          choiceNames =list(
-                            "comma",
-                            "semicolon"
-                          ),
-                          selected=vals$down_sep
-             )),
-      column(12,
-             uiOutput(ns('down_sep_semi')) ,
-
-             uiOutput(ns('down_sep_comma'))
-
-      )
-
+  output$out_down_dec<-renderUI({
+    req(input$down_type==".csv")
+    choices=c("dot"=".","comma"=',')
+    selected=get_selected_from_choices(vals$down_dec,choices)
+    radioGroupButtons(
+      ns("down_dec"),
+      strong(tiphelp("the string to use for decimal points in columns"),
+             "Decimal:"),
+      choices=choices,
+      selected=selected
     )
   })
-
-
-  observeEvent(input$down_dec,{
-    vals$down_dec<-input$down_dec
+  output$out_down_sep<-renderUI({
+    req(input$down_type==".csv")
+    choices=c("comma"=',','semicomma'=";")
+    selected=get_selected_from_choices(vals$down_sep,choices)
+    radioGroupButtons(
+      ns("down_sep"),
+      strong(tiphelp("the field separator string. Values within each row of x are separated by this string."),
+             "Separator:"),
+      choices=choices,
+      selected=selected
+    )
   })
-  output$down_sep_semi<-renderUI({
-    req(input$down_sep==';')
-    radioButtons(ns("down_dec"),strong("dec",tipify(icon("fas fa-question-circle"), "the string to use for decimal points in columns", options=list(container="body"))),
-                 choiceValues =list(".",","),
-                 choiceNames=list(
-                   "dot","comma"), selected=vals$down_dec)
-
+  observeEvent(input$down_type,ignoreInit = T,{
+    # shinyjs::toggle('out_down_dec',condition=input$down_type==".csv")
+    #shinyjs::toggle('out_down_sep',condition=input$down_type==".csv")
   })
-
-  cur_down_dec<-reactiveValues(df=NULL)
-  observeEvent(input$down_dec,{
-    vals$down_dec<-input$down_dec
-  })
-
-  output$down_sep_comma<-renderUI({
-    req(input$down_sep==',')
-    column(12,
-           radioButtons(ns("down_dec"),strong("dec",tipify(icon("fas fa-question-circle"), "the string to use for decimal points in columns", options=list(container="body"))),
-                        choiceValues =list("."),
-                        choiceNames=list("dot"),
-                        selected=vals$down_dec
-           ))
-
-  })
-
   output$download_action<-{
     downloadHandler(
       filename = function() {
@@ -198,45 +220,26 @@ module_server_downcenter<-function (input, output, session,vals, name=NULL,messa
 
   }
 
-  observeEvent(input$down_type,{
-    vals$down_type<-input$down_type
-  })
+  modal_download<-function() {
+    showModal(
+      modalDialog(
+        div(uiOutput(ns("page"))),
 
-  tags$div(class="downcenter",
-           showModal({
+        downloadButton(ns("download_action"),"Download",icon=icon('download'),style="width: 50%"),
 
-             modalDialog(
 
-               column(12,
-                      h5(strong(message)),
-                      splitLayout(cellWidths = c("30%","70%"),
-                                  column(12,
-                                         radioButtons(ns("down_type"),
-                                                      strong("format",tipify(icon("fas fa-question-circle"),"file extension", options=list(container="body"))),c(".xlsx",".csv")),
-                                         selected=vals$down_type
-                                  ),
-                                  uiOutput(ns("csv_format"))
-                      ),
-                      column(12,
-                             downloadButton(ns("download_action"),NULL,icon=icon("fas fa-download"),style="width: 50%"))
+        footer =modalButton("Dismiss"),
+        title=h4(icon("fas fa-download"),strong("Download")),
+        size="m",
+        easyClose = T
 
-               )
+      )
+    )
+  }
 
-               ,
-               footer = actionButton(ns("remove_dc"),"Dismiss"),
-               title=h4(icon("fas fa-download"),strong("Download")),
-               size="m",
-               easyClose = T
 
-             )
-           })
-  )
 
-  observeEvent(input$remove_dc,{
-    removeModal()
-    if(isTRUE(vals$task_open)){
-      vals$task_open_restore<-T
-    }
-  })
+  modal_download()
+
 
 }

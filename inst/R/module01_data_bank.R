@@ -70,121 +70,140 @@ databank_module$ui<-function(id){
   )
 
   div(
-div(
-
-  box_caret(ns("bank_tools"),
-            title="Datalist Attributes",
-            color="#374061ff",
-            inline=F,
-            div(class="bank_attr",
-                div(style="display: flex",
-                    uiOutput(ns('data_bank')),
-                    radioGroupButtons(
-                      ns("view_datalist"), NULL,
-                      choiceNames = choices_names,
-                      selected='tab1',
-                      choiceValues = choices, status = "view_datalist"
-                    )
-                )
-            )),
-
-  div(
-    class="half-drop-inline",
     div(
-      style="margin-top: -10px;padding-left: 20px;padding-top: 5px",
-      tabsetPanel(
-        id=ns("tab_bank"),
-        type="hidden",
-        tabPanel(
-          'tab1',
+
+      box_caret(ns("bank_tools"),
+                title="Datalist Attributes",
+                color="#374061ff",
+                inline=F,
+                div(class="bank_attr",
+                    div(style="display: flex",
+
+                        pickerInput_fromtop_live(ns("data_bank"), NULL, choices=NULL)
+                        ,
+                        radioGroupButtons(
+                          ns("view_datalist"), NULL,
+                          choiceNames = choices_names,
+                          selected='tab1',
+                          choiceValues = choices, status = "view_datalist"
+                        )
+                    )
+                )),
+      tags$style(HTML(
+        "
+    .icon_summary{
+    padding-left: 5px;
+ padding-right: 10px;
+ padding-top: 10px;
+    box-sizing: content-box;
+    border: 0px solid;
+    border-radius: 0px;
+
+    font-size: 10px;
+    color: #696969;
+ display: flex;
+align-items: flex-end;
+ gap: 3px
+    }
+.text_summary{
+color:RoyalBlue
+}
+    "
+      )),
+
+box_caret(ns("box_bank"),
+          button_title2=div(uiOutput(ns('summary_attr'))
+            ),
+          title=inline(
+            uiOutput(ns("selected_attr"))
+          ),
+          button_title = div(
+            actionLink(ns("download_table"),"Download",icon("download")),
+            actionLink(ns("download_plot"),"Download",icon("download")),
+            downloadLink(ns('comments_downs'), label = "Download",icon("download"))
+          ),
+
+
           div(
-            style = " background: white;",
-            div(style="font-size: 11px; display: none",
-                id=ns("split_columns"),
-                render_warning(
-                  title=NULL,point_icon=F,icon=NULL,
-                  fluidRow(
-                    column(12,
+            class="half-drop-inline",
+            div(
+              style="margin-top: -10px;padding-left: 20px;padding-top: 5px",
+              tabsetPanel(
+                id=ns("tab_bank"),
+                type="hidden",
+                header=uiOutput(ns("summary")),
+                tabPanel(
+                  'tab1',
+                  div(
+                    style = " background: white;",
+                    div(style="font-size: 11px; display: none",
+                        id=ns("split_columns"),
+                        render_warning(
+                          title=NULL,point_icon=F,icon=NULL,
+                          fluidRow(
+                            column(12,
 
-                           column(4,class="mp0",
-                                  div("The selected 'Datalist' has many columns, which may slow rendering. Columns were splitted based on the 'Max Nº of Columns'."),
+                                   column(4,class="mp0",
+                                          div("The selected 'Datalist' has many columns, which may slow rendering. Columns were splitted based on the 'Max Nº of Columns'."),
 
-                           ),
-                           column(8,class="mp0",
-                                  class="half-drop picker25",
-                                  div(style="display: flex;
+                                   ),
+                                   column(8,class="mp0",
+                                          class="half-drop picker25",
+                                          div(style="display: flex;
                                     flex-wrap:wrap; margin-left: 15px",
                                     numericInput(ns('col_interval'),"Max Nº of Columns:",200),
                                     uiOutput(ns('split_data_out'))
-                                  )
+                                          )
 
-                           )
+                                   )
+                            )
+                          )
+                        )
+                    ),
+
+                    DT::dataTableOutput(ns("DT_data"))
+
+                  )
+
+                ),
+                tabPanel('tab2',
+                         div(style = "background: white;",
+
+                             DT::dataTableOutput(ns("DT_factors"))
+
+                         )),
+                tabPanel('tab3',
+                         div(style = " background: white;",
+                             uiOutput(ns("viewcoords")))
+                ),
+                tabPanel('tab4',uiOutput(ns("viewshapes"))),
+                tabPanel('tab5',uiOutput(ns("viewsom"))),
+                tabPanel('tab6',div(
+                  tabsetPanel(
+                    id=ns("sl_type"),
+                    header=div(class='inline_pickers',
+                               numericInput(ns("round_sl"),"Round",3)),
+                    tabPanel("Classification Models",value="tab1",
+                             div(style="overflow: auto",
+                                 uiOutput(ns("viewsl_class"))
+                             )
+
+
+                    ),
+                    tabPanel("Regression Models",value="tab2",
+                             div(style="overflow: auto",
+                                 uiOutput(ns("viewsl_reg")))
+
                     )
                   )
-                )
-            ),
-            h5(
-              style="display: flex; align-items: center;gap:15px",
-              strong("Numeric-Attribute"),
-              actionButton(ns("ddcogs2"),  tipify(icon("fas fa-download"), "Download table")),
-
-
-
-
-
-            ),
-
-            DT::dataTableOutput(ns("DT_data"))
-
-          )
-
-        ),
-        tabPanel('tab2',
-                 div(style = "background: white;",
-                     h5(span(strong("Factor-Attribute")),
-                        actionButton(ns("dfcogs2"), tipify(icon("fas fa-download"), "Download table"))),
-                     DT::dataTableOutput(ns("DT_factors"))
-
-                 )),
-        tabPanel('tab3',
-                 div(style = " background: white;",
-                     uiOutput(ns("viewcoords")))
-        ),
-        tabPanel('tab4',uiOutput(ns("viewshapes"))),
-        tabPanel('tab5',uiOutput(ns("viewsom"))),
-        tabPanel('tab6',div(
-          tabsetPanel(
-            header=div(class='inline_pickers',
-                       numericInput(ns("round_sl"),"Round",3)),
-            tabPanel("Classification Models",
-                     actionLink(ns("download_class"),
-                                "Download table",
-                                icon("download")),
-
-                     div(style="overflow: auto",
-                         uiOutput(ns("viewsl_class"))
-                     )
-
-
-            ),
-            tabPanel("Regression Models",
-                     actionLink(ns("download_reg"),
-                                "Download table",
-                                icon("download")),
-
-                     div(style="overflow: auto",
-                         uiOutput(ns("viewsl_reg")))
+                )),
+                tabPanel('tab7',uiOutput(ns("comments")))
+              )
 
             )
-          )
-        )),
-        tabPanel('tab7',uiOutput(ns("comments")))
-      )
+          ))
 
     )
-  )
-
-)
   )
 }
 
@@ -194,6 +213,158 @@ databank_module$server<-function(id, vals){
 
     ns<-session$ns
     available_models<-SL_models$models
+
+
+
+
+    output$summary_attr<-renderUI({
+      req(get_download_data())
+      div(
+
+        id=ns("summary_attr"),
+        style="display: flex;gap: 1px; align-items: flex-end",
+        div(class='icon_summary',
+
+            span('rows:'),
+            uiOutput(ns("nrows")),
+        ),
+        div(class='icon_summary',
+
+            span("columns:"),
+            uiOutput(ns("ncols")),
+        ),
+        div(class='icon_summary',
+
+            span('NAs:'),
+            uiOutput(ns("nas")),
+        )
+
+
+      )
+    })
+
+
+    output$summary<-renderUI({
+
+      #basic_summary(get_download_data())
+
+    })
+
+    observe({
+      shinyjs::toggle('summary_attr',condition=input$view_datalist%in%c("tab1",'tab2',"tab3"))
+    })
+
+    output$nrows<-renderUI({
+      div(
+        class='text_summary',
+        nrow(get_download_data())
+      )
+    })
+    output$ncols<-renderUI({
+      div(
+        class='text_summary',
+        ncol(get_download_data())
+      )
+    })
+    output$nas<-renderUI({
+      div(
+        class='text_summary',
+        sum(is.na(get_download_data()))
+      )
+    })
+
+    get_title_attr<-reactive({
+      switch(input$view_datalist,
+             "tab1"={"Numeric-Attribute"},
+             "tab2"={"Factor-Attribute"},
+             "tab3"={"Coords-Attribute"} ,
+             "tab4"={"Shapes-Attribute"},
+             "tab5"={"SOM-Attribute"} ,
+             "tab6"={"Supervised Models"},
+             "tab7"={"Comments"} )
+    })
+
+    observe({
+      shinyjs::toggle('download_table',condition=input$view_datalist%in%c("tab1","tab2","tab3","tab5","tab6"))
+      shinyjs::toggle('download_plot',condition=input$view_datalist%in%c("tab4"))
+      shinyjs::toggle('comments_downs',condition=input$view_datalist%in%c("tab7"))
+
+    })
+
+    summary_som<-reactive({
+      mlist<-attr(getdata_bank(), "som")
+      res<-lapply(names(mlist),function(i){
+        m=mlist[[i]]
+        supersom_summaries3(m, i)
+      })
+      res2<-data.frame(res)
+      colnames(res2)<-NULL
+      res2
+    })
+    get_download_data<-reactive({
+      switch(input$view_datalist,
+             "tab1"={getdata_bank()},
+             "tab2"={attr(getdata_bank(),"factors")},
+             "tab3"={attr(getdata_bank(),"coords")},
+             "tab4"={NULL},
+             "tab5"={summary_som()},
+             "tab6"={
+               if(input$sl_type=='tab1'){
+                 get_metrics()$class
+               } else{
+                 get_metrics()$reg
+               }
+             },
+             "tab7"={NULL}
+      )
+    })
+    get_name_download<-reactive({
+      name<-paste0(input$data_bank,"-",get_title_attr())
+      if(input$view_datalist=="tab6"){
+        if(input$sl_type=='tab1'){
+          name<-paste0(input$data_bank,"-classification-summary")
+        } else{
+          name<-paste0(input$data_bank,"-regression-summary")
+        }
+      }
+      name
+    })
+    observeEvent(ignoreInit = T,input$download_table,{
+      vals$hand_down<-"generic"
+      module_ui_downcenter("downcenter")
+      data<-get_download_data()
+      name<-get_name_download()
+      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, data=data, name=name)
+    })
+    observeEvent(ignoreInit = T,input$download_plot,{
+      vals$hand_plot<-"generic_gg"
+      generic=plot_shape()
+      message<-name_c<-"Shape"
+      module_ui_figs("downfigs")
+      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals,message=message, name_c=name_c,generic=generic)
+    })
+
+    output$comments_downs<-{
+      downloadHandler(
+        filename = function() {
+          paste(input$data_bank, "_comment", Sys.Date(), ".txt", sep = "")
+
+        },
+        content = function(file) {
+          res<-attr(getdata_bank(), "notes")
+          res<-gsub("<br/>", "\n", res)
+          writeLines(res, file, sep = '\n')
+          beep(10)
+        }
+      )
+    }
+
+    output$selected_attr<-renderUI({
+      get_title_attr()
+
+    })
+
+
 
 
 
@@ -248,21 +419,8 @@ databank_module$server<-function(id, vals){
       vals$cur_view_datalist<-input$view_datalist
     })
 
-    observeEvent(ignoreInit = T,input$download_class,{
-      req(get_metrics()$class)
-      vals$hand_down<-"generic"
-      module_ui_downcenter("downcenter")
-      data<-get_metrics()$class
-      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Summary table - Classification",data=data, name='sl_class_summary')
-    })
 
-    observeEvent(ignoreInit = T,input$download_reg,{
-      req(get_metrics()$reg)
-      vals$hand_down<-"generic"
-      module_ui_downcenter("downcenter")
-      data<-get_metrics()$reg
-      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Summary table - Regression",data=data, name='sl_reg_summary')
-    })
+
 
     update_imesc_models<-reactive({
       req(input$data_bank)
@@ -343,10 +501,16 @@ databank_module$server<-function(id, vals){
     })
 
 
-
-    output$data_bank<-renderUI({
-      pickerInput(ns("data_bank"), NULL, choices=names(vals$saved_data), selected=vals$cur_data)
+    observeEvent(vals$saved_data,{
+      choices=names(vals$saved_data)
+      selected=vals$cur_data
+      selected=get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'data_bank',choices=choices,selected=selected)
     })
+
+
+
+
     getdata_bank<-reactive({
       req(length(vals$saved_data)>0)
       req(input$data_bank)
@@ -372,9 +536,27 @@ databank_module$server<-function(id, vals){
         ),
         uiOutput(ns('viewbase')),
         uiOutput(ns('viewlayer')),
-        uiOutput(ns("elayers"))
+        uiOutput(ns("elayers")),
+        plotOutput(ns("shape_plot"))
       )
     })
+
+    plot_shape<-reactive({
+      if(input$pick_elayers%in%c('base_shape','layer_shape')){
+        shape<-attr(getdata_bank(), input$pick_elayers)
+      } else{
+        shape<-attr(getdata_bank(), "extra_shape")[[input$pick_elayers]]
+      }
+      ggplot(st_as_sf(shape)) + geom_sf() +
+        theme(panel.background = element_rect(fill = "white"),
+              panel.border = element_rect(fill = NA, color = "black", size = 0.5, linetype = "solid"))
+
+    })
+
+    output$shape_plot<-renderPlot({
+      plot_shape()
+    })
+
     output$ddcogs3<-renderUI({
       div(class = "ddlinks",
           actionLink(ns("ddcogs3"), "Edit changes")
@@ -383,15 +565,6 @@ databank_module$server<-function(id, vals){
     output$viewsom<-renderUI({
       validate(need(length(attr(getdata_bank(), "som")) > 0,"No SOM model found"))
       div(
-        splitLayout(
-          cellWidths = c("30%", "50%"),
-          h5(
-            span(strong("Som-Attribute"),
-                 tipify(actionButton(ns("downcenter_som"), icon("fas fa-download")), "Download table")
-            ),
-            popify(bsButton(ns("trash_som"), icon("fas fa-edit"), style = "button_active"), NULL, "Select and remove a som")
-          )
-        ),
         uiOutput(ns("supersom_summary"))
       )
     })
@@ -417,9 +590,7 @@ databank_module$server<-function(id, vals){
         div(uiOutput(ns('comment_data')))
       )
     })
-    output$comments_down<-renderUI({
-      downloadButton(ns('comments_downs'), label = NULL)
-    })
+
     output$comments_remove<-renderUI({
       div(
         popify(bsButton(ns('comments_remove'), icon("fas fa-trash"), style = "button_active"), NULL, "Delete comment")
@@ -451,9 +622,6 @@ databank_module$server<-function(id, vals){
         )
       } else {
         div(
-          h5(id = ns("databank_coords"), strong("Coords-Attribute"), tipify(actionButton(ns("downcenter_coords"), icon("fas fa-download")), "Download table"),
-             actionButton(ns("delete_coords"), icon("fas fa-trash-alt"))),
-
           inline(
             DT::dataTableOutput(ns("DTcoords"))
           )
@@ -465,10 +633,10 @@ databank_module$server<-function(id, vals){
 
     output$viewbase<-renderUI({
       req(input$pick_elayers)
-      req(input$pick_elayers == "Base Shape")
+      req(input$pick_elayers=="base_shape")
 
       column(12,
-             # renderPlot(bankShpfile()),
+
              if (is.null(attr(getdata_bank(), "base_shape"))) {
                fluidRow(
 
@@ -486,21 +654,17 @@ databank_module$server<-function(id, vals){
 
                         ))
                )
-             } else {
-               renderPlot({
-                 base_shape<-attr(getdata_bank(), "base_shape")
-                 ggplot(st_as_sf(base_shape)) + geom_sf() +
-                   theme(panel.background = element_rect(fill = "white"),
-                         panel.border = element_rect(fill = NA, color = "black", size = 0.5, linetype = "solid"))
-               })
              }
 
       )
     })
+
+
+
     output$viewlayer<-renderUI({
 
       req(input$pick_elayers)
-      req(input$pick_elayers == "Layer Shape")
+      req(input$pick_elayers=="layer_shape")
       div(
         if (is.null(attr(getdata_bank(), "layer_shape"))) {
           fluidRow(
@@ -520,37 +684,13 @@ databank_module$server<-function(id, vals){
                    ))
 
           )
-        } else {
-          fluidRow(
-
-            renderPlot({
-              layer_shape<-attr(getdata_bank(), "layer_shape")
-              ggplot(st_as_sf(layer_shape)) + geom_sf() +
-                theme(panel.background = element_rect(fill = "white"),
-                      panel.border = element_rect(fill = NA, color = "black", size = 0.5, linetype = "solid"))
-
-            })
-          )
         }
 
 
       )
     })
 
-    output$comments_downs<-{
-      downloadHandler(
-        filename = function() {
-          paste(input$data_bank, "_comment", Sys.Date(), ".txt", sep = "")
 
-        },
-        content = function(file) {
-          res<-attr(getdata_bank(), "notes")
-          res<-gsub("<br/>", "\n", res)
-          writeLines(res, file, sep = '\n')
-          beep(10)
-        }
-      )
-    }
     output$comment_data<-renderUI({
       HTML(attr(getdata_bank(), "notes"))
     })
@@ -570,24 +710,7 @@ databank_module$server<-function(id, vals){
     output$ddcogs1_targ<-renderUI({
       input$ddcogs1_pick
     })
-    output$elayers<-renderUI({
-      req(input$pick_elayers)
-      div(
 
-        # renderPrint(attr(getdata_bank(),"extra_shape")),
-        renderPlot({
-          shape <-
-            attr(getdata_bank(), "extra_shape")[[input$pick_elayers]]
-          req(!is.null(shape))
-          ggplot(st_as_sf(shape)) + geom_sf() +
-            theme(panel.background = element_rect(fill = "white"),
-                  panel.border = element_rect(fill = NA, color = "black", size = 0.5, linetype = "solid"))
-
-
-
-        })
-      )
-    })
 
 
     output$add_coords_button<-renderUI({
@@ -775,7 +898,7 @@ databank_module$server<-function(id, vals){
       eshape<-attr(getdata_bank(),"extra_shape")
 
       pic<-which(unlist(lapply(list(base_shape,layer_shape),function(x)length(x)>0)))
-      choices=c(c("Base Shape","Layer Shape"),names(eshape))
+      choices=c(c("Base Shape"="base_shape","Layer Shape"="layer_shape"),names(eshape))
       choices
     })
 
@@ -894,7 +1017,7 @@ databank_module$server<-function(id, vals){
 
     })
     observeEvent(ignoreInit = T,input$delete_elayer_shape,{
-      req(input$pick_elayers=='Base Shape')
+      req(input$pick_elayers=="base_shape")
       attr(vals$saved_data[[input$data_bank]],"base_shape")<-NULL
       removeModal()
       updateRadioGroupButtons(session,"view_datalist", selected="extra_shape")
@@ -917,7 +1040,7 @@ databank_module$server<-function(id, vals){
 
     })
     observeEvent(ignoreInit = T,input$delete_elayer_shape,{
-      req(input$pick_elayers=='Layer Shape')
+      req(input$pick_elayers=="layer_shape")
       attr(vals$saved_data[[input$data_bank]],"layer_shape")<-NULL
       removeModal()
       updateRadioGroupButtons(session,"view_datalist", selected="extra_shape")
@@ -926,49 +1049,13 @@ databank_module$server<-function(id, vals){
 
 
 
-    observeEvent(ignoreInit = T,input$ddcogs2,{
-      vals$hand_down<-"generic"
-      module_ui_downcenter("downcenter")
-      data<-getdata_bank()
-      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, data=data, name=paste0(input$data_bank,"_","Numeric"))
-    })
-
-    observeEvent(ignoreInit = T,input$dfcogs2,{
-      vals$hand_down<-"generic"
-      module_ui_downcenter("downcenter")
-      data<-attr(getdata_bank(),"factors")
-      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, data=data, name=paste0(input$data_bank,"_","Factors"))
-    })
 
 
-    observeEvent(ignoreInit = T,input$downcenter_coords,{
-      vals$hand_down<-"generic"
-      module_ui_downcenter("downcenter")
-      data<-attr(getdata_bank(),"coords")
-      mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, data=data, name=paste0(input$data_bank,"_","Coords"))
-    })
+
     observeEvent(ignoreInit = T,input$data_bank,{
       vals$cur_data<-input$data_bank
     })
-    observeEvent(ignoreInit = T,input$downcenter_som,{
-      vals$hand_down<-"SOM - summary table"
 
-      mlist<-attr(getdata_bank(), "som")
-
-      res<-lapply(names(mlist),function(i){
-        m=mlist[[i]]
-        supersom_summaries3(m, i)
-      })
-      res2<-data.frame(res)
-      colnames(res2)<-NULL
-
-
-      vals$comb_som<-res2
-      module_ui_downcenter("downcenter")
-      mod_downcenter<-callModule(module_server_downcenter, "downcenter",  vals=vals)
-
-
-    })
     observeEvent(ignoreInit = T,input$view_datalist,
                  {vals$curview_databank<-input$view_datalist})
 
@@ -1034,8 +1121,8 @@ databank_module$server<-function(id, vals){
       attr(vals$saved_data[[input$data_bank]],"notes")<-NULL
     })
     observeEvent(ignoreInit = T,input$delete_elayer_shape,{
-      req(input$pick_elayers!='Base Shape')
-      req(input$pick_elayers!='Layer Shape')
+      req(input$pick_elayers!='base_shape')
+      req(input$pick_elayers!='layer_shape')
       attr(vals$saved_data[[input$data_bank]],"extra_shape")[[input$pick_elayers]]<-NULL
       removeModal()
       updateRadioGroupButtons(session,"view_datalist", selected="extra_shape")
@@ -1059,5 +1146,4 @@ databank_module$server<-function(id, vals){
 
   })
 }
-
 

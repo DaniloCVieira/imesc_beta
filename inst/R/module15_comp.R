@@ -46,8 +46,8 @@ ggbox_modelmetrics<-function(results,gg_base_size=12,
 
 
   leg_name<-switch(gg_fill,
-                   "x"="Model",
-                   "model_tag"="Model name",
+                   "x"="Model name",
+                   "model_tag"="Model type",
                    'supervisor'="Y")
   fill<-newcolhabs[[gg_palette]](1)
   fill<-lighten(fill,gg_fill_lighten)

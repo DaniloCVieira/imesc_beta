@@ -981,7 +981,6 @@ desctools_tab4$server<-function(id,vals){
 
     observeEvent(ignoreInit = T,input$run_pair,{
       req(get_ggpair())
-      vals$desc_pairplot<-get_ggpair()
       runval$pair<-"btn_nice"
     })
     getdata_descX<-reactive({
@@ -990,9 +989,11 @@ desctools_tab4$server<-function(id,vals){
     })
 
     observeEvent(ignoreInit = T,input$fm_downplot4,{
-      vals$hand_plot<-"Pairs-plot"
+      vals$hand_plot<-"generic_gg"
+      generic=get_ggpair()
+      message<-name_c<-"Pairs-plot"
       module_ui_figs("downfigs")
-      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals)
+      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals,message=message, name_c=name_c,generic=generic)
     })
     observeEvent(getdata_descX(),{
       data<-getdata_descX()
@@ -1032,13 +1033,13 @@ desctools_tab4$server<-function(id,vals){
 
     })
     output$msp_pairs<-renderUI({
-      req(vals$desc_pairplot)
+      req(get_ggpair())
       req(input$msp_plot_width)
       req(input$msp_plot_height)
       res<-div(
 
-        renderPlot(vals$desc_pairplot,  width=input$msp_plot_width,height=input$msp_plot_height),
-        em(attr(vals$desc_pairplot,"row1"), style="color: gray")
+        renderPlot(get_ggpair(),  width=input$msp_plot_width,height=input$msp_plot_height),
+        em(attr(get_ggpair(),"row1"), style="color: gray")
       )
       vals$show_ggrun<-F
       res
@@ -1809,16 +1810,16 @@ desctools_tab7$server<-function(id,vals){
       )
     })
 
+    get_plot_pca<-reactive({
+      args<-args_pca()
+      do.call(ggpca,args)
+    })
+
     output$plot_pca<-renderUI({
 
-      args<-args_pca()
-
-      vals$ppca_plot<-do.call(ggpca,args)
-
       div(
-
         renderPlot({
-          vals$ppca_plot
+          get_plot_pca()
         })
 
       )
@@ -1886,10 +1887,11 @@ desctools_tab7$server<-function(id,vals){
 
 
     observeEvent(getdata_descX(),{
-
-      req(!is.null(vals$ppca_plot))
+      req(!is.null(get_plot_pca()))
       runval$pca<-"save_changes_nice"
     })
+
+
 
     observeEvent(ignoreInit = T,input$down_pca_results,{
       vals$hand_down<-"PCA result"
@@ -1901,11 +1903,16 @@ desctools_tab7$server<-function(id,vals){
       vals$pca_options<-input$pca_options
     })
 
+
+
     observeEvent(ignoreInit = T,input$pca_downp,{
-      vals$hand_plot<-"pca"
+      vals$hand_plot<-"generic_gg"
+      generic=get_plot_pca()
+      message<-name_c<-"PCA"
       module_ui_figs("downfigs")
-      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals)
+      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals,message=message, name_c=name_c,generic=generic)
     })
+
 
     observeEvent(input$run_pca,ignoreInit = T,{
       pca<-try(prcomp(getdata_descX(), center=F, scale=F))

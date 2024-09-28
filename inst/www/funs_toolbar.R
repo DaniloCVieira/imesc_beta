@@ -395,17 +395,18 @@ emwarning<-function(text){
 
   )
 }
-basic_summary<-function(data){
+basic_summary<-function(data,show_missing=T){
   if(is.null(data)){return(NULL)}
   column(12,style="font-size: 11px; margin-top: 10px",
          column(6,
                 div(strong('Number of rows:')),
                 div(strong('Number of columns:')),
+                if(show_missing)
                 div('Missing Values')),
          column(6,
                 div(emgreen(nrow(data))),
                 div(emgreen(ncol(data))),
-                div(emgreen(sum(is.na(data))))
+                if(show_missing){div(emgreen(sum(is.na(data))))}
          )
 
   )

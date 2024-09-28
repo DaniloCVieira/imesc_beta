@@ -83,7 +83,7 @@ strong_forest<-function(text){
 emforest<-function(text){
   em(text,style="color: darkgreen")
 }
-box_caret<-function(id,content=NULL,inline=T, class="train_box",click=T,title=NULL,button_title=NULL,tip=NULL,auto_overflow=F, color=NULL,show_tittle=T,hide_content=F,button_title2=NULL){
+box_caret<-function(id,content=NULL,inline=T, class="train_box",click=T,title=NULL,button_title=NULL,tip=NULL,auto_overflow=F, color=NULL,show_tittle=T,hide_content=F,button_title2=NULL,ab=NULL){
   ns<-NS(id)
 
   id0<-strsplit(id,"-")[[1]]
@@ -114,11 +114,14 @@ box_caret<-function(id,content=NULL,inline=T, class="train_box",click=T,title=NU
     hide_content="-"
   }
   div_title<-NULL
+  if(is.null(ab)){
+    ab<-actionButton(ns("show_hide"),hide_content,style=style)
+  }
   if(isTRUE(show_tittle)){
     div_title<-div(
       style="display: flex",class="box_title",
       div(
-        actionButton(ns("show_hide"),hide_content,style=style),
+        ab,
         title,tip),
       div(
         class="btn-title2",

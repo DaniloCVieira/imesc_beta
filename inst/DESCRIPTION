@@ -88,6 +88,8 @@ Imports:
     writexl,
     readxl,
     RANN,
+    klaR,
+    party,
     partykit,
     automap,
     aweSOM,

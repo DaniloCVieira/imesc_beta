@@ -2617,7 +2617,7 @@ gg_plotList<-function(cur_data,
                       filter_level,
                       saved_data,args,factor_filter,padding=0.1,main=colnames(data),round=round,raster=T,raster_resolution=0.036,down_grade_raster=F,down_grade=2,base_shape_args,
                       layer_shape_args,
-                      args_extra_shape,interp_args,interp_gstat=NULL,interp=F,session=MockShinySession$new(),custom_breaks,circles=circles,pie=pie,breaks_on=T,titles,grid_sub_hadj,...) {
+                      args_extra_shape,interp_args,interp_gstat=NULL,interp=F,session=MockShinySession$new(),custom_breaks,circles=circles,pie=pie,breaks_on=T,titles,grid_sub_hadj,args_barscale,...) {
 
 
   data=get_data_map(name=cur_data,
@@ -2692,8 +2692,9 @@ gg_plotList<-function(cur_data,
       p<-do.call(gg_add_titles,args_temp)
       args_temp$p<-p
       p<-do.call(gg_style_axes,args_temp)
-      args_temp$p<-p
-      p<-do.call(add_bar_scale,args_temp)
+      args_barscale$p<-p
+      args_barscale$data<-args_temp$data
+      p<-do.call(add_bar_scale,args_barscale)
       args_temp$p<-p
       p<-do.call(gg_add_north,args_temp)
 
