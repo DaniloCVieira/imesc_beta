@@ -547,6 +547,7 @@ databank_module$server<-function(id, vals){
       } else{
         shape<-attr(getdata_bank(), "extra_shape")[[input$pick_elayers]]
       }
+      req(shape)
       ggplot(st_as_sf(shape)) + geom_sf() +
         theme(panel.background = element_rect(fill = "white"),
               panel.border = element_rect(fill = NA, color = "black", size = 0.5, linetype = "solid"))

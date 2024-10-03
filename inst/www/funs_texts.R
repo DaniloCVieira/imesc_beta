@@ -2040,28 +2040,7 @@ retype<-function(data){
 
   })
 }
-#' @export
-plot_ridges<-functiondataplot_ridges<-function(data,fac,palette,newcolhabs,ncol=3, title="",base_size=11){
-  col<-getcolhabs(newcolhabs,palette,nlevels(data$class))
-  df<-data.frame(id=rownames(data),y=fac,data)
-  df<-reshape2::melt(data,'class')
-  ggplot(df, aes(x = value, y = class)) +
-    ggridges::geom_density_ridges(aes(fill = class),show.legend = T) +
-    scale_fill_manual(values = c(col))+
-    ggtitle(NULL)+facet_wrap(~variable,ncol=ncol)+
-    guides(fill=guide_legend(title=fac))+ggtitle(title)+theme(
-    strip.text.x = element_text(size = base_size),
-    strip.text.y = element_text(size = base_size),
-    axis.text=element_text(size=base_size),
-    axis.title=element_text(size=base_size),
-    plot.title=element_text(size=base_size),
-    plot.subtitle=element_text(size=base_size,face="italic"),
-    legend.text=element_text(size=base_size),
-    legend.title=element_text(size=base_size),
-  )
 
-
-}
 
 virtualPicker_unique<-function(id,label,choices,selected=NULL,search=T,multiple=F,allOptionsSelectedText="All",alwaysShowSelectedOptionsCount=F,width=NULL){
   div(class="picker13",

@@ -1,8 +1,34 @@
 #' @export
+plot_ridges<-function(data,fac,palette,newcolhabs,ncol=3, title="",base_size=11){
+  col<-getcolhabs(newcolhabs,palette,nlevels(data$class))
+  df<-data.frame(id=rownames(data),y=fac,data)
+  df<-reshape2::melt(data,'class')
+  ggplot(df, aes(x = value, y = class)) +
+    ggridges::geom_density_ridges(aes(fill = class),show.legend = T) +
+    scale_fill_manual(values = c(col))+
+    ggtitle(NULL)+facet_wrap(~variable,ncol=ncol)+
+    guides(fill=guide_legend(title=fac))+ggtitle(title)+theme(
+      strip.text.x = element_text(size = base_size),
+      strip.text.y = element_text(size = base_size),
+      axis.text=element_text(size=base_size),
+      axis.title=element_text(size=base_size),
+      plot.title=element_text(size=base_size),
+      plot.subtitle=element_text(size=base_size,face="italic"),
+      legend.text=element_text(size=base_size),
+      legend.title=element_text(size=base_size),
+    )
+
+
+}
+
+#' @export
 
 ggbox<-function(res,pal,violin=F,horiz=F,base_size=12,cex.axes=1,cex.lab=1,
                 cex.main=1,xlab=colnames(res)[1],ylab=colnames(res)[2],main="",
                 box_linecol="firebrick",box_alpha=0.7,newcolhabs,cex.label_panel=10,varwidth=F, linewidth=.8, theme='theme_bw', grid=T, background="white",xlab_rotate=0,ylab_rotate=0,nrow=NULL,ncol=2,box_title_font="italic",subtitle=NULL,cex.subtitle=10,              box_subtitle_font="plain") {
+
+  #res0<-res
+  #res$group<-NULL
   wrap=F
   if(is.na(nrow)){
     nrow=NULL
@@ -10,10 +36,19 @@ ggbox<-function(res,pal,violin=F,horiz=F,base_size=12,cex.axes=1,cex.lab=1,
   if(is.na(ncol)){
     ncol=NULL
   }
+  ggr<-NULL
   if(ncol(res)>2){
     res2<-res
     colnames(res2)[1]<-c("x")
-    res2<-reshape2::melt(res2,"x")
+    if("group"%in%colnames(res2)){
+      res2<-reshape2::melt(res2,c("x","group"))
+      ggr<-res2$group
+      res2$group<-NULL
+    } else{
+      res2<-reshape2::melt(res2,"x")
+
+    }
+
     colnames(res2)[3]<-"y"
     res<-res2
     wrap=T
@@ -22,6 +57,7 @@ ggbox<-function(res,pal,violin=F,horiz=F,base_size=12,cex.axes=1,cex.lab=1,
     colnames(res)<-c("x","y")
   }
 
+  res$group<-ggr
   coline<-box_linecol
   cols<-newcolhabs[[pal]](nlevels(res$x))
   cols<-lighten(cols,box_alpha)
@@ -78,10 +114,17 @@ ggbox<-function(res,pal,violin=F,horiz=F,base_size=12,cex.axes=1,cex.lab=1,
   p<-p+
     scale_y_continuous(labels = scales::label_number(big.mark = ",", decimal.mark = "."))
 
-  if(isTRUE(wrap)){
+  if(!is.null(ggr)){
+    p<-p+facet_wrap(~interaction(group,variable), scales = "free_y",nrow=nrow,ncol=ncol)
+  } else{
+    if(isTRUE(wrap)){
 
-    p<-p+facet_wrap(~variable, scales = "free_y",nrow=nrow,ncol=ncol)
+      p<-p+facet_wrap(~variable, scales = "free_y",nrow=nrow,ncol=ncol)
+    }
   }
+
+
+
   p
 }
 #' @export

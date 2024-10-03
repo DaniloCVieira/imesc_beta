@@ -1,9 +1,4 @@
 
-#' @importFrom colorspace lighten
-#' @importFrom data.table rleid
-#' @importFrom segRDA OrdData bp
-#' @noRd
-
 
 color_input<-function(id,label,selected=NULL,vals){
   pickerInput_fromtop(
@@ -387,6 +382,7 @@ desctools_tab2$ui<-function(id){
                                checkboxInput(ns('box_horiz'),"Horizontal:",value=F),
 
                                pickerInput_fromtop(ns("box_theme"),"Theme:",c('theme_bw','theme_grey','theme_linedraw','theme_light','theme_minimal','theme_classic')),
+                               pickerInput_fromtop(ns("box_facetwrap"),"Facet wrap:",c("None")),
 
                                pickerInput_fromtop(ns("box_palette"),
                                                    label = "Palette:",
@@ -450,8 +446,20 @@ desctools_tab2$server<-function(id,vals){
 
     })
 
-    getbox<-reactive({
+    observeEvent(bbox_x_datalist(),{
+      data<-bbox_x_datalist()
+      selected=vals$cur_box_facetwrap
+      choices<-c("None",colnames(attr(data,"factors")))
+      selected<-get_selected_from_choices(selected,choices)
+      updatePickerInput(session,'box_facetwrap',choices=choices,selected=selected)
+    })
 
+    observeEvent(input$box_facetwrap,{
+      vals$cur_box_facetwrap<-input$box_facetwrap
+    })
+
+    observeEvent(getbox(),{
+      print(head(getbox()))
     })
     getbox<-reactive({
       req(length(vals$saved_data)>0)
@@ -459,6 +467,8 @@ desctools_tab2$server<-function(id,vals){
       req(input$boxplot_X)
       req(input$box_y)
       req(input$filter_box1)
+
+
 
       result<-try(silent=T,{
 
@@ -487,9 +497,16 @@ desctools_tab2$server<-function(id,vals){
         res = data.frame(x,y)[pic,,drop=F]
         colnames(res)[-1]<-colnames(y)
         res[,1]<-res[,1]
+
+
         res
 
       })
+      if(input$box_facetwrap!="None"){
+        result$group<-attr(bbox_x_datalist(),"factors")[rownames(result),input$box_facetwrap]
+        attr(result,"group_name")<-input$box_facetwrap
+      }
+
       req(!inherits(result,"try-error"))
       result
 
@@ -847,6 +864,7 @@ desctools_tab3$server<-function(id,vals){
 
     observeEvent(input$run_ridges,{
       args<-args_ridges()
+
       vals$rid_plot<-do.call(plot_ridges,args)
       runval$rid<-"btn_nice"
     })
@@ -3788,7 +3806,7 @@ desctools$ui<-function(id){
           ),
 
           id=ns('desc_options'),
-          selected="tab1",
+          selected="tab2",
           tabPanel('1. Summaries',
                    value="tab1",
                    desctools_tab1$ui(ns("summaries")),
@@ -3924,5 +3942,4 @@ desctools$server<-function (id,vals ){
 
   })
 }
-
 

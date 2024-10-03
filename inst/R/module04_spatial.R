@@ -3414,7 +3414,7 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
             extra=vals$extra_shapes
           )
         })
-        observeEvent(asptools_shapes(),ignoreInit = T,{
+        observeEvent(asptools_shapes(),{
 
           base_shape_args=asptools_shapes()$base
           layer_shape_args=asptools_shapes()$layer

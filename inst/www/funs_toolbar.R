@@ -792,7 +792,7 @@ getclassmat<-function(data.factors)
 
 get_selected_from_choices<-function(selected, choices){
   if(!is.null(selected)){
-    if(!selected%in%choices){
+    if(!any(selected%in%choices)){
       selected<-NULL
     }
   }

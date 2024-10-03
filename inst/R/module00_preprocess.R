@@ -3412,26 +3412,43 @@ tool2_tab11$server<-function(id,vals){
   })
 }
 
-virtualPicker<-function(id,SelectedText="IDs selected", label=NULL,choices=NULL,selected=NULL,search =T){
-  div(class="picker_open",
-      shinyWidgets::virtualSelectInput(
-        inputId = id,
-        label = label,
-        optionHeight='24px',
-        choices = choices,
-        selected=selected,
-        search = search,
-        keepAlwaysOpen = TRUE,
-        multiple =T,
-        hideClearButton=T,
-        alwaysShowSelectedOptionsCount=T,
-        searchPlaceholderText="Select all  -  Search",
-        optionsSelectedText=SelectedText,
-        optionSelectedText=SelectedText
-      )
+virtualPicker<-function(id,SelectedText="IDs selected", label=NULL,choices=NULL,selected=NULL,search =T,   optionHeight='24px',styles=NULL){
+  class='picker_open'
+
+
+  tag_style=NULL
+  if(!is.null(styles)){
+    tag_style<-tags$style(
+      HTML(paste(paste0(".vs-",id),".vscomp-wrapper{",styles,"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-wrapper{",styles,"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-container{",paste0('height:',optionHeight,";",styles),"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-toggle-button{",paste0('height:',optionHeight,";",styles),"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-input{",styles,"}"))
+    )
+    class=paste('picker_open',paste0("vs-",id))
+
+  }
+  div(
+    tag_style,
+    div(class=class,
+        shinyWidgets::virtualSelectInput(
+          inputId = id,
+          label = label,
+          optionHeight=optionHeight,
+          choices = choices,
+          selected=selected,
+          search = search,
+          keepAlwaysOpen = TRUE,
+          multiple =T,
+          hideClearButton=T,
+          alwaysShowSelectedOptionsCount=T,
+          searchPlaceholderText="Select all  -  Search",
+          optionsSelectedText=SelectedText,
+          optionSelectedText=SelectedText
+        )
+    )
   )
 }
-
 
 get_scale<-function(data,scale,center){
   data0<-data
@@ -6136,6 +6153,11 @@ tool2_tab3$server<-function(id,vals){
       req(input$import_from_data)
       req(input$import_from_attr)
       data<-vals$saved_data[[input$import_from_data]]
+      data<-data[rownames(vals$saved_data[[input$import_to_data]]),,drop=F]
+
+      data<-data_migrate(data0,data)
+
+
       attr(data,"attr")<-"Numeric-Attribute"
       afrom<-input$import_from_attr
       if(afrom=="factor"){
@@ -6265,6 +6287,7 @@ tool2_tab3$server<-function(id,vals){
       data
     })
     factor2factor<-reactive({
+
       data<-get_data_cutted()
 
       vars<-colnames(data)
@@ -6489,10 +6512,16 @@ tool2_tab3$server<-function(id,vals){
       )
     })
     getconvert_datavars<-reactive({
+
       req(input$import_from_attr)
       req(input$importvar)
       req(input$import_from_attr)
-      data<-vals$saved_data[[input$import_from_data]]
+      data0<-data<-vals$saved_data[[input$import_from_data]]
+      data<-data[rownames(vals$saved_data[[input$import_to_data]]),,drop=F]
+
+      req(nrow(data)>0)
+      data<-data_migrate(data0,data)
+
       datalist_name<-input$import_from_data
 
       if(input$import_from_attr=="factor"){
@@ -6691,8 +6720,9 @@ tool2_tab3$server<-function(id,vals){
         cut(as.numeric(as.character(x[[1]])),as.numeric(x[[2]]))
       }))
     }
+    ns<-session$ns
     get_data_from<-reactive({
-      ns<-session$ns
+
       data<-getconvert_datavars()[[1]]
       vars<-getconvert_datavars()[[2]]
       data<-data[,unlist(vars),drop=F]

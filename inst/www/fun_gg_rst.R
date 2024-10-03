@@ -49,6 +49,7 @@ get_data_map<-function(saved_data,name,attr,var,filter,filter_level){
   filtered_rows<-if(filter=="None"){
     rownames(factors)
   } else{
+    req(filter%in%colnames(factors))
     fac<-factors[,filter]
     rownames(factors)[fac==filter_level]}
 
@@ -1991,6 +1992,7 @@ get_limits2<-function(data,base_shape_args,
                       args_extra_shape){
 
   coords<-attr(data,"coords")
+  req(coords)
   coords<-st_as_sf(coords,coords=colnames(coords))
   base_shape<-attr(data,"base_shape")
   layer_shape<-attr(data,"layer_shape")
