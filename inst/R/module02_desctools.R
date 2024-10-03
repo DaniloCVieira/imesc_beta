@@ -1,4 +1,27 @@
 
+print.ggmatrix<-GGally:::print.ggmatrix
+transform_module<-list()
+transform_module$ui<-function(id, label="Transformation"){
+  ns<-NS(id)
+  transf_label<-sapply(transf_df,function(x) x$label)
+  transf_value<-sapply(transf_df,function(x) x$value)
+  names(transf_value)<-transf_label
+  pickerInput_fromtop_live(ns("transf"),label,choices=transf_value)
+}
+
+transform_module$server<-function(id,data){
+  moduleServer(id,function(input,output,session){
+
+
+
+    #print(summary(result))
+
+    return(transf_data(data,input$transf,colnames(data)))
+
+  })
+}
+
+
 
 color_input<-function(id,label,selected=NULL,vals){
   pickerInput_fromtop(
@@ -379,6 +402,8 @@ desctools_tab2$ui<-function(id){
 
                            div(
                              div(
+
+                               transform_module$ui(ns("box_transf"),"Transf Y"),
                                checkboxInput(ns('box_horiz'),"Horizontal:",value=F),
 
                                pickerInput_fromtop(ns("box_theme"),"Theme:",c('theme_bw','theme_grey','theme_linedraw','theme_light','theme_minimal','theme_classic')),
@@ -458,9 +483,7 @@ desctools_tab2$server<-function(id,vals){
       vals$cur_box_facetwrap<-input$box_facetwrap
     })
 
-    observeEvent(getbox(),{
-      print(head(getbox()))
-    })
+
     getbox<-reactive({
       req(length(vals$saved_data)>0)
 
@@ -477,11 +500,15 @@ desctools_tab2$server<-function(id,vals){
 
         data<-datay<-bbox_y_datalist()[rownames(datax),,drop=F]
 
+
+
         pic<-1:nrow(data)
         req(any(input$boxplot_X%in%colnames(labels)))
         x<-labels[input$boxplot_X]
         req(any(input$box_y%in%colnames(datay)))
         y<-data[input$box_y]
+
+
         common_ids<-intersect(rownames(x),rownames(y))
         req(length(common_ids)>0)
         x<-x[common_ids,,drop=F]
@@ -494,7 +521,11 @@ desctools_tab2$server<-function(id,vals){
 
 
         }
+
         res = data.frame(x,y)[pic,,drop=F]
+
+
+        res[2:ncol(res)]<-transform_module$server('box_transf',data=res[2:ncol(res)])
         colnames(res)[-1]<-colnames(y)
         res[,1]<-res[,1]
 
@@ -714,6 +745,43 @@ desctools_tab2$server<-function(id,vals){
   })
 }
 
+virtualPicker<-function(id,SelectedText="IDs selected", label=NULL,choices=NULL,selected=NULL,search =T,   optionHeight='24px',styles=NULL){
+  class='picker_open'
+
+
+  tag_style=NULL
+  if(!is.null(styles)){
+    tag_style<-tags$style(
+      HTML(paste(paste0(".vs-",id),".vscomp-wrapper{",styles,"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-wrapper{",styles,"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-container{",paste0('height:',optionHeight,";",styles),"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-toggle-button{",paste0('height:',optionHeight,";",styles),"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-input{",styles,"}"))
+    )
+    class=paste('picker_open',paste0("vs-",id))
+
+  }
+  div(
+    tag_style,
+    div(class=class,
+        shinyWidgets::virtualSelectInput(
+          inputId = id,
+          label = label,
+          optionHeight=optionHeight,
+          choices = choices,
+          selected=selected,
+          search = search,
+          keepAlwaysOpen = TRUE,
+          multiple =T,
+          hideClearButton=T,
+          alwaysShowSelectedOptionsCount=T,
+          searchPlaceholderText="Select all  -  Search",
+          optionsSelectedText=SelectedText,
+          optionSelectedText=SelectedText
+        )
+    )
+  )
+}
 desctools_tab3<-list()
 desctools_tab3$ui<-function(id){
   ns<-NS(id)
@@ -727,11 +795,13 @@ desctools_tab3$ui<-function(id){
                        div(
                          div(
                            pickerInput_fromtop(inputId=ns("rid_y"),label = "X (factor)",choices =NULL, options=shinyWidgets::pickerOptions(liveSearch =T)),
+
                            div(tags$label("Y (numeric)")),
                            div(
-                             class="virtual-100",
-                             virtualPicker(ns("ridge_variables"),label=NULL,NULL,SelectedText="Variables selected")
-                           )
+                             class="virtual-130",
+                             virtualPicker(ns("ridge_variables"),label=NULL,NULL,SelectedText="Variables selected",optionHeight='22px',style="font-size: 12px; ")
+                           ),
+                           transform_module$ui(ns("rid_transf"),"Transf Y"),
                          ),
 
 
@@ -813,25 +883,23 @@ desctools_tab3$server<-function(id,vals){
     observeEvent(vals$newcolhabs,{
       updatePickerInput(session,'rid_col',choices = vals$colors_img$val,choicesOpt = list(content = vals$colors_img$img))
     })
-    observe({
-      # print(input$ridge_variables)
-    })
+
 
     args_ridges<-reactive({
       req(input$rid_heigth)
       req(input$rid_y)
+      data=getdata_descX()
+      factors<-attr(data,"factors")
 
+      req(input$ridge_variables%in%colnames(data))
       result<-try({
 
-        data=getdata_descX()
-        factors<-attr(data,"factors")
 
-        req(length(input$ridge_variables)>0)
 
         x<-data<-data[,input$ridge_variables, drop=F]
         req(input$rid_y%in%colnames(factors))
         y<-factors[input$rid_y]
-
+        data<-transform_module$server('rid_transf',data=x)
         common_ids<-intersect(rownames(x),rownames(y))
         req(length(common_ids)>0)
         data<-data[common_ids,,drop=F]
@@ -846,10 +914,12 @@ desctools_tab3$server<-function(id,vals){
                    ncol=input$rid_ncol,
                    title=input$rid_tittle,
                    base_size=input$rid_base_size)
+        #args<-readRDS("args_ridges.rds")
         args
 
       })
       req(!inherits(result,"try-error"))
+
       result
     })
 
@@ -971,15 +1041,16 @@ desctools_tab4$ui<-function(id){
                      ),
                      title="Pair plot",
 
-                     div(
-                       uiOutput(ns("pair_btn")),
-                       withSpinner(uiOutput(ns("msp_pairs")),8)
+                     div(class="run_pair_btn save_changes",
+                         actionButton(ns("run_pair"),"RUN", icon=icon("fas fa-sync")),
+                         withSpinner(uiOutput(ns("msp_pairs")),8)
                      )
            ))
   )
 }
 desctools_tab4$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
+
     ns<-session$ns
     box_caret_server("box_4a")
     box_caret_server("box_4b")
@@ -987,22 +1058,11 @@ desctools_tab4$server<-function(id,vals){
     box_caret_server("box_4d")
     runval<-reactiveValues(pair="save_changes_nice")
 
-    output$pair_btn<-renderUI({
-      div(class=runval$pair,actionButton(ns("run_pair"),"RUN", icon=icon("fas fa-sync")))
 
-    })
 
-    observeEvent(get_ggpair(),ignoreInit = T,{
-      req(input$run_pair)
-      runval$pair<-"save_changes_nice"
-    })
 
-    observeEvent(ignoreInit = T,input$run_pair,{
-      req(get_ggpair())
-      runval$pair<-"btn_nice"
-    })
+
     getdata_descX<-reactive({
-      req(vals$desc_data_x)
       vals$desc_data_x
     })
 
@@ -1028,38 +1088,27 @@ desctools_tab4$server<-function(id,vals){
                         choicesOpt = list(content = df_symbol$img))
     })
     get_ggpair<-eventReactive(input$run_pair,ignoreInit = T,{
+      removeClass("run_pair_btn","save_changes")
       args<-get_ggpair_args()
       class(args)=="iggpair"
       p<-do.call(gg_pairplot2,args)
 
+
       p
     })
 
-    observeEvent(input$msp_plot_base_size,{
-      bs<-round(input$msp_plot_base_size/12, 2)
 
-      updateNumericInput(session,'ggpair.varnames.size',value=bs*1.4)
-      updateNumericInput(session,'ggpair.points.size',value=bs)
-      updateNumericInput(session,'ggpair.legend.text.size',value=bs)
-      updateNumericInput(session,'ggpair.legend.title.size',value=bs)
-
-      updateNumericInput(session,'ggpair.plot.title.size',value=bs)
-      updateNumericInput(session,'ggpair.axis.text.size',value=bs)
-      updateNumericInput(session,'ggpair.axis.title.size',value=bs)
-
-
-
-    })
     output$msp_pairs<-renderUI({
       req(get_ggpair())
-      req(input$msp_plot_width)
-      req(input$msp_plot_height)
+      #req(input$msp_plot_width)
+      #req(input$msp_plot_height)
       res<-div(
 
-        renderPlot(get_ggpair(),  width=input$msp_plot_width,height=input$msp_plot_height),
+
+        renderPlot(get_ggpair()),
         em(attr(get_ggpair(),"row1"), style="color: gray")
       )
-      vals$show_ggrun<-F
+      # vals$show_ggrun<-F
       res
     })
     output$ggpair.title_corr<-renderUI({
@@ -1153,7 +1202,7 @@ desctools_tab4$server<-function(id,vals){
         # req(   !any(sapply(args[-2],length)<1))
         # attach(args)
         #class(args)<-'iggpair'
-
+        addClass("run_pair_btn","save_changes")
 
         args
 
@@ -3942,4 +3991,3 @@ desctools$server<-function (id,vals ){
 
   })
 }
-
