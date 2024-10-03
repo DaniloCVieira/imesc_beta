@@ -3855,7 +3855,7 @@ desctools$ui<-function(id){
           ),
 
           id=ns('desc_options'),
-          selected="tab2",
+          selected="tab1",
           tabPanel('1. Summaries',
                    value="tab1",
                    desctools_tab1$ui(ns("summaries")),
