@@ -8,7 +8,7 @@
 #' @importFrom leaflet colorBin addCircleMarkers addLabelOnlyMarkers addLayersControl addLegend addPolygons addPolylines addProviderTiles addRasterImage addTiles colorBin colorFactor colorNumeric labelOptions leaflet
 #' @importFrom vegan ordiplot rda scores decostand vegdist metaMDS specnumber diversity rrarefy ordiArrowTextXY estimateR fisher.alpha
 #' @importFrom mice mice complete
-#' @importFrom colorspace darken
+#' @importFrom colorspace darken lighten
 #' @importFrom tibble rownames_to_column
 #' @importFrom foreach `%dopar%` `%:%` foreach
 #' @importFrom shinycssloaders withSpinner

@@ -1,4 +1,5 @@
-
+#' @importFrom colorspace darken lighten
+#'
 module_save_changes<-list()
 module_save_changes$ui<-function(id,vals=NULL){
   ns<-NS(id)
