@@ -6152,7 +6152,7 @@ tool2_tab3$server<-function(id,vals){
     gdata_from<-reactive({
       req(input$import_from_data)
       req(input$import_from_attr)
-      data<-vals$saved_data[[input$import_from_data]]
+      data0<-data<-vals$saved_data[[input$import_from_data]]
       data<-data[rownames(vals$saved_data[[input$import_to_data]]),,drop=F]
 
       data<-data_migrate(data0,data)
