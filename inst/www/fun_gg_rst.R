@@ -2577,6 +2577,7 @@ gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',
   p<-add_custom_axis(p,axis_width,axis_style)
 
 
+  return(p)
 
 }
 add_custom_axis<-function(p,axis_width=0.1,axis_style="default"){
