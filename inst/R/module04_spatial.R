@@ -319,6 +319,8 @@ surface_saved_maps$server<-function(id){
   })
 }
 
+
+
 plotly_download<-list()
 
 plotly_download$ui<-function(id){
@@ -1177,7 +1179,7 @@ sptools_gg_opts$ui<-function(id){
       div(
         div(
           id=ns('div_axis_style'),
-          pickerInput(ns("axis_style"),"Style",c("B&W Blocks"="bw_blocks","Classic"="default"),selected="default"),
+          pickerInput(ns("axis_style"),"Style",c("B&W Blocks"="bw_blocks","Classic"="default"),selected="axis_style"),
           numericInput(ns("axis_width"),label="Width",value=0.1)
         ),
 

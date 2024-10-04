@@ -2540,8 +2540,9 @@ gg_add_titles<-function(p,main="",plot.title_size=12,title.face="plain",subtitle
 }
 gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',axis.text_size=13,axis.title_size=13,x.n.breaks=5,y.n.breaks=5,axis_width=0.1,show_guides=F,guides_color="gray",guides_linewidth=0.15,guides_linetype= "dashed",...){
 
-
-
+  #print("start_saving")
+ # saveRDS(list(p=p,axis_style="default",xlab='Longitude',ylab='Latitude',axis.text_size=13,axis.title_size=13,x.n.breaks=5,y.n.breaks=5,axis_width=0.1,show_guides=F,guides_color="gray",guides_linewidth=0.15,guides_linetype= "dashed"),"args_ggaxes.rds")
+#print("saved")
   p<-p+theme(
     axis.text=element_text(size=axis.text_size),
     axis.title=element_text(size=axis.title_size,face="bold"),
@@ -2555,6 +2556,7 @@ gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',
   buid$layout$panel_scales_y[[1]]$n.breaks<-y.n.breaks
   xbreaks<- buid$layout$panel_scales_x[[1]]$get_breaks()
   ybreaks<- buid$layout$panel_scales_y[[1]]$get_breaks()
+
 
   if(isTRUE(show_guides)){
     p<-p+geom_hline(yintercept=ybreaks,color =guides_color, linetype =guides_linetype, linewidth = guides_linewidth)+
@@ -2578,6 +2580,9 @@ gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',
 
 }
 add_custom_axis<-function(p,axis_width=0.1,axis_style="default"){
+  #print("starting saving...")
+  #saveRDS(list(p=p,axis_width=0.1,axis_style="default"),"args_ggaxes.rds")
+  #print("saved")
   if(axis_style=="default"){return(p)}
   info<-attr(p,"panel_info")
   xbreaks=info$xbreaks
@@ -2610,6 +2615,7 @@ add_custom_axis<-function(p,axis_width=0.1,axis_style="default"){
 
 
 }
+
 
 
 gg_plotList<-function(cur_data,

@@ -1,4 +1,42 @@
 #' @noRd
+recreate_som<-function(m,length.out,session=MockShinySession$new()){
+
+  seed<-m$seed
+  ms<-list()
+  rlen=nrow(m$changes)
+
+  seq<-    round(seq(1,rlen,length.out=length.out))
+
+
+
+
+
+  withProgress(min=1,max=length(seq),message="Running...",session=session,{
+    for( i in seq) {
+      print(i)
+      set.seed(seed)
+      m2<-supersom(m$data,m$grid,
+                   radius = m$radius,
+                   alpha =m$alpha,
+                   whatmap = m$whatmap,
+                   user.weights = m$user.weights,
+                   maxNA.fraction = m$maxNA.fraction,
+                   dist.fcts = m$dist.fcts,
+                   mode = m$mode,
+                   rlen=i,
+                   init=m$init,
+                   normalizeDataLayers = m$normalizeDataLayers)
+
+
+      ms[[length(ms)+1]]<-m2
+      incProgress(1,session=session)
+    }
+  })
+
+
+  return(ms)
+
+}
 
 
 split_vector_max_elements <- function(vec, max_length) {
@@ -1344,39 +1382,15 @@ table_results_tab4$server<-function(id,vals){
       renderPlot({get_plot_animation2()})
 
     })
+
+
+
+
     observeEvent(input$run_play2,ignoreInit = T,{
-
       m<-current_som_model()
-      seed<-m$seed
-      ms<-list()
-      rlen=nrow(m$changes)
 
-      seq<-    round(seq(1,rlen,length.out=input$rlen_snap2))
-
-      withProgress(min=1,max=length(seq),message="Running...",{
-        for( i in seq) {
-
-          set.seed(seed)
-          m2<-supersom(m$data,m$grid,
-                       radius = m$radius,
-                       alpha =m$alpha,
-                       whatmap = m$whatmap,
-                       user.weights = m$user.weights,
-                       maxNA.fraction = m$maxNA.fraction,
-                       dist.fcts = m$dist.fcts,
-                       mode = m$mode,
-                       rlen=i,
-                       init=m$init,
-                       normalizeDataLayers = m$normalizeDataLayers)
-
-
-          ms[[length(ms)+1]]<-m2
-          incProgress(1)
-        }
-      })
-
+      ms<-recreate_som(m,length.out=input$rlen_snap2,session = getDefaultReactiveDomain())
       modelplay2(ms)
-
     })
     modelplay2<-reactiveVal(NULL)
     get_plot_animation2<-reactive({
