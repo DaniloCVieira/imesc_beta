@@ -2551,29 +2551,24 @@ gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',
 
 
 
-  buid<-ggplot2::ggplot_build(p)
-  buid$layout$panel_scales_x[[1]]$n.breaks<-x.n.breaks
-  buid$layout$panel_scales_y[[1]]$n.breaks<-y.n.breaks
-  xbreaks<- buid$layout$panel_scales_x[[1]]$get_breaks()
-  ybreaks<- buid$layout$panel_scales_y[[1]]$get_breaks()
+  #buid<-ggplot2::ggplot_build(p)
+  #buid$layout$panel_scales_x[[1]]$n.breaks<-x.n.breaks
+  #buid$layout$panel_scales_y[[1]]$n.breaks<-y.n.breaks
+  #xbreaks<- buid$layout$panel_scales_x[[1]]$get_breaks()
+  #ybreaks<- buid$layout$panel_scales_y[[1]]$get_breaks()
 
-
+  show_guides=F
   if(isTRUE(show_guides)){
     p<-p+geom_hline(yintercept=ybreaks,color =guides_color, linetype =guides_linetype, linewidth = guides_linewidth)+
       geom_vline(xintercept =xbreaks,color =guides_color, linetype = guides_linetype, linewidth = guides_linewidth)
   }
 
-  pxrange<-buid$layout$panel_scales_x[[1]]$range$range
-  pyrange<-buid$layout$panel_scales_y[[1]]$range$range
-  names(pxrange)<-c("xmin","xmax")
-  names(pyrange)<-c("ymin","ymax")
-  p<-p+scale_x_continuous(breaks=xbreaks)+scale_y_continuous(breaks=ybreaks)
-  attr(p,"panel_info")<-list(
-    xbreaks=xbreaks,
-    ybreaks=ybreaks,
-    pxrange=pxrange,
-    pyrange=pyrange
-  )
+ # pxrange<-buid$layout$panel_scales_x[[1]]$range$range
+  #pyrange<-buid$layout$panel_scales_y[[1]]$range$range
+  #names(pxrange)<-c("xmin","xmax")
+ # names(pyrange)<-c("ymin","ymax")
+ # p<-p+scale_x_continuous(breaks=xbreaks)+scale_y_continuous(breaks=ybreaks)
+  #attr(p,"panel_info")<-list(    xbreaks=xbreaks,    ybreaks=ybreaks,    pxrange=pxrange,    pyrange=pyrange  )
   p<-add_custom_axis(p,axis_width,axis_style)
 
 

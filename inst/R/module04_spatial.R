@@ -1184,9 +1184,9 @@ sptools_gg_opts$ui<-function(id){
         ),
 
         textInput(ns("xlab"),label="x-label", "Longitude"),
-        numericInput(ns("x.n.breaks"),label="x-nbreaks",value=5),
+        #numericInput(ns("x.n.breaks"),label="x-nbreaks",value=5),
         textInput(ns("ylab"),label="y-label","Latitude"),
-        numericInput(ns("y.n.breaks"),label="y-nbreaks",value=5),
+       # numericInput(ns("y.n.breaks"),label="y-nbreaks",value=5),
         textInput(ns("zlab"),label="z-label"),
         numericInput(ns("axis.title_size"),label="Label Size",value=11),
         numericInput(ns("axis.text_size"),label="Axis Size",value=11)
@@ -1244,8 +1244,8 @@ sptools_gg_opts$server_update<-function(id,vals,scatter3d=F,surface=F,stack=F){
         axis.title_size=input$axis.title_size,
         axis_style=input$axis_style,
         axis_width=input$axis_width,
-        x.n.breaks=input$x.n.breaks,
-        y.n.breaks=input$y.n.breaks,
+       # x.n.breaks=input$x.n.breaks,
+       # y.n.breaks=input$y.n.breaks,
         show_guides=input$show_guides,
         guides_color=input$guides_color,
         guides_linetype=input$guides_linetype,
