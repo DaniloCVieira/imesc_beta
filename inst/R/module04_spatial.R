@@ -3750,19 +3750,22 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
         if(is.null(args$data)){
           args$data<- args$data_o
         }
-        p<-try(do.call(gg_rst, args))
+        try({
+          p<-do.call(gg_rst, args)
+          args$p<-p
+          p<-do.call(gg_add_titles,args)
+          args$p<-p
+          p<-do.call(add_bar_scale,args)
+          args$p<-p
+          p<-do.call(gg_style_axes,args)
+          args$p<-p
+          p<-do.call(gg_add_north,args)
+          map_result2(p)
+          map_result2_final(map_result2())
+        })
 
 
-        args$p<-p
-        p<-do.call(gg_add_titles,args)
-        args$p<-p
-        p<-do.call(add_bar_scale,args)
-        args$p<-p
-        p<-do.call(gg_style_axes,args)
-        args$p<-p
-        p<-do.call(gg_add_north,args)
-        map_result2(p)
-        map_result2_final(map_result2())
+
 
       })
       observeEvent(map_result2_final(),{
