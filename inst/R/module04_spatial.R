@@ -3452,14 +3452,17 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
           } else{
             met<-attr(r,"method")
             error_message<-paste(met,"failed")
-            if(met=="krige"){
-              error_message<-paste0(error_message,": check you variogram model.")
+            if(!is.null(met)){
+              if(met=="krige") {
+                error_message<-paste0(error_message,": check you variogram model.")
+              }
+              vals$vgm_error<-div(
+                style="overflow: auto; max-height: 150px; background: #e68e83",
+                strong(icon("triangle-exclamation",style="color: brown"),"Error:"),
+                renderPrint({error_message})
+              )
             }
-            vals$vgm_error<-div(
-              style="overflow: auto; max-height: 150px; background: #e68e83",
-              strong(icon("triangle-exclamation",style="color: brown"),"Error:"),
-              renderPrint({error_message})
-            )
+
 
           }
         })
