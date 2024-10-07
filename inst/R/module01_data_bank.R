@@ -84,7 +84,7 @@ databank_module$ui<-function(id){
                         radioGroupButtons(
                           ns("view_datalist"), NULL,
                           choiceNames = choices_names,
-                          selected='tab1',
+
                           choiceValues = choices, status = "view_datalist"
                         )
                     )
@@ -210,6 +210,8 @@ box_caret(ns("box_bank"),
 #' @export
 databank_module$server<-function(id, vals){
   moduleServer(id,function(input, output, session) {
+
+
 
     ns<-session$ns
     available_models<-SL_models$models
@@ -370,47 +372,6 @@ databank_module$server<-function(id, vals){
 
 
 
-    observeEvent(input$data_bank,{
-
-      choices0=choices<-c(paste0("tab",1:7))
-
-      choices_names<-list(
-        div(id = ns("tab1"), icon("fas fa-archive"),cogs_title="Numeric-Attribute"),
-        div(id = ns("tab2"), icon("fas fa-boxes"),cogs_title="Factor-Attribute"),
-        div(id = ns("tab3"), icon("fas fa-map-marker-alt"),cogs_title="Coords-Attribute"),
-        div(id = ns("tab4"), icon("far fa-map"),cogs_title="Shapes-Attribute"),
-        div(id = ns("tab5"), icon("fas fa-braille"),cogs_title="SOM-Attribute"),
-        div(id = ns("tab6"), img(src = sup_icon2, height = '17', width = '20'),cogs_title="Supervised Models"),
-        div(id = ns("tab7"), icon("fas fa-comment"),cogs_title="Comments")
-      )
-
-      somyes<-length(attr(getdata_bank(), "som")) > 0
-      supyes<-any(sapply(get_metrics(),length)>0)
-
-      if(isFALSE(somyes)){
-        rem<-which(choices=='tab5')
-        choices<-choices[-rem]
-        choices_names[rem]<-NULL
-      }
-      if(isFALSE(supyes)){
-        rem<-which(choices=='tab6')
-        choices<-choices[-rem]
-        choices_names[rem]<-NULL
-      }
-
-
-      selected=get_selected_from_choices(vals$cur_view_datalist,choices)
-
-      updateRadioGroupButtons(session,'view_datalist',choiceValues =choices,choiceNames =choices_names,selected=selected)
-      shinyBS::addPopover(session,'tab1', NULL,"Numeric-Attribute")
-      shinyBS::addPopover(session,'tab2', NULL,"Factor-Attribute")
-      shinyBS::addPopover(session,'tab3', NULL,"Coords-Attribute")
-      shinyBS::addPopover(session,'tab4', NULL,"Shapes-Attribute")
-      shinyBS::addPopover(session,'tab5', NULL,"SOM-Attribute")
-      shinyBS::addPopover(session,'tab6', NULL,"Supervised Models")
-      shinyBS::addPopover(session,'tab7', NULL,"Comments")
-
-    })
 
 
 
@@ -918,6 +879,51 @@ databank_module$server<-function(id, vals){
         )
       )
     })
+
+
+
+
+    observeEvent(input$data_bank,{
+
+      choices0=choices<-c(paste0("tab",1:7))
+
+      choices_names<-list(
+        div(id = ns("tab1"), icon("fas fa-archive"),cogs_title="Numeric-Attribute"),
+        div(id = ns("tab2"), icon("fas fa-boxes"),cogs_title="Factor-Attribute"),
+        div(id = ns("tab3"), icon("fas fa-map-marker-alt"),cogs_title="Coords-Attribute"),
+        div(id = ns("tab4"), icon("far fa-map"),cogs_title="Shapes-Attribute"),
+        div(id = ns("tab5"), icon("fas fa-braille"),cogs_title="SOM-Attribute"),
+        div(id = ns("tab6"), img(src = sup_icon2, height = '17', width = '20'),cogs_title="Supervised Models"),
+        div(id = ns("tab7"), icon("fas fa-comment"),cogs_title="Comments")
+      )
+
+      somyes<-length(attr(getdata_bank(), "som")) > 0
+      supyes<-any(sapply(get_metrics(),length)>0)
+
+      if(isFALSE(somyes)){
+        rem<-which(choices=='tab5')
+        choices<-choices[-rem]
+        choices_names[rem]<-NULL
+      }
+      if(isFALSE(supyes)){
+        rem<-which(choices=='tab6')
+        choices<-choices[-rem]
+        choices_names[rem]<-NULL
+      }
+
+
+      selected=get_selected_from_choices(vals$cur_view_datalist,choices)
+
+      updateRadioGroupButtons(session,'view_datalist',choiceValues =choices,choiceNames =choices_names,selected=selected)
+      shinyBS::addPopover(session,'tab1', NULL,"Numeric-Attribute")
+      shinyBS::addPopover(session,'tab2', NULL,"Factor-Attribute")
+      shinyBS::addPopover(session,'tab3', NULL,"Coords-Attribute")
+      shinyBS::addPopover(session,'tab4', NULL,"Shapes-Attribute")
+      shinyBS::addPopover(session,'tab5', NULL,"SOM-Attribute")
+      shinyBS::addPopover(session,'tab6', NULL,"Supervised Models")
+      shinyBS::addPopover(session,'tab7', NULL,"Comments")
+
+    })
     observeEvent(ignoreInit = T,input$delete_coords_yes,{
       attr(vals$saved_data[[input$data_bank]],"coords")<-NULL
       removeModal()
@@ -1145,6 +1151,32 @@ databank_module$server<-function(id, vals){
       showModal( modal_comment())
     })
 
+
+    observe({
+      req(vals$update_state)
+      update_state<-vals$update_state
+      ids<-names(update_state)
+      update_on<-grepl(id,ids)
+      names(update_on)<-ids
+      to_loop<-names(which(update_on))
+      withProgress(min=1,max=length(to_loop),message="Restoring",{
+        for(i in to_loop) {
+          idi<-gsub(paste0(id,"-"),"",i)
+          incProgress(1)
+          restored<-restoreInputs2(session, idi, update_state[[i]])
+
+          if(isTRUE(restored)){
+            vals$update_state[[i]]<-NULL
+          }
+
+        }
+      })
+
+    })
+
   })
+
+
+
 }
 

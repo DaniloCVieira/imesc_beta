@@ -821,8 +821,7 @@ resampName<-function (x, numbers = TRUE)
                                                                                             " times)", sep = ""), adaptive_lgocv = paste("Adaptive Repeated Train/Test Splits Estimated (",
                                                                                                                                          numResamp, " reps, ", round(x$control$p,
                                                                                                                                                                      2), "%)", sep = ""))
-  }
-  else {
+  }  else {
     out <- switch(tolower(x$control$method), none = "None",
                   apparent = "(Apparent)", custom = "Custom Resampling",
                   timeslice = "Rolling Forecasting Origin Resampling",

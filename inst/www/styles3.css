@@ -819,10 +819,42 @@ font-size: 12px
  }
   .box_comp_results .box_title{
  display: flex;
+  }
 
-
-  } .box_comp_results .radio12 .btn{
+  .box_comp_results .radio12 .btn{
  color: #333;
  font-size: 12px;
 
  }
+#disable_tool > li:nth-child(-n+9) {
+ pointer-events: none;
+ }
+.disabled_toolbar .navbar-default{
+ background: none
+
+}
+#main_panel > div > div.preproc > div.needed.toolbar.preproc_page.tool_toggle.disabled_toolbar > nav  {
+background: transparent !important;
+border: 0px
+}
+.disabled_toolbar .tooltip-inner {
+background: none;
+border: 0px;
+color: gray;
+font-style: italic;
+background: #9c9c9c40;
+max-width: 280px;
+text-align: center
+}
+.disabled_toolbar .tooltip-inner i {
+color: #a17f1a;
+padding-right: 5px;
+font-size: 14px
+
+}
+
+
+#main_panel > div > div.preproc > div.needed.toolbar.preproc_page.tool_toggle.disabled_toolbar > nav > div > div {
+min-height:70px;
+
+}

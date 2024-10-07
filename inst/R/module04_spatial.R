@@ -16,6 +16,7 @@
 #' @importFrom scatterpie geom_scatterpie
 #' @importFrom raster crs rasterToPoints coordinates extent ratify raster rasterize `crs<-` values `values<-` `extent<-`
 #' @importFrom sp spsample `coordinates<-` CRS `proj4string<-` `gridded<-` `fullgrid<-` proj4string SpatialGridDataFrame zerodist
+
 surface_add_points<-list()
 surface_add_points$ui<-function(id){
   ns<-NS(id)
@@ -381,176 +382,7 @@ check_inputs<-function(input,pattern){
   res<-names(input)[grep(pattern,names(input))]
   res
 }
-sptools_data<-list()
-sptools_data$ui<-function(id){
-  ns<-NS(id)
-  div(class="spatial_tools spatial_setup",
-      id=ns('map_setup'),
 
-      box_caret(ns("box_setup"),
-                title="Data setup",
-                color="#374061ff",
-                inline=F,
-                div(
-
-                  div(class="inline_pickers2",
-                      pickerInput_fromtop_live(ns("data_map"),"Datalist:",
-                                               choices =NULL,inline=T),
-                      pickerInput_fromtop(ns("choices_map"),"Attribute:",
-                                          choices = c("Numeric-Attribute","Factor-Attribute"),inline=T),
-                      pickerInput_fromtop_live(ns("var_map"),label = "Variable:",choices = NULL,inline=T),
-                      pickerInput_fromtop_live(ns("factor_filter"),label = "Filter",choices = NULL,inline=T),
-                      pickerInput_fromtop_live(ns("level_filter"),label = "Level",choices = NULL,inline=T)
-
-
-
-                  )
-
-
-                )
-      )
-  )
-
-
-
-
-}
-sptools_data$server<-function(id,vals){
-  moduleServer(id,function(input, output, session){
-
-
-
-    observeEvent(input$data_map,{
-
-      updatePickerInput(session,"choices_map",selected= vals$cur_choices_map)
-
-    })
-    observe({
-      shinyjs::toggle('map_setup',condition = !vals$cur_mode_map%in%c("surface","stack"))
-    })
-
-    observeEvent(vals$saved_data,{
-      selected<-NULL
-      if(!is.null(vals$cur_data)){
-        if(vals$cur_data%in%names(vals$saved_data)){
-          selected<-vals$cur_data
-        }
-      }
-
-      updatePickerInput(session,"data_map",choices=names(vals$saved_data), selected=selected)
-    })
-
-
-    observeEvent(input$data_map,{
-      choices<-colnames(get_factors())
-      selected<-get_selected_from_choices(vals$cur_factor_filter,choices)
-      updatePickerInput(session,"factor_filter",choices=c("None",choices),selected=selected)
-    })
-
-
-    observeEvent(data0(),{
-
-      choices<-colnames(data0())
-      selected<-NULL
-      if(!is.null(vals$cur_var_map)){
-        if(vals$cur_var_map%in%choices){
-          selected<-vals$cur_var_map
-        }
-      }
-      updatePickerInput(session,"var_map",choices=choices, selected=selected)
-
-    })
-    observeEvent(list(input$factor_filter,get_factors()),{
-      req(input$factor_filter)
-      fac<-get_filter()[,1]
-      choices<-levels(fac)
-      selected<-get_selected_from_choices(vals$cur_level_filter,choices)
-
-      updatePickerInput(session,"level_filter",choices=choices, selected=selected)
-    })
-
-    data0<-reactive({
-      req(input$data_map)
-      req(input$data_map%in%names(vals$saved_data))
-      req(input$choices_map)
-      data0<-vals$saved_data[[input$data_map]]
-      if(input$choices_map=='Factor-Attribute'){
-        data_temp<-attr(data0,"factors")
-        coords<-attr(data0,"coords")
-        factors<-attr(data0,"factors")
-        attr(data_temp,"factors")<-factors
-        attr(data_temp,"coords")<-coords
-        data0<-data_temp
-      }
-
-      req(data0)
-      data0
-    })
-    get_factors<-reactive({
-      req(input$data_map)
-      req(input$data_map%in%names(vals$saved_data))
-      data0<-vals$saved_data[[input$data_map]]
-      factors<-attr(data0,"factors")
-      factors
-    })
-    get_filter<-reactive({
-      req(input$data_map)
-      req(input$data_map%in%names(vals$saved_data))
-      data0<-vals$saved_data[[input$data_map]]
-      factors<-get_factors()
-      req(input$factor_filter%in%colnames(factors))
-      fac<-factors[input$factor_filter]
-      fac
-    })
-
-    observe({
-      req(input$data_map)
-      req(input$choices_map)
-      req(input$var_map)
-      vals$cur_data<-input$data_map
-      vals$cur_var_map<-input$var_map
-      vals$cur_factor_filter<-input$factor_filter
-      vals$cur_level_filter<-input$level_filter
-      vals$cur_choices_map<-input$choices_map
-
-
-
-    })
-
-
-    observe({
-      toggle('level_filter',condition=input$factor_filter!="None")
-    })
-    data_inputs<-reactive({
-
-      list(
-        name=input$data_map,
-        attr=input$choices_map,
-        var=input$var_map,
-        filter=input$factor_filter,
-        filter_level=input$level_filter,
-        saved_data=vals$saved_data
-      )
-    })
-
-
-    observeEvent(data_inputs(),{
-
-
-      saved_data<-vals$saved_data
-      req(input$data_map%in%names(saved_data))
-      req(input$var_map%in%colnames(data0()))
-      args<-data_inputs()
-      res<-do.call(get_data_map,args)
-      req(nrow(res)>0)
-      vals$data_map<-res
-
-
-    })
-
-    return(NULL)
-  })
-}
 
 sptools_colors<-list()
 sptools_colors$ui<-function(id){
@@ -1184,9 +1016,9 @@ sptools_gg_opts$ui<-function(id){
         ),
 
         textInput(ns("xlab"),label="x-label", "Longitude"),
-        #numericInput(ns("x.n.breaks"),label="x-nbreaks",value=5),
+        numericInput(ns("x.n.breaks"),label="x-nbreaks",value=5),
         textInput(ns("ylab"),label="y-label","Latitude"),
-       # numericInput(ns("y.n.breaks"),label="y-nbreaks",value=5),
+        numericInput(ns("y.n.breaks"),label="y-nbreaks",value=5),
         textInput(ns("zlab"),label="z-label"),
         numericInput(ns("axis.title_size"),label="Label Size",value=11),
         numericInput(ns("axis.text_size"),label="Axis Size",value=11)
@@ -1244,8 +1076,8 @@ sptools_gg_opts$server_update<-function(id,vals,scatter3d=F,surface=F,stack=F){
         axis.title_size=input$axis.title_size,
         axis_style=input$axis_style,
         axis_width=input$axis_width,
-       # x.n.breaks=input$x.n.breaks,
-       # y.n.breaks=input$y.n.breaks,
+        x.n.breaks=input$x.n.breaks,
+        y.n.breaks=input$y.n.breaks,
         show_guides=input$show_guides,
         guides_color=input$guides_color,
         guides_linetype=input$guides_linetype,
@@ -3226,21 +3058,21 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
         div(span(tags$label("Edit/Drag and drop to order")),
             div(style="display: flex",
 
-            rank_list(
-              text = NULL,
-              labels = lapply(grid_letteres(),function(x) div(x,class="shiny-input-container leton",style="width: fit-content;   margin-right: 2px")),
-              input_id = ns("rank_grid_letters"),
-              options = sortable_options(sort=F),
-              class="rank_grid"
-            ),
-            rank_list(
-              text = NULL,
-              labels = outputs,
-              input_id = ns("rank_grid"),
-              # options = sortable_options(sort=F),
-              class="rank_grid"
-            ),
-            uiOutput(ns("render_grid_labels"))
+                rank_list(
+                  text = NULL,
+                  labels = lapply(grid_letteres(),function(x) div(x,class="shiny-input-container leton",style="width: fit-content;   margin-right: 2px")),
+                  input_id = ns("rank_grid_letters"),
+                  options = sortable_options(sort=F),
+                  class="rank_grid"
+                ),
+                rank_list(
+                  text = NULL,
+                  labels = outputs,
+                  input_id = ns("rank_grid"),
+                  # options = sortable_options(sort=F),
+                  class="rank_grid"
+                ),
+                uiOutput(ns("render_grid_labels"))
             )
         )
 
@@ -3758,9 +3590,9 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
           args$p<-p
           p<-do.call(gg_add_titles,args)
           args$p<-p
-          p<-do.call(add_bar_scale,args)
-          args$p<-p
           p<-do.call(gg_style_axes,args)
+          args$p<-p
+          p<-do.call(add_bar_scale,args)
           args$p<-p
           p<-do.call(gg_add_north,args)
           map_result2(p)
@@ -4593,6 +4425,208 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
 
 
 
+collectInputs <- function(session, input_ids) {
+  state <- list()
+  for (id in input_ids) {
+    state[[id]] <- session$input[[id]]
+  }
+  return(state)
+}
+
+
+#' @export
+sptools_data<-list()
+sptools_data$ui<-function(id){
+  ns<-NS(id)
+  div(class="spatial_tools spatial_setup",
+      id=ns('map_setup'),
+
+      box_caret(ns("box_setup"),
+                title="Data setup",
+                color="#374061ff",
+                inline=F,
+                div(
+
+                  div(class="inline_pickers2",
+                      pickerInput_fromtop_live(ns("data_map"),"Datalist:",
+                                               choices =NULL,inline=T),
+                      pickerInput_fromtop(ns("choices_map"),"Attribute:",
+                                          choices = c("Numeric-Attribute","Factor-Attribute"),inline=T),
+                      pickerInput_fromtop_live(ns("var_map"),label = "Variable:",choices = NULL,inline=T),
+                      pickerInput_fromtop_live(ns("factor_filter"),label = "Filter",choices = NULL,inline=T),
+                      pickerInput_fromtop_live(ns("level_filter"),label = "Level",choices = NULL,inline=T)
+
+
+
+                  )
+
+
+                )
+      )
+  )
+
+
+
+
+}
+sptools_data$server<-function(id,vals){
+  moduleServer(id,function(input, output, session){
+
+
+
+    observeEvent(input$data_map,{
+
+      updatePickerInput(session,"choices_map",selected= vals$cur_choices_map)
+
+    })
+    observe({
+      shinyjs::toggle('map_setup',condition = !vals$cur_mode_map%in%c("surface","stack"))
+    })
+
+    observeEvent(vals$saved_data,{
+      selected<-NULL
+      if(!is.null(vals$cur_data)){
+        if(vals$cur_data%in%names(vals$saved_data)){
+          selected<-vals$cur_data
+        }
+      }
+
+      updatePickerInput(session,"data_map",choices=names(vals$saved_data), selected=selected)
+    })
+
+
+    observeEvent(input$data_map,{
+      choices<-colnames(get_factors())
+      selected<-get_selected_from_choices(vals$cur_factor_filter,choices)
+      updatePickerInput(session,"factor_filter",choices=c("None",choices),selected=selected)
+    })
+
+
+    observeEvent(data0(),{
+
+      choices<-colnames(data0())
+      selected<-NULL
+      if(!is.null(vals$cur_var_map)){
+        if(vals$cur_var_map%in%choices){
+          selected<-vals$cur_var_map
+        }
+      }
+      updatePickerInput(session,"var_map",choices=choices, selected=selected)
+
+    })
+    observeEvent(list(input$factor_filter,get_factors()),{
+      req(input$factor_filter)
+      fac<-get_filter()[,1]
+      choices<-levels(fac)
+      selected<-get_selected_from_choices(vals$cur_level_filter,choices)
+
+      updatePickerInput(session,"level_filter",choices=choices, selected=selected)
+    })
+
+    data0<-reactive({
+      req(input$data_map)
+      req(input$data_map%in%names(vals$saved_data))
+      req(input$choices_map)
+      data0<-vals$saved_data[[input$data_map]]
+      if(input$choices_map=='Factor-Attribute'){
+        data_temp<-attr(data0,"factors")
+        coords<-attr(data0,"coords")
+        factors<-attr(data0,"factors")
+        attr(data_temp,"factors")<-factors
+        attr(data_temp,"coords")<-coords
+        data0<-data_temp
+      }
+
+      req(data0)
+      data0
+    })
+    get_factors<-reactive({
+      req(input$data_map)
+      req(input$data_map%in%names(vals$saved_data))
+      data0<-vals$saved_data[[input$data_map]]
+      factors<-attr(data0,"factors")
+      factors
+    })
+    get_filter<-reactive({
+      req(input$data_map)
+      req(input$data_map%in%names(vals$saved_data))
+      data0<-vals$saved_data[[input$data_map]]
+      factors<-get_factors()
+      req(input$factor_filter%in%colnames(factors))
+      fac<-factors[input$factor_filter]
+      fac
+    })
+
+    observe({
+      req(input$data_map)
+      req(input$choices_map)
+      req(input$var_map)
+      vals$cur_data<-input$data_map
+      vals$cur_var_map<-input$var_map
+      vals$cur_factor_filter<-input$factor_filter
+      vals$cur_level_filter<-input$level_filter
+      vals$cur_choices_map<-input$choices_map
+
+
+
+    })
+
+
+    observe({
+      toggle('level_filter',condition=input$factor_filter!="None")
+    })
+    data_inputs<-reactive({
+
+      list(
+        name=input$data_map,
+        attr=input$choices_map,
+        var=input$var_map,
+        filter=input$factor_filter,
+        filter_level=input$level_filter,
+        saved_data=vals$saved_data
+      )
+    })
+
+
+    observeEvent(data_inputs(),{
+
+
+      saved_data<-vals$saved_data
+      req(input$data_map%in%names(saved_data))
+      req(input$var_map%in%colnames(data0()))
+      args<-data_inputs()
+      res<-do.call(get_data_map,args)
+      req(nrow(res)>0)
+      vals$data_map<-res
+
+
+    })
+    observe({
+      req(vals$update_state)
+      update_state<-vals$update_state
+      ids<-names(update_state)
+      update_on<-grepl(id,ids)
+      names(update_on)<-ids
+      to_loop<-names(which(update_on))
+      withProgress(min=1,max=length(to_loop),message="Restoring",{
+        for(i in to_loop) {
+          idi<-gsub(paste0(id,"-"),"",i)
+          incProgress(1)
+          restored<-restoreInputs2(session, idi, update_state[[i]])
+
+          if(isTRUE(restored)){
+            vals$update_state[[i]]<-NULL
+          }
+
+        }
+      })
+
+    })
+    return(NULL)
+  })
+}
+
+
 
 #' @export
 sptools_panels<-list()
@@ -4698,12 +4732,12 @@ sptools_panels$ui<-function(id){
 
   )
 }
-
-
 #' @export
 sptools_panels$server<-function(id,vals){
   moduleServer(id,function(input, output, session){
     #data_plot=NULL
+
+
 
 
 
@@ -4895,9 +4929,36 @@ sptools_panels$server<-function(id,vals){
 
 
     })
+    observe({
+      req(vals$update_state)
+      update_state<-vals$update_state
+      ids<-names(update_state)
+      update_on<-grepl(id,ids)
+      names(update_on)<-ids
+      to_loop<-names(which(update_on))
+      withProgress(min=1,max=length(to_loop),message="Restoring",{
+        for(i in to_loop) {
+          idi<-gsub(paste0(id,"-"),"",i)
+          incProgress(1)
+          restored<-restoreInputs2(session, idi, update_state[[i]])
+
+          if(isTRUE(restored)){
+            vals$update_state[[i]]<-NULL
+          }
+
+        }
+      })
+
+    })
+
+
+
 
 
   })
 }
+
+
+
 
 

@@ -1,3 +1,108 @@
+
+generate_partiton<-function(data,split_t,split_y,split_p,split_seed,part_type="Balanced"){
+  if(part_type=="Random"){
+    nobs<-nrow(data)
+    p<-split_p/100
+    ntest<-round(nobs*p)
+    test_vec<-rep("Test",ntest)
+    train_vec<-rep("Training",nobs-ntest)
+    if(is.na(split_seed)){split_seed=NULL}
+    set.seed(split_seed)
+    part_vec<-sample(c(train_vec,test_vec))
+    df<-data.frame(Partition=part_vec)
+    df$Partition<-as.factor(df$Partition)
+    rownames(df)<-rownames(data)
+    return(df)
+  }
+
+  factors<-attr(data,"factors")
+  if(split_t=="Classification"){
+    data<-factors
+  }
+  y<-data[,split_y]
+  if(is.na(split_seed)){split_seed=NULL}
+  set.seed(split_seed)
+  p=((100-split_p)/100)
+  part<-caret::createDataPartition(y,p=p,list=T)[[1]]
+  train=rownames(data)[part]
+  test=rownames(data)[-part]
+  df<-data.frame(Partition=rep(NA,nrow(factors)),
+                 row.names = rownames(factors))
+  df[train,1]<-"training"
+  df[test,1]<-"test"
+  df$Partition<-as.factor(df$Partition)
+
+  df
+
+}
+
+virtualPicker<-function(id,SelectedText="IDs selected", label=NULL,choices=NULL,selected=NULL,search =T,   optionHeight='24px',styles=NULL){
+  class='picker_open'
+
+
+  tag_style=NULL
+  if(!is.null(styles)){
+    tag_style<-tags$style(
+      HTML(paste(paste0(".vs-",id),".vscomp-wrapper{",styles,"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-wrapper{",styles,"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-container{",paste0('height:',optionHeight,";",styles),"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-toggle-button{",paste0('height:',optionHeight,";",styles),"}")),
+      HTML(paste(paste0(".vs-",id),".vscomp-search-input{",styles,"}"))
+    )
+    class=paste('picker_open',paste0("vs-",id))
+
+  }
+  div(
+    tag_style,
+    div(class=class,
+        shinyWidgets::virtualSelectInput(
+          inputId = id,
+          label = label,
+          optionHeight=optionHeight,
+          choices = choices,
+          selected=selected,
+          search = search,
+          keepAlwaysOpen = TRUE,
+          multiple =T,
+          hideClearButton=T,
+          alwaysShowSelectedOptionsCount=T,
+          searchPlaceholderText="Select all  -  Search",
+          optionsSelectedText=SelectedText,
+          optionSelectedText=SelectedText
+        )
+    )
+  )
+}
+
+get_scale<-function(data,scale,center){
+  data0<-data
+  if(isTRUE(scale)){
+    data<-data[which(sapply(data,function(x) var(x,na.rm=T))>0)]
+    req(nrow(data)>0)
+    req(ncol(data)>0)
+    scaled<-scale(data,center,scale)
+    sc<-attr(scaled,"scaled:scale")
+    ct<-attr(scaled,"scaled:center")
+    df_scale<-data.frame(scaled)
+    attr(df_scale,"scaled:scale")<-sc
+    attr(df_scale,"scaled:center")<-ct
+    attr(df_scale,"transf")<-c(attr(data0,"transf"),
+                               scale=scale,
+                               center=center)
+    df_scale
+  } else{
+    data
+  }
+
+
+}
+check_is_integer <- function(data) {
+  sapply(data, function(column) {
+    all(column==round(column))
+  })
+}
+
+
 ui_base<-function(id){
   ns<-NS(id)
   div(
@@ -9,7 +114,7 @@ server_base<-function(id,data=NULL, vals=NULL){
 
   })
 }
-create<-tool2<-pp_data<-toolbar<-tool3<-tool4<-tool5<-tool6<-tool7<-tool8<-tool9<-tool10<-list()
+create<-tool2<-pp_data<-tool3<-tool4<-tool5<-tool6<-tool7<-tool8<-tool9<-list()
 confirm_changes<-list()
 confirm_changes$ui<-function(id, message=""){
   ns<-NS(id)
@@ -74,6 +179,7 @@ quant$server<-function(id, data1,data2,height="120px",width="400px",fun='print_t
     })
   })
 }
+
 tool1<-list()
 tool1$ui<-function(id){
   ns<-NS(id)
@@ -124,60 +230,60 @@ tool1$ui<-function(id){
                                       div(
                                         style="position: absolute; left: 0px;
                 color:SeaGreen; margin-top: -30px; margin-left: 30px",
-                strong("Required"),
+                                        strong("Required"),
                                       )
                                   ),
-                div(class="mlb"),
-                fileInput(ns("filedata"),label = labels_create[1],accept = c(".csv",".xlsx",".xls")),
-                div(class="sheet_dl",
-                    hidden(pickerInput(ns("sheet_data"),"Sheet:", choices=NULL))
-                ),
-                actionLink(ns("reset_insert_1"),icon("fas fa-undo"),class="btn-input")
+                                  div(class="mlb"),
+                                  fileInput(ns("filedata"),label = labels_create[1],accept = c(".csv",".xlsx",".xls")),
+                                  div(class="sheet_dl",
+                                      hidden(pickerInput(ns("sheet_data"),"Sheet:", choices=NULL))
+                                  ),
+                                  actionLink(ns("reset_insert_1"),icon("fas fa-undo"),class="btn-input")
                               )
                             ),
-                div(class='create_opt',style="padding-top: 10px",
-                    div(style="display: flex",
-                        div(class="mlb-wide mblue"),
-                        div(
-                          style="position: absolute; left: 0px;
+                            div(class='create_opt',style="padding-top: 10px",
+                                div(style="display: flex",
+                                    div(class="mlb-wide mblue"),
+                                    div(
+                                      style="position: absolute; left: 0px;
                 color:#05668D; margin-top: -55px; margin-left: 30px",
-                strong("Optional"),
-                        ),
-                div(class="mlb mblue"),
-                fileInput(ns("labels"), labels_create[2], accept = c(".csv",".xlsx")),
-                div(class="sheet_dl",
-                    hidden(pickerInput(ns("sheet_fac"),"Sheet:", choices=NULL))
-                ),
-                actionLink(ns("reset_insert_2"),icon("fas fa-undo"),class="btn-input")
-                    ),
-                div(style="display: flex",
-                    div(class="mlb-wide"),
-                    div(
-                      style="position: absolute; left: 0px;width: 120px;
+                                      strong("Optional"),
+                                    ),
+                                    div(class="mlb mblue"),
+                                    fileInput(ns("labels"), labels_create[2], accept = c(".csv",".xlsx")),
+                                    div(class="sheet_dl",
+                                        hidden(pickerInput(ns("sheet_fac"),"Sheet:", choices=NULL))
+                                    ),
+                                    actionLink(ns("reset_insert_2"),icon("fas fa-undo"),class="btn-input")
+                                ),
+                                div(style="display: flex",
+                                    div(class="mlb-wide"),
+                                    div(
+                                      style="position: absolute; left: 0px;width: 120px;
                 color:gray; margin-top: -25px; margin-left: 30px;white-space: normal",
-                em("*Required for the spatial tools menu"),
-                    ),
-                div(class="mlb mblue"),
-                fileInput(ns("coords"), labels_create[3], accept = c(".csv",".xlsx")),
-                div(class="sheet_dl",
-                    hidden(pickerInput(ns("sheet_coord"),"Sheet:", choices=NULL))
-                ),
-                actionLink(ns("reset_insert_3"),icon("fas fa-undo"),class="btn-input")
-                ),
-                div(style="display: flex",
-                    div(class="mlb-wide"),
-                    div(class="mlb mblue"),
+                                      em("*Required for the spatial tools menu"),
+                                    ),
+                                    div(class="mlb mblue"),
+                                    fileInput(ns("coords"), labels_create[3], accept = c(".csv",".xlsx")),
+                                    div(class="sheet_dl",
+                                        hidden(pickerInput(ns("sheet_coord"),"Sheet:", choices=NULL))
+                                    ),
+                                    actionLink(ns("reset_insert_3"),icon("fas fa-undo"),class="btn-input")
+                                ),
+                                div(style="display: flex",
+                                    div(class="mlb-wide"),
+                                    div(class="mlb mblue"),
 
-                    fileInput(ns("base_shape"),labels_create[4]),
-                    actionLink(ns("reset_insert_4"),icon("fas fa-undo"),class="btn-input")
-                ),
-                div(style="display: flex",
-                    div(class="mlb-wide"),
-                    div(class="mlb mblue"),
-                    fileInput(ns("layer_shape"),labels_create[5]),
-                    actionLink(ns("reset_insert_5"),icon("fas fa-undo"),class="btn-input")
-                )
-                ))
+                                    fileInput(ns("base_shape"),labels_create[4]),
+                                    actionLink(ns("reset_insert_4"),icon("fas fa-undo"),class="btn-input")
+                                ),
+                                div(style="display: flex",
+                                    div(class="mlb-wide"),
+                                    div(class="mlb mblue"),
+                                    fileInput(ns("layer_shape"),labels_create[5]),
+                                    actionLink(ns("reset_insert_5"),icon("fas fa-undo"),class="btn-input")
+                                )
+                            ))
                     )),
                 div(id=ns("dl_example"),style="display: none",
                     div(class="dl_page",
@@ -205,36 +311,36 @@ tool1$ui<-function(id){
                                     div(class="mlb-wide mblue"),
                                     div(style="position: absolute; left: 0px;
                 color:#05668D; margin-top: -55px; margin-left: 30px",
-                strong("Optional")),
-                div(class="mlb mblue"),
-                div(class="form-group shiny-input-container",
-                    tags$label("Factor-Attribute"),
-                    div(class="form-control fake_dl","sampling factors for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D"))
+                                        strong("Optional")),
+                                    div(class="mlb mblue"),
+                                    div(class="form-group shiny-input-container",
+                                        tags$label("Factor-Attribute"),
+                                        div(class="form-control fake_dl","sampling factors for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D"))
                                 ),
-                div(style="display: flex",
-                    div(class="mlb-wide"),
-                    div(style="position: absolute; left: 0px;width: 120px;color:gray; margin-top: -25px; margin-left: 30px;white-space: normal",em("*Required for the spatial tools menu")),
-                    div(class="mlb mblue"),
-                    div(class="form-group shiny-input-container",
-                        tags$label("Coords-Attribute"),
-                        div(class="form-control fake_dl","sampling coordinates for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D")
-                    )
-                ),
-                div(style="display: flex",
-                    div(class="mlb-wide"),
-                    div(class="mlb mblue"),
-                    div(class="form-group shiny-input-container",
-                        tags$label("Base shape"),
-                        div(class="form-control fake_dl","base shape of the Araca Bay, for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D")
-                    )
-                ),
-                div(style="display: flex",
-                    div(class="mlb-wide"),
-                    div(class="mlb mblue"),
-                    div(class="form-group shiny-input-container",
-                        tags$label("Layer shape"),
-                        div(class="form-control fake_dl","layer shape of the Araca Bay, for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D"))
-                )
+                                div(style="display: flex",
+                                    div(class="mlb-wide"),
+                                    div(style="position: absolute; left: 0px;width: 120px;color:gray; margin-top: -25px; margin-left: 30px;white-space: normal",em("*Required for the spatial tools menu")),
+                                    div(class="mlb mblue"),
+                                    div(class="form-group shiny-input-container",
+                                        tags$label("Coords-Attribute"),
+                                        div(class="form-control fake_dl","sampling coordinates for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D")
+                                    )
+                                ),
+                                div(style="display: flex",
+                                    div(class="mlb-wide"),
+                                    div(class="mlb mblue"),
+                                    div(class="form-group shiny-input-container",
+                                        tags$label("Base shape"),
+                                        div(class="form-control fake_dl","base shape of the Araca Bay, for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D")
+                                    )
+                                ),
+                                div(style="display: flex",
+                                    div(class="mlb-wide"),
+                                    div(class="mlb mblue"),
+                                    div(class="form-group shiny-input-container",
+                                        tags$label("Layer shape"),
+                                        div(class="form-control fake_dl","layer shape of the Araca Bay, for both Datalists",style="width: 320px; ;padding: 7px; color: #05668D"))
+                                )
                             )
                         )
                     )
@@ -271,7 +377,7 @@ tool1$ui<-function(id){
         animation-iteration-count: 1;
       }
     ")),
-    tags$script(HTML("
+            tags$script(HTML("
       Shiny.addCustomMessageHandler('shakeClass', function(message) {
         var elements = document.getElementsByClassName(message.className);
         Array.prototype.forEach.call(elements, function(element) {
@@ -284,17 +390,17 @@ tool1$ui<-function(id){
     "))
 
         ))
-    ,
-    footer=div(
-      div(
-        class="dl_btns",style='display: inline-block',
-        actionButton(ns("dl_cancel"),"Cancel"),
-        hidden(actionButton(ns("dl_prev"),"< Previous")),
-        inline(uiOutput(ns("insert_buttons"))),
+      ,
+      footer=div(
+        div(
+          class="dl_btns",style='display: inline-block',
+          actionButton(ns("dl_cancel"),"Cancel"),
+          hidden(actionButton(ns("dl_prev"),"< Previous")),
+          inline(uiOutput(ns("insert_buttons"))),
 
-      )
-    ),
-    easyClose = T
+        )
+      ),
+      easyClose = T
     )
 
   )
@@ -630,8 +736,8 @@ tool1$server<-function(id,vals){
 
       if(input$up_or_ex=="example"){
         div(style="display: flex; gap: 10px",
-          datalist_render(getdatalist()[[1]],F,width="60px"),
-          datalist_render(getdatalist_envi()[[1]],F,width="60px")
+            datalist_render(getdatalist()[[1]],F,width="60px"),
+            datalist_render(getdatalist_envi()[[1]],F,width="60px")
         )
       } else{
         div(style="width: 50%",
@@ -641,6 +747,215 @@ tool1$server<-function(id,vals){
 
     })
 
+  })
+}
+
+tool2<-list()
+tool2$ui<-function(id){
+  ns=NS(id)
+  div(style="margin-top: -35px",
+      div(class="toolkit_items",style="width: 550px; height: 320px;      background: #00000095;; position: fixed;right: 0px; z-index: 9",),
+      div(
+        class="toolkit_items",id=ns("toolkit"),
+
+        lapply(seq_along(tool2_tabs),function(i){
+          style=""
+          if(i%in%c(10,11)){
+            style="color: brown"
+          }
+          div(actionButton(ns(paste0('tool_kit_',i)),
+                           tool2_tabs[i],style=style,class="toolkit"))
+        }),
+
+      ),
+      div(class="tool_page tool2-tabs",
+          div(
+            class="nav-tools",
+            tabsetPanel(type ="hidden",selected="none",
+                        id=ns("tabs_tool2"),
+                        tabPanel(tool2_tabs[1],value="tab1",
+                                 tool2_tab1$ui(ns("rename")),
+                                 uiOutput(ns('tool2_tab1_out'))
+
+
+
+                        ),
+                        tabPanel(tool2_tabs[2],value="tab2",
+                                 tool2_tab2$ui(ns("merge")),
+                                 uiOutput(ns('tool2_tab2_out'))
+
+                        ),
+                        tabPanel(tool2_tabs[3],value="tab3",
+                                 tool2_tab3$ui(ns("exchange")),
+                                 uiOutput(ns('update_tab3_exchange')),
+                                 uiOutput(ns('tool2_tab3_out'))
+
+                        ),
+                        tabPanel(tool2_tabs[4],value="tab4",
+                                 div(tool2_tab4$ui(ns("replace")),
+                                     uiOutput(ns('update_tab4'))),
+                                 uiOutput(ns('tool2_tab4_out'))
+                        ),
+                        tabPanel(tool2_tabs[5],value="tab5",
+                                 div(tool2_tab5$ui(ns("editcol"))),
+                                 uiOutput(ns('tool2_tab5_out'))
+
+                        ),
+                        tabPanel(tool2_tabs[6],value="tab6",
+                                 div(tool2_tab6$ui(ns("editmod")),
+                                     uiOutput(ns('update_tab6'))),
+                                 uiOutput(ns('tool2_tab6_out'))
+                        ),
+                        tabPanel(tool2_tabs[7],value="tab7",
+                                 tool2_tab7$ui(ns("transpose")),
+                                 uiOutput(ns('tool2_tab7_out'))
+                        ),
+                        tabPanel(tool2_tabs[8],value="tab8",
+                                 tool2_tab8$ui(ns("shp")),
+                                 uiOutput(ns('tool2_tab8_out'))),
+                        tabPanel(tool2_tabs[9],value="tab9",
+                                 tool2_tab9$ui(ns("code")),
+                                 uiOutput(ns('tool2_tab9_out'))),
+                        tabPanel(tool2_tabs[10],value="tab10",
+                                 div(tool2_tab10$ui(ns("gen")),
+                                     uiOutput(ns('update_tab10'))),
+                                 uiOutput(ns('tool2_tab10_out'))
+
+                        ),
+                        tabPanel(tool2_tabs[11],value="tab11",
+                                 tool2_tab11$ui(ns("deldatalist")),
+                                 uiOutput(ns('tool2_tab11_out'))
+                        )
+            )
+          )
+      )
+
+  )
+}
+tool2$server<-function(id,vals){
+
+  moduleServer(id,function(input,output,session){
+
+
+    shinyjs::onevent("mouseleave", "toolkit", {
+      hide(selector=".toolkit_items")
+      show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_1,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab1")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_2,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab2")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_3,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab3")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_4,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab4")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_5,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab5")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_6,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab6")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_7,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab7")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_8,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab8")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_9,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab9")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+    observeEvent(input$tool_kit_10,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab10")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+
+    observeEvent(input$tool_kit_11,{
+      updateTabsetPanel(session,"tabs_tool2",selected="tab11")
+      shinyjs::hide(selector=".toolkit_items")
+      shinyjs::show(selector='.tool2-tabs')
+    })
+
+    tool2_tab3$update_server("exchange",vals)
+
+
+
+
+
+    output$tool2_tab1_out<-renderUI({
+      tool2_tab1$server('rename',vals)
+      NULL
+    })
+
+    output$tool2_tab2_out<-renderUI({
+      tool2_tab2$server('merge',vals)
+      NULL
+    })
+    output$tool2_tab3_out<-renderUI({
+      tool2_tab3$server('exchange',vals)
+      NULL
+    })
+
+    output$tool2_tab4_out<-renderUI({
+      tool2_tab4$server('replace',vals)
+      NULL
+    })
+
+    output$tool2_tab5_out<-renderUI({
+      tool2_tab5$server('editcol',vals)
+      NULL
+    })
+
+
+    output$tool2_tab6_out<-renderUI({
+      tool2_tab6$server('editmod',vals)
+      NULL
+    })
+
+    output$tool2_tab7_out<-renderUI({
+      tool2_tab7$server('transpose',vals)
+      NULL
+    })
+    output$tool2_tab8_out<-renderUI({
+      tool2_tab8$server('shp',vals)
+      NULL
+    })
+    output$tool2_tab9_out<-renderUI({
+      tool2_tab9$server('code',vals)
+      NULL
+    })
+
+    output$tool2_tab10_out<-renderUI({
+      tool2_tab10$server('gen',vals)
+      NULL
+    })
+
+    output$tool2_tab11_out<-renderUI({
+      tool2_tab11$server('deldatalist',vals)
+      NULL
+    })
   })
 }
 
@@ -693,6 +1008,7 @@ tool2_tab1$server<-function(id,vals){
     })
   })
 }
+
 tool2_tab2<-list()
 tool2_tab2$ui<-function(id){
   ns<-NS(id)
@@ -925,7 +1241,846 @@ tool2_tab2$server<-function(id,vals){
 
   })
 }
+
 tool2_tab3<-list()
+tool2_tab3$ui<-function(id){
+  ns<-NS(id)
+  div(style="height: calc(100vh - 100px);",
+
+      div(style="position: fixed; top: 60px;right: 0px",
+
+          div(
+            style="display: flex; gap:10px",
+            bsButton(ns("prev_import"), "< Previous",width='100px'),
+            bsButton(ns("next_import"), "Next >",width='100px'))
+
+      ),
+
+      hidden(bsButton(ns("cancel_import"), "Cancel")),
+
+      div(strong("Exchange Factors/Variables")),
+
+      div(id = ns('step1'),
+
+          radioButtons(ns("copy_transfer"),"Action:", c("Copy","Move"),inline=T),
+          uiOutput(ns("update_estep1")),
+          column(12,  class="mp0",
+                 column(2,style="margin:0px;padding: 0px;width: 70px",
+                        tags$label('Datalist:', style="padding-top:30px"),
+                        tags$label('Attribute:', style="padding-top:25px")),
+
+                 column(4,style="margin:0px;padding: 0px",
+                        uiOutput(ns("import_from_data")),
+
+                        pickerInput(ns("import_from_attr"), NULL ,choices=c("Factor-Attribute"="factor","Numeric-Attribute"="numeric"),selected="factor"),
+                 ),
+
+                 column(1,style="margin:0px;padding: 0px; width: 30px",align="center",
+                        div(actionLink(ns('rev_datalist'),icon("arrow-right-arrow-left")), style="position: absolute; top: 35px;left: 10px "),
+                        div(actionLink(ns('rev_attr'),icon("arrow-right-arrow-left")), style="position: absolute;top:80px; left: 10px;"),
+                        bsTooltip(ns('rev_datalist'),"Switch","right"),
+                        bsTooltip(ns('rev_attr'),"Switch","right")
+                 ),
+
+                 column(4,style="margin:0px;padding: 0px",
+                        uiOutput(ns("import_to_data")),
+                        pickerInput(ns("import_to_attr"), NULL, choices=c("Numeric-Attribute"="numeric","Factor-Attribute"="factor"),selected="numeric")
+                 )
+          ),
+          column(12,  class="mp0",
+                 column(6,class="virtual_small",
+                        virtualPicker(ns("importvar"), label="Columns","selected" )
+                 ),
+                 column(6,
+                        hidden(
+                          radioButtons(
+                            ns("hand_facs"),"Convertion type:",
+                            choiceValues = list("Binary","Ordinal"),
+                            choiceNames = list(div("Binary",span(id="conv_bin",icon("question-circle"))),div("Integer",span(id="conv_ord",icon("question-circle")))),
+                            inline=T
+                          )
+                        ),
+                        div(     uiOutput(ns("error_transf0"))),
+                 )
+          ),
+          bsTooltip(ns("conv_bin"),"Creates a single binary column per factor level,with 1 indicating the class of that particular observation", placement = "right",options =list(style="width: 600px")),
+          bsTooltip(ns("conv_ord"),"Creates a single column using numeric (integer) representation (values) of the factor levels", placement = "right")
+      ),
+
+
+      div(
+        id = ns('step2'),
+        uiOutput(ns("from_to")),
+
+        div(style="height:450px;overflow-y: scroll;overflow-x: scroll",
+            div(
+              checkboxInput(ns("cutfacs"),span("Cut into intervals",tiphelp("divides the range of x into intervals and codes the values in x according to which interval they fall (cut function from R base).", "right")), F),
+              uiOutput(ns("cut_fac_method")),
+              div(
+
+                div(uiOutput(ns("tofactor")),style="font-size: 11px;"),
+
+
+
+              )
+            ),
+
+            uiOutput(ns("error_transf")),
+            uiOutput(ns("ordinal_page")),
+            uiOutput(ns("binary_page"))),
+
+      ),
+      div(id = ns('step3'),
+          uiOutput(ns("page3")),
+
+      )
+
+  )
+}
+tool2_tab3$update_server<-function(id,vals){
+  moduleServer(id,function(input,output,session){
+    observeEvent(input$rev_attr,{
+      a=input$import_from_attr
+      req(a)
+      b=input$import_to_attr
+      req(b)
+      updatePickerInput(session,'import_from_attr',selected=b)
+      updatePickerInput(session,'import_to_attr',selected=a)
+    })
+    observe({
+
+      #shinyjs::toggle("rev_attr",condition=input$import_from_attr!=input$import_to_attr)
+      shinyjs::toggle("rev_datalist",condition=input$import_from_data!=input$import_to_data)
+    })
+    observeEvent(input$rev_datalist,{
+      a=input$import_from_data
+      b=input$import_to_data
+      updatePickerInput(session,'import_from_data',selected=b)
+      updatePickerInput(session,'import_to_data',selected=a)
+    })
+  })
+}
+tool2_tab3$server<-function(id,vals){
+  moduleServer(id,function(input,output,session){
+
+    ns<-session$ns
+
+    output$cut_fac_method<-renderUI({
+      req(isTRUE(input$cutfacs))
+      div(class="half-drop half-drop-inline",
+          selectInput(
+            ns("bin_method"),
+            label = span("Bin method",tipify(actionLink(ns("bin_method_help"), icon("fas fa-question-circle")), "Click for details")
+            ),
+            choices = c("Sturges" = "sturge", "Scott" = "scott", "Freedman-Diaconis" = "freedman")
+          )
+      )
+    })
+
+    observeEvent(input$bin_method_help, {
+
+      showModal(
+        modalDialog(
+          title = "Methods to initial guess of the number of cuts (or bins)",
+          easyClose = TRUE,
+          fluidRow(class='mp0',
+                   tags$style(HTML(".formulas div.MathJax_Display{text-align: left !important;color: gray;white-space:normal;font-size: 11px}")),
+                   div(class="formulas",
+                       column(6,
+                              strong("Sturges' Rule"),
+                              div(withMathJax("$$\\text{Number of bins} = \\lceil \\log_2(n) + 1 \\rceil$$")),
+                              hr(),
+                              strong("Scott's Rule"),
+                              div(withMathJax(helpText("$$\\text{Bin width} = \\frac{3.5 \\cdot \\sigma}{n^{1/3}}$$"))),
+                              div(withMathJax(helpText("$$\\text{Number of bins} = \\left\\lceil \\frac{\\text{Range of data}}{\\text{Bin width}} \\right\\rceil$$"))),
+                              hr(),
+                              strong("Freedman-Diaconis Rule"),
+                              div(withMathJax(helpText("$$\\text{Bin width} = 2 \\cdot \\frac{\\text{IQR}}{n^{1/3}}$$"))),
+                              div(withMathJax(helpText("$$\\text{Number of bins} = \\left\\lceil \\frac{\\text{Range of data}}{\\text{Bin width}} \\right\\rceil$$"))),
+                       ),
+                       column(6,
+                              div("Where:"),
+                              div(withMathJax(helpText("$$n=\\text{number of observations}$$"))),
+                              div(withMathJax(helpText("$$\\sigma=\\text{the standard deviation of the data}$$"))),
+
+                              div(withMathJax(helpText("$$\\text{IQR}=\\text{the interquartile range of the data}$$")))
+                       )
+
+
+
+
+
+
+                   ))
+        )
+      )
+    })
+
+
+    output$from_to<-renderUI({
+      div("from",strong(embrown(convert()[1])),"to",strong(emgreen(convert()[2])))
+    })
+
+    output$import_to_data<-renderUI({
+      pickerInput(session$ns("import_to_data"), "To:", choices=names(vals$saved_data),selected=vals$cur_import_to_data)
+    })
+    output$import_from_data<-renderUI({
+      pickerInput(session$ns("import_from_data"),  "From:", choices=names(vals$saved_data),
+                  selected=vals$cur_import_from_data,
+                  #selected=names(vals$saved_data)[5]
+      )
+    })
+    observeEvent(input$import_from_data,{
+      vals$cur_import_from_data<-input$import_from_data
+    })
+    observeEvent(input$import_to_data,{
+      vals$cur_import_to_data<-input$import_to_data
+    })
+    observe({
+      req(input$import_from_attr)
+      req(input$import_from_data)
+      req(input$import_from_data!="")
+      data<-vals$saved_data[[input$import_from_data]]
+      if(input$import_from_attr=="factor"){
+        data<-attr(data,"factors")
+      }
+
+      shinyWidgets::updateVirtualSelect("importvar",choices=colnames(data), selected=colnames(data)[1])
+    })
+    gdata_from<-reactive({
+      req(input$import_from_data)
+      req(input$import_from_attr)
+      data0<-data<-vals$saved_data[[input$import_from_data]]
+      data<-data[rownames(vals$saved_data[[input$import_to_data]]),,drop=F]
+
+      data<-data_migrate(data0,data)
+
+
+      attr(data,"attr")<-"Numeric-Attribute"
+      afrom<-input$import_from_attr
+      if(afrom=="factor"){
+        data<-attr(data,"factors")
+        attr(data,"attr")<-"Factor-Attribute"
+      }
+      attr(data,"name")<-input$import_from_data
+      data
+    })
+    gdata_to<-reactive({
+      req(input$import_to_data)
+      data<-vals$saved_data[[input$import_to_data]]
+      ato=input$import_to_attr
+      attr(data,"attr")<-"Numeric-Attribute"
+      if(ato=="factor"){
+        data<-attr(data,"factors")
+        attr(data,"attr")<-"Factor-Attribute"
+      }
+      attr(data,"name")<-input$import_to_data
+      data
+    })
+    val_transf<-reactive({
+      try({
+
+        dfrom<-gdata_from()
+        req(dfrom)
+        dto<-gdata_to()
+        req(dto)
+        result<-validate_transf(dfrom,dto)
+        result
+
+      },silent=T)
+    })
+    output$error_transf0<-renderUI({
+      result<-val_transf()
+      message<-attr(result,"logs")
+
+      div(class="small_print2",
+          render_message(message)
+      )
+
+    })
+    output$error_transf<-renderUI({
+      render_message(vals$error_transf)
+    })
+    page<-reactiveVal(1)
+    step_max<-3
+    observeEvent(input$next_import,{
+
+      next_page<-page()+1
+      page(next_page)
+    })
+    observe({
+      if(page()==1){
+        data2(NULL)
+        vals$error_transf<-NULL
+      }
+    })
+    observeEvent(input$prev_import,{
+      vals$error_transf<-NULL
+      data2(NULL)
+      req(page()>1)
+      next_page<-page()-1
+      page(next_page)
+    })
+    observe({
+      shinyjs::toggle( "prev_import", condition=page()>1)
+      shinyjs::toggle('next_import',condition=page()<3&isTRUE(val_transf()))
+      shinyjs::toggle('step1',condition=page()==1)
+      shinyjs::toggle('step2',condition=page()==2)
+      shinyjs::toggle('step3',condition=page()==3)
+    })
+    rank_dfs<-reactive({
+
+      data<-get_data_cutted()
+
+      vars<-colnames(data)
+
+      result<-lapply(seq_along(vars),function(i){
+
+        rank_lev<-input[[paste("rank_lev",vars[i],sep="_")]]
+
+        req(rank_lev)
+        level=as.numeric(rank_lev)
+        label=sapply(levels(data[,vars[i]]),function(x){
+          rank_label=input[[paste("ordrank_label",vars[i],x,sep="_")]]
+
+          req(rank_label)
+          rank_label
+        })
+        data.frame(level,label)
+      })
+      names(result)<-vars
+
+      result
+
+    })
+    go_exchange<-reactive({
+
+      req(page()>2)
+
+      if(all(convert()==c("numeric","numeric"))){
+
+        numeric2numeric()
+      }   else if(all(convert()==c("numeric","factor"))){
+
+        numeric2factor()
+      } else if(all(convert()==c("factor","numeric"))){
+        if(input$hand_facs=="Ordinal"){
+
+          factor2numeric_ordinal()
+        } else if (input$hand_facs=="Binary"){
+
+          factor2numeric_binary()
+        }
+      } else if(all(convert()==c("factor","factor"))){
+
+        factor2factor()
+      }
+    })
+    numeric2numeric<-reactive({
+      data<-get_data_cutted()
+      newnames<-sapply(colnames(data),function(var){
+        input[[paste("newbin",var, sep="_")]]
+      })
+      colnames(data)<-newnames
+      data
+    })
+    factor2factor<-reactive({
+
+      data<-get_data_cutted()
+
+      vars<-colnames(data)
+
+
+      rd<-rank_dfs()
+
+      resdf<-data.frame(lapply(names(rd),function(var){
+        levels<-levels(data[,var])
+        numfac<-as.factor(as.numeric(data[,var]))
+        levels0<-levels(numfac)
+        ord<-as.numeric(rd[[var]]$level)
+        labels=rd[[var]]$label
+        fac<-factor(numfac,levels=ord,labels=  labels[ord])
+        fac<-factor(fac,levels=levels(fac)[levels(fac)%in%fac])
+        fac<-data.frame(fac)
+        colnames(fac)<-input[[paste0("newcol",var,sep="_")]]
+        fac
+      }))
+      rownames(resdf)<-rownames(gdata_from())
+
+      resdf
+    })
+    numeric2factor<-reactive({
+      factor2factor()
+    })
+    factor2numeric_binary<-reactive({
+
+
+      data<-get_data_cutted()
+      result<-capture_log2(factor2numeric_fun)(data,input)
+
+      req(!inherits(result,"error"))
+      result
+
+
+    })
+    factor2numeric_ordinal<-reactive({
+      data<-get_data_cutted()
+      vars<-colnames(data)
+      result<-lapply(seq_along(vars),function(i){
+        num_values<-sapply(seq_along(levels(data[,vars[i]])),function(x){
+          input[[paste0("fac2num_value",x)]]
+        })
+
+
+        rank_lev<-input[[paste("rank_lev",vars[i],sep="_")]]
+        level_labels= gsub("*.\\\n","",rank_lev)
+        res<-as.numeric(as.character(factor(data[,vars[i]],levels=level_labels,labels = num_values)))
+        print(res)
+
+        res
+      })
+      names(result)<-vars
+      result<-data.frame(result)
+      rownames(result)<-rownames(gdata_from())
+      result
+    })
+    factor2numeric_fun<-function(data, input){
+
+      vars<-colnames(data)
+      df<-data.frame(do.call(cbind,lapply(data,function(x) classvec2classmat(x))))
+      cols<-colnames(getclassmat(data))
+      newnames<-sapply(cols,function(var){
+        input[[paste("newbin",var, sep="_")]]
+      })
+      rownames(df)<-rownames(data)
+      colnames(df)<-newnames
+      df
+    }
+    r_exchange<-reactiveVal()
+    observeEvent(go_exchange(),{
+      new<-go_exchange()
+      r_exchange(new)
+    })
+    ##### page2
+    action<-reactive({
+
+      req(input$import_from_attr)
+      req(input$import_to_attr)
+      action0<-""
+      if(input$import_from_attr!=input$import_to_attr){
+        action0<- span(input$copy_transfer,
+                       embrown(strong(input$import_from_attr)),
+                       "to",
+                       emgreen(strong(input$import_to_attr)))
+      }
+      action<-span(strong("Convert"))
+      vars<- inline(div(style="max-width: 200px; color: brown; background: Gainsboro",em(paste0(input$importvar,collapse="; "))))
+      sub<-NULL
+      sub<- if(input$import_from_attr=="numeric"){
+        if(input$import_to_attr=="numeric"){} else {
+          span("(as factor)")
+        }
+      }
+      sub<- if(input$import_from_attr=="factor"){
+        if(input$import_to_attr=="numeric"){
+          if(input$hand_facs=="Binary"){
+            "(as binary columns)"
+          } else{
+            "(as value-factor-levels)"
+          }
+        }
+      }
+
+      div(
+        div(
+          h4(div(action0)),
+          action,
+          vars,
+          span(sub, style="color:  #05668D;"),
+
+        ))
+    })
+    observeEvent(page(),{
+      try({
+        if(page()==3){
+          prep_exchange()
+          page(2)
+          if(!is.null(data2())){
+
+            req(nrow(data2())==nrow(get_data_from()))
+            confirm_modal(session$ns,action=action(),
+                          data1=get_data_from(),
+                          data2= data2(),
+                          left='Original Data:',right="New Data:",
+                          from='',
+                          to=''
+            )
+          }
+        }
+
+      })
+    })
+    observeEvent(input$confirm,ignoreInit = T,{
+      req(data2())
+      removeModal()
+      run_exchange()
+      page(1)
+      success_modal()
+    })
+    data_from0<-reactive({
+      req(input$import_from_data)
+      if(input$import_from_attr=="factor"){
+        data<- attr(vals$saved_data[[input$import_from_data]],"factors")
+      } else{
+        data<-vals$saved_data[[input$import_from_data]]
+      }
+      data
+    })
+    data2<-reactiveVal()
+    success_modal<-reactive({
+      req(input$import_from_data)
+      req(input$import_to_data)
+      req(is.data.frame(data2()))
+
+
+      data1=data_from0()
+      data2=vals$saved_data[[input$import_to_data]]
+      showModal(
+        modalDialog(
+          easyClose = T,
+          h4("Success!"),
+          get_basic_compare(data1=NULL,data2=data2(),left="",right="New:",to=paste(paste0(input$import_to_data,">"),paste0(first_upper(input$import_to_attr),"-Attribute")))
+
+        )
+      )
+    })
+    prep_exchange_fun<-function(from,to,afrom,ato,saved_data,r_exchange){
+
+      if(ato=="factor"){
+        factors<-attr(saved_data[[to]],"factors")[rownames(r_exchange),,drop=F]
+        newfac<-cbind(factors,r_exchange)
+        colnames(newfac)<-make.unique(colnames(newfac))
+        return(newfac)
+
+      } else{
+        new<-saved_data[[to]][rownames(r_exchange),,drop=F]
+        newdat<-cbind(new,r_exchange)
+        colnames(newdat)<-make.unique(colnames(newdat))
+        newdat<-data_migrate(saved_data[[from]],newdat)
+        return(newdat)
+      }
+    }
+    prep_exchange<-reactive({
+      try({
+
+        datalist_name<-input$import_to_data
+        result<-capture_log2(prep_exchange_fun)(from=input$import_from_data,to=input$import_to_data,afrom=input$import_from_attr,ato=input$import_to_attr,saved_data=vals$saved_data,r_exchange=r_exchange())
+        vals$error_transf<-attr(result,"logs")
+        if(!inherits(result,"error")){
+          attr(result,"datalist")<-datalist_name
+          data2(result)
+        }
+      })
+    })
+    run_exchange<-reactive({
+      from<-input$import_from_data
+      to<-input$import_to_data
+      afrom<-input$import_from_attr
+      ato<-input$import_to_attr
+      if(ato=="factor"){
+        newfac<-data2()
+        attr(vals$saved_data[[to]],"factors")<-newfac
+        if(input$copy_transfer=="Move"){
+          attr(vals$saved_data[[to]],"factors")[input$importvar]<-NULL
+        }
+      } else{
+        newdat<-data2()
+        vals$saved_data[[to]]<-newdat
+        if(input$copy_transfer=="Move"){
+          vals$saved_data[[to]][input$importvar]<-NULL
+        }
+      }
+      updatePickerInput(session,"import_from_data",selected=from)
+      updatePickerInput(session,"import_to_data",selected=to)
+    })
+    convert<-reactive({
+      list(
+        from=input$import_from_attr,
+        to=input$import_to_attr
+      )
+    })
+    getconvert_datavars<-reactive({
+
+      req(input$import_from_attr)
+      req(input$importvar)
+      req(input$import_from_attr)
+      data0<-data<-vals$saved_data[[input$import_from_data]]
+      data<-data[rownames(vals$saved_data[[input$import_to_data]]),,drop=F]
+
+      req(nrow(data)>0)
+      data<-data_migrate(data0,data)
+
+      datalist_name<-input$import_from_data
+
+      if(input$import_from_attr=="factor"){
+        data<- attr(vals$saved_data[[input$import_from_data]],"factors")
+
+      }
+      if(all(convert()==c("numeric","factor"))){
+        res<-do.call(data.frame,lapply(data,function(x) as.factor(x)))
+        rownames(res)<-rownames(data)
+        data<-res
+      }
+
+      attr(data,"datalist")<-datalist_name
+      vars<-as.list(input$importvar)
+      req(vars%in%colnames(data))
+
+      result<-list(data,vars)
+    })
+    observeEvent(convert(),{
+      if(all(convert()[2]==c("factor"))){
+        shinyjs::hide('hand_facs')
+      } else if(all(convert()==c("numeric","numeric"))) {
+        shinyjs::hide('hand_facs')
+      } else{
+        shinyjs::show('hand_facs')
+      }
+    })
+    observeEvent(convert(),{
+      if(all(convert()==c("factor","numeric"))){
+        updateCheckboxInput(session,'cutfacs',value=F)
+        shinyjs::hide('cutfacs')
+      } else{
+        if(all(convert()==c("factor","factor"))){
+          updateCheckboxInput(session,'cutfacs',value=F)
+          shinyjs::hide('cutfacs')
+        } else{
+          shinyjs::show('cutfacs')
+        }
+
+      }
+    })
+    output$tofactor<-renderUI({
+      ns<-session$ns
+      if(all(convert()==c("factor","numeric"))){
+        req(input$hand_facs=="Ordinal")
+      } else{
+        req(all(convert()[2]==c("factor")))
+      }
+      div(
+
+        div(icon("hand-point-right"),"Drag and drop the levels (green blocks) to define their values",style='white-space: normal;'),
+        if(all(convert()[2]==c("factor")))
+          div(icon("hand-point-right"),"Edit label names (blue blocks)"),
+        if(all(convert()==c("factor","numeric")))
+          div(icon("hand-point-right"),"Edit numeric values (blue blocks)"),
+        div(uiOutput(ns("dropLevelsEdit_a")),
+            style="font-size: 11px;"),
+        div(uiOutput(ns('dropLevelsEdit_b'))),
+      )
+    })
+
+
+    dropLevelsEdit<-reactive({
+      ns<-session$ns
+      data<-get_data_cutted()
+      vars<-getconvert_datavars()[[2]]
+      vars<-unlist(vars)
+      l1<-lapply(seq_along(vars),function(i){
+        output[[paste0('facord_level',vars[i])]]<-renderUI({i})
+        output[[paste0('facord_outl',vars[i])]]<-renderUI({
+          valid<-input[[paste0("cutfacs_breaks_",vars[i])]]
+          col1<-column(4,class="mp0",
+                       lapply(seq_along(levels(data[,vars[i]])),function(x){
+                         if(convert()[2]=="numeric"){
+                           column(12,class="mp0 ord_label",
+                                  div(class="num_label",
+                                      numericInput(ns(paste0("fac2num_value",x)),NULL,x,width= '75px')
+                                  ))
+                         }else{div(x,style="border-top:1px solid; border-bottom:1px solid; height: 24px;margin: 0px;text-align: center")}
+
+                       }))
+          col2<-column(8,class="mp0",{
+
+            sortable:: rank_list(
+              labels = lapply(1:nlevels(data[,vars[i]]),function(x){
+                lev<-levels(data[,vars[i]])[x]
+                div(class="ord_label factor_label",x,
+                    if(convert()[2]=="factor"){
+                      div(textInput(ns(paste("ordrank_label",vars[i],lev,sep="_")),NULL,lev, width= "95px"))
+                    } else {div(lev,class='form form-group form-control shiny-input-container',style="padding-top: 5px; ;padding-left: 5px;position: absolute;left: 0px;background: #D0F0C0;")}
+                )
+              }),
+              input_id = ns(paste("rank_lev",vars[i],sep="_")),
+              class="rankcol sortable"
+            )
+          })
+          if(convert()[2]=="numeric"){
+            div(col2,col1)
+          } else{
+            div(col1,col2)
+          }
+
+
+        })
+      })
+      NULL
+    })
+    output$dropLevelsEdit_a<-renderUI({
+      ns<-session$ns
+      data<-getconvert_datavars()[[1]]
+      vars<-getconvert_datavars()[[2]]
+      vars<-unlist(vars)
+      getl1<-function(id_text,text_value,div2_before="",div1="Value",div2="Label",class_1="form-control", class_2="form-control", style_1="",style_2="",div1_out="",div2_out=""){
+        col1<-column(4,class="mp0",
+                     div(div(div1,style="text-align: center"),
+                         class="half-drop rankcol",
+                         style=style_1),
+                     div1_out
+
+        )
+        col2<-column(8,class="half-drop rankcol",
+                     #column(3,class="mp0",div2_before),
+                     column(12,class="mp0",div2,style="text-align: center"))
+        column(4,style="padding-right: 5px;",
+               column(12,
+                      class="half-drop rankcol",
+                      textInput(id_text,NULL,text_value)),
+               column(12,class="mp0",
+                      if(convert()[2]=="numeric"){
+                        div(col2,col1)
+                      } else{
+                        div(col1,col2)
+                      },
+                      column(12, div2_out,class="mp0")
+               )
+
+        )
+      }
+      data<-get_data_from()
+      data_o<-vals$saved_data[[input$import_from_data]]
+
+      div1="Levels"
+      col2_name<-"Label"
+      if(convert()[2]=="numeric"){
+        div1="Level"
+        col2_name="Numeric-Value"
+      }
+      vars<-colnames(data)
+      if(isTRUE(input$cutfacs)){
+        div2_before="Cut"
+        div2=function(data=NULL,var=NULL){
+          fun<-switch(input$bin_method,
+                      'sturge'=bin_Sturges,
+                      'scott'=bin_Scott,
+                      'freedman'=bin_Freedman
+          )
+
+          div(class="rankcol",
+              numericInput(ns(paste0("cutfacs_breaks_",var)),
+                           NULL,
+                           value =fun(data_o[,var])
+              ))
+        }
+      } else{
+        div2_before=""
+        div2=function(data=NULL,var=NULL){div(col2_name)}
+      }
+
+      l1<-lapply(vars,function(var){
+        div(style="margin-top: 5px;margin-bottom: 15px",
+            getl1(id_text=ns(paste0("newcol",var,sep="_")),
+                  var,
+                  div1=div(if(convert()[2]=="numeric"){div2(data,var)}else{div1},style=""),
+                  #div2_before=div(div2_before,style="border: 1px solid blue"),
+                  div2=div(
+                    if(convert()[2]=="numeric"){div1}else{div2(data,var)},style=""
+                  ),
+                  div2_out= div(style="padding-bottom: 30px",
+                                uiOutput(ns(paste0('facord_outl',var)))
+                  )
+
+            )
+
+
+        )
+      })
+      div(
+        id="rank_levels",
+        l1)
+    })
+    output$dropLevelsEdit_b<-renderUI({
+      dropLevelsEdit()
+    })
+    get_factor_cuts<-function(l1){
+      do.call(data.frame,lapply(l1, function (x) {
+        cut(as.numeric(as.character(x[[1]])),as.numeric(x[[2]]))
+      }))
+    }
+    ns<-session$ns
+    get_data_from<-reactive({
+
+      data<-getconvert_datavars()[[1]]
+      vars<-getconvert_datavars()[[2]]
+      data<-data[,unlist(vars),drop=F]
+      datalist_name<-input$import_from_data
+      if(convert()[[2]]=="factor"){
+        data<-data.frame(lapply(data,as.factor))
+      }
+
+      colnames(data)<-vars
+      attr(data,"datalist")<-datalist_name
+      data
+    })
+    get_data_cutted<-reactive({
+      data<-get_data_from()
+      datalist_name<-attr(data,"datalist")
+      vars<-colnames(data)
+      if(isTRUE(input$cutfacs)){
+        res<-lapply(vars, function(var) {
+          cut=input[[paste0("cutfacs_breaks_",var)]]
+          req(cut)
+          cut(as.numeric(as.character(data[,var])),cut)
+        })
+        res<-data.frame(res)
+        colnames(res)<-colnames(data)
+        data<-res
+      } else{
+        if(convert()[2]=="factor"){
+          data<-data.frame(lapply(data,as.factor))
+        }
+      }
+      attr(data,"datalist")<-datalist_name
+      data
+    })
+    output$binary_page<-renderUI({
+      ns<-session$ns
+      req(input$import_from_data)
+      req(input$importvar)
+      data<-vals$saved_data[[input$import_from_data]]
+      if(input$import_from_attr=="factor"){
+        req(input$import_to_attr=="numeric")
+        req(input$hand_facs=="Binary")
+        factors<-attr(data,"factors")[,input$importvar,drop=F]
+        cols<-colnames(getclassmat(factors))
+      }
+      if(input$import_from_attr=="numeric"){
+        req(input$import_to_attr=="numeric")
+        cols<-colnames(data[,input$importvar,drop=F])
+      }
+
+      lbin<-lapply(cols,function(x){
+        div(class="new_colnames",textInput(ns(paste("newbin",x, sep="_")), NULL, value=x))
+      })
+
+      div(style="overflow-y: auto; max-height: calc(100vh - 200px);margin-top: 20px",
+          div(icon("hand-point-right"),"Edit column names",style='white-space: normal;font-size: 11px'),
+          h5(strong("New column names:")),
+          lbin)
+    })
+  })
+}
 
 tool2_tab4<-list()
 tool2_tab4$ui<-function(id){
@@ -1134,6 +2289,7 @@ tool2_tab4$server<-function(id,vals){
     })
   })
 }
+
 tool2_tab5<-list()
 tool2_tab5$ui<-function(id){
   ns<-NS(id)
@@ -1155,14 +2311,14 @@ tool2_tab5$ui<-function(id){
                             pickerInput(ns("editattr"),strong("Attribute:"),choices=c("Numeric","Factors")),
 
                             div(style="display: flex",
-                              uiOutput(ns("remove_columns")),
+                                uiOutput(ns("remove_columns")),
 
-                              div(style="position: absolute;right: 30px",
-                                div(id=ns("trash_cols_btn"),class="save_changes",style="margin-top:5px;",
-                                    actionButton(ns("trash_cols"),icon("fas fa-trash"))
-                                ),
-                                uiOutput(ns('validate_remove'))
-                              )
+                                div(style="position: absolute;right: 30px",
+                                    div(id=ns("trash_cols_btn"),class="save_changes",style="margin-top:5px;",
+                                        actionButton(ns("trash_cols"),icon("fas fa-trash"))
+                                    ),
+                                    uiOutput(ns('validate_remove'))
+                                )
 
                             ),
 
@@ -1241,7 +2397,6 @@ tool2_tab5$ui<-function(id){
              ))
   )
 }
-
 tool2_tab5$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
     ns<-session$ns
@@ -1653,8 +2808,6 @@ tool2_tab5$server<-function(id,vals){
 
 }
 
-
-
 tool2_tab6<-list()
 tool2_tab6$ui<-function(id){
   ns<-NS(id)
@@ -1792,8 +2945,6 @@ tool2_tab6$server<-function(id,vals){
   })
 }
 
-
-
 tool2_tab7<-list()
 tool2_tab7$ui<-function(id){
   ns<-NS(id)
@@ -1923,6 +3074,7 @@ tool2_tab7$server<-function(id,vals){
 
   })
 }
+
 tool2_tab8<-list()
 tool2_tab8$ui<-function(id){
   ns<-NS(id)
@@ -3052,6 +4204,7 @@ tool2_tab8$server<-function(id,vals){
 
   })
 }
+
 tool2_tab9<-list()
 tool2_tab9$ui<-function(id){
   ns<-NS(id)
@@ -3153,6 +4306,7 @@ tool2_tab9$server<-function(id,vals){
     })
   })
 }
+
 tool2_tab10<-list()
 tool2_tab10$ui<-function(id){
   ns<-NS(id)
@@ -3362,6 +4516,7 @@ tool2_tab10$server<-function(id,vals){
 
   })
 }
+
 tool2_tab11<-list()
 tool2_tab11$ui<-function(id){
   ns<-NS(id)
@@ -3412,72 +4567,6 @@ tool2_tab11$server<-function(id,vals){
   })
 }
 
-virtualPicker<-function(id,SelectedText="IDs selected", label=NULL,choices=NULL,selected=NULL,search =T,   optionHeight='24px',styles=NULL){
-  class='picker_open'
-
-
-  tag_style=NULL
-  if(!is.null(styles)){
-    tag_style<-tags$style(
-      HTML(paste(paste0(".vs-",id),".vscomp-wrapper{",styles,"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-search-wrapper{",styles,"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-search-container{",paste0('height:',optionHeight,";",styles),"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-toggle-button{",paste0('height:',optionHeight,";",styles),"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-search-input{",styles,"}"))
-    )
-    class=paste('picker_open',paste0("vs-",id))
-
-  }
-  div(
-    tag_style,
-    div(class=class,
-        shinyWidgets::virtualSelectInput(
-          inputId = id,
-          label = label,
-          optionHeight=optionHeight,
-          choices = choices,
-          selected=selected,
-          search = search,
-          keepAlwaysOpen = TRUE,
-          multiple =T,
-          hideClearButton=T,
-          alwaysShowSelectedOptionsCount=T,
-          searchPlaceholderText="Select all  -  Search",
-          optionsSelectedText=SelectedText,
-          optionSelectedText=SelectedText
-        )
-    )
-  )
-}
-
-get_scale<-function(data,scale,center){
-  data0<-data
-  if(isTRUE(scale)){
-    data<-data[which(sapply(data,function(x) var(x,na.rm=T))>0)]
-    req(nrow(data)>0)
-    req(ncol(data)>0)
-    scaled<-scale(data,center,scale)
-    sc<-attr(scaled,"scaled:scale")
-    ct<-attr(scaled,"scaled:center")
-    df_scale<-data.frame(scaled)
-    attr(df_scale,"scaled:scale")<-sc
-    attr(df_scale,"scaled:center")<-ct
-    attr(df_scale,"transf")<-c(attr(data0,"transf"),
-                               scale=scale,
-                               center=center)
-    df_scale
-  } else{
-    data
-  }
-
-
-}
-
-check_is_integer <- function(data) {
-  sapply(data, function(column) {
-    all(column==round(column))
-  })
-}
 tool3$ui<-function(id){
   tips<-list("Remove rows with missing values",
              "Keep only rows matching IDs from another dataset",
@@ -3530,10 +4619,10 @@ tool3$ui<-function(id){
                       div(
                         div(style="height: 250px; overflow-y:scroll;
                     -webkit-box-shadow: inset 0px 0px 5px #797979ff;",
-                    div("Click on the Nodes ",tipify( icon(verify_fa=FALSE,name=NULL,class="fas fa-question-circle"),"Click on the nodes to expand and select the factor levels. Only available for factors with less than 100 levels"),
-                        uiOutput(ns("validate_tab3")),
-                        shinyTree::shinyTree(ns("tree"), checkbox=TRUE,themeIcons=F,themeDots=T)))),
-                    uiOutput(ns("print_tree"))
+                            div("Click on the Nodes ",tipify( icon(verify_fa=FALSE,name=NULL,class="fas fa-question-circle"),"Click on the nodes to expand and select the factor levels. Only available for factors with less than 100 levels"),
+                                uiOutput(ns("validate_tab3")),
+                                shinyTree::shinyTree(ns("tree"), checkbox=TRUE,themeIcons=F,themeDots=T)))),
+                      uiOutput(ns("print_tree"))
                     )),
 
 
@@ -3547,36 +4636,36 @@ tool3$ui<-function(id){
                                     }
       );"
                                  )),
-      div(class="tool_subset",
+                                 div(class="tool_subset",
 
-          pickerInput(ns("subset_factor"),"Factor",choices=NULL),
-          pickerInput(ns("subset_level"),"Levels",
-                      choices=NULL,
-                      multiple=T,
-                      options = list(
-                        liveSearch = TRUE,
-                        `actions-box` = TRUE,
-                        `selected-text-format` = "count > 0",
-                        `count-selected-text` = "{0}/{1} selected"
-                      ),
-
-
-
-          )
+                                     pickerInput(ns("subset_factor"),"Factor",choices=NULL),
+                                     pickerInput(ns("subset_level"),"Levels",
+                                                 choices=NULL,
+                                                 multiple=T,
+                                                 options = list(
+                                                   liveSearch = TRUE,
+                                                   `actions-box` = TRUE,
+                                                   `selected-text-format` = "count > 0",
+                                                   `count-selected-text` = "{0}/{1} selected"
+                                                 ),
 
 
-      ),
-      uiOutput(ns('update_tab3_subset')),
-      uiOutput(ns('print_subset'))
+
+                                     )
+
+
+                                 ),
+                                 uiOutput(ns('update_tab3_subset')),
+                                 uiOutput(ns('print_subset'))
                              )
                     )
                   )
               )
             )
           ),
-      div(style="position: absolute; left: 10px; top: 200px; width: 200px",
-          uiOutput(ns("zero_var_print"))
-      )
+          div(style="position: absolute; left: 10px; top: 200px; width: 200px",
+              uiOutput(ns("zero_var_print"))
+          )
 
       ))
 }
@@ -4376,11 +5465,11 @@ tool5$ui<-function(id){
   div(style="padding: 15px",
       div(class="half-drop half-drop-inline picker150",
           div(style='display: flex',
-            div(style="width: 55%",
-              pickerInput_fromtop_live(ns("transf"),
-                                       label=span(strong("Transformation"),actionLink(ns("transf_help"),icon("fas fa-question-circle"))),choices=transf_value)
-            ),
-            virtualPicker_unique(ns("cols"),choices="All", label=NULL,multiple = T,allOptionsSelectedText="All columns",width='150px')
+              div(style="width: 55%",
+                  pickerInput_fromtop_live(ns("transf"),
+                                           label=span(strong("Transformation"),actionLink(ns("transf_help"),icon("fas fa-question-circle"))),choices=transf_value)
+              ),
+              virtualPicker_unique(ns("cols"),choices="All", label=NULL,multiple = T,allOptionsSelectedText="All columns",width='150px')
           ),
 
           uiOutput(ns('print_transf'))
@@ -4877,42 +5966,7 @@ tool6$server<-function(id,vals){
   })
 }
 
-generate_partiton<-function(data,split_t,split_y,split_p,split_seed,part_type="Balanced"){
-  if(part_type=="Random"){
-    nobs<-nrow(data)
-    p<-split_p/100
-    ntest<-round(nobs*p)
-    test_vec<-rep("Test",ntest)
-    train_vec<-rep("Training",nobs-ntest)
-    if(is.na(split_seed)){split_seed=NULL}
-    set.seed(split_seed)
-    part_vec<-sample(c(train_vec,test_vec))
-    df<-data.frame(Partition=part_vec)
-    df$Partition<-as.factor(df$Partition)
-    rownames(df)<-rownames(data)
-    return(df)
-  }
-
-  factors<-attr(data,"factors")
-  if(split_t=="Classification"){
-    data<-factors
-  }
-  y<-data[,split_y]
-  if(is.na(split_seed)){split_seed=NULL}
-  set.seed(split_seed)
-  p=((100-split_p)/100)
-  part<-caret::createDataPartition(y,p=p,list=T)[[1]]
-  train=rownames(data)[part]
-  test=rownames(data)[-part]
-  df<-data.frame(Partition=rep(NA,nrow(factors)),
-                 row.names = rownames(factors))
-  df[train,1]<-"training"
-  df[test,1]<-"test"
-  df$Partition<-as.factor(df$Partition)
-
-  df
-
-}
+tool7<-list()
 tool7$ui<-function(id){
   ns<-NS(id)
   div(style="height: 300px; ;display: flex;",
@@ -5178,6 +6232,8 @@ tool7$server<-function(id,vals=NULL){
 
   })
 }
+
+tool8<-list()
 tool8$ui<-function(id){
   ns<-NS(id)
   div(class="class_tool8",
@@ -5186,19 +6242,19 @@ tool8$ui<-function(id){
           div(
             style="background-color: #f5f5f5;
           width: 50%;padding: 5px;",class="half-drop",
-          div(strong("Aggregate:"),
-              popify(a(icon(verify_fa = FALSE,name=NULL,class="fas fa-question-circle")),
-                     "Aggregate","The process involves two stages. First, collate individual cases of the Numeric-Attribute together with a grouping variable (unselected factors). Second, perform which calculation you want on each group of cases (selected factors)", options=list(container="body"))),
+            div(strong("Aggregate:"),
+                popify(a(icon(verify_fa = FALSE,name=NULL,class="fas fa-question-circle")),
+                       "Aggregate","The process involves two stages. First, collate individual cases of the Numeric-Attribute together with a grouping variable (unselected factors). Second, perform which calculation you want on each group of cases (selected factors)", options=list(container="body"))),
 
-          div(class="virtual-180",
-              virtualPicker(ns('fac_descs'), "factor(s) selected")
-          ),
-          selectInput(ns("spread_measures"),"Function:",choices=c("sum","mean","median","var","sd","min","max"),  selected="mean"),
+            div(class="virtual-180",
+                virtualPicker(ns('fac_descs'), "factor(s) selected")
+            ),
+            selectInput(ns("spread_measures"),"Function:",choices=c("sum","mean","median","var","sd","min","max"),  selected="mean"),
 
-          div(id=ns("run_agg_btn"),align="right",class="save_changes",
-              em("Click to aggregate",icon("fas fa-hand-point-right")),
-              actionButton(ns("run_agg"), span("RUN",img(src=agg_icon2,height='14',width='14')))
-          )          ),
+            div(id=ns("run_agg_btn"),align="right",class="save_changes",
+                em("Click to aggregate",icon("fas fa-hand-point-right")),
+                actionButton(ns("run_agg"), span("RUN",img(src=agg_icon2,height='14',width='14')))
+            )          ),
           div(style="background: white; padding: 15px; width: 275px",
               uiOutput(ns("summ_agg")),
 
@@ -5337,6 +6393,8 @@ tool8$server<-function(id, vals=NULL){
 
   })
 }
+
+tool9<-list()
 tool9$ui<-function(id){
   ns<-NS(id)
   div(class="half-drop p20",
@@ -5448,6 +6506,8 @@ tool9$server<-function (id,vals){
 
   })
 }
+
+tool10<-list()
 tool10$ui<-function(id){
   ns<-NS(id)
   div(class="half-drop p20",
@@ -5456,17 +6516,32 @@ tool10$ui<-function(id){
             div(style="padding: 5px;height: 100px",
                 div(strong(icon("fas fa-thumbtack"),'Create a savepoint:',style="color: #05668D")),
                 div(style="display: flex",
-                    downloadButton(ns("bookmarkBtn"), style = "font-size: 12px", label="Download"),
+                    actionButton(ns("create_savepoint"), style = "font-size: 12px", label="Download"),
+                    downloadButton(ns("download_savepoint"), style = "font-size: 12px;visibility: hidden;", label=NULL),
                     div(class="p20",emgray("Download the Savepoint as rds file. You can latter upload the created savepoint (panel bellow).")))
             )),
         div(style="background: #f7f7f7ff;
 -webkit-box-shadow: inset 0px 0px 5px #797979ff;margin-top: 2px",
-div(
-  div(style="padding: 5px;height: 100px",
-      div(
-        tipify(strong(icon("fas fa-external-link-alt"),"Load a savepoint:",style="color: #05668D"),"Restore the dashboard with a previously saved savepoint (.rds file)","right")),
-      div(id="tool_savepoint", fileInput(ns("load_savepoint"), label=NULL,accept =".rds",multiple =T))))),
-uiOutput(ns("validade_savepoint")))
+            div(
+              div(style="padding: 5px;height: 130px",
+                  div(
+                    tipify(strong(icon("upload"),"Load a savepoint:",style="color: #05668D"),"Restore the dashboard with a previously saved savepoint (.rds file)","right")),
+                  div(id="tool_savepoint", fileInput(ns("load_savepoint"), label=NULL,accept =".rds",multiple =T))))),
+        uiOutput(ns("validade_savepoint")),
+        div(id=ns("current_savepoint"),
+            style="background: #f7f7f7ff;
+-webkit-box-shadow: inset 0px 0px 5px #797979ff;margin-top: 2px",
+            div(
+              style="padding: 5px;height: 130px",
+              strong(style="color: #05668D",
+                     icon('link'),
+                     "Active Savepoint"),
+              uiOutput(ns('cur_savepoint')),
+              checkboxInput(ns('update_under_demand'),span('Include all inputs and update only on module demand'),width="400px")
+            )
+        )
+
+      )
 
 
   )
@@ -5477,6 +6552,16 @@ tool10$server<-function (id,vals){
 
     ns<-session$ns
 
+    observeEvent(input$update_under_demand,{
+      if(isTRUE(input$update_under_demand)){
+        vals$update_state<-vals$module_states
+        vals$module_states<-NULL
+      } else{
+        vals$module_states<-vals$update_state
+        vals$update_state<-NULL
+      }
+    })
+
     observeEvent(input$load_savepoint,{
 
       output$validade_savepoint<-renderUI({
@@ -5484,8 +6569,36 @@ tool10$server<-function (id,vals){
       })
 
     })
+    savepoint_on<-reactiveVal(FALSE)
+    observe({
+      shinyjs::toggle('update_under_demand',condition=!is.null(vals$module_states)|!is.null(vals$update_state))
+    })
+    autoformat_bytes <- function(size_in_bytes) {
+      if (size_in_bytes < 1024) {
+        return(paste(size_in_bytes, "Bytes"))
+      } else if (size_in_bytes < 1024^2) {
+        return(paste(round(size_in_bytes / 1024, 2), "KB"))
+      } else if (size_in_bytes < 1024^3) {
+        return(paste(round(size_in_bytes / 1024^2, 2), "MB"))
+      } else {
+        return(paste(round(size_in_bytes / 1024^3, 2), "GB"))
+      }
+    }
+    output$cur_savepoint<-renderUI({
+      renderPrint({
 
-    output$bookmarkBtn<-{
+        save<-input$load_savepoint
+        save$size<-sapply(save$size,autoformat_bytes)
+        save[,c("name","size")]
+
+      })
+    })
+    observe({
+
+      shinyjs::toggle('current_savepoint',condition=isTRUE(savepoint_on()))
+    })
+
+    output$download_savepoint <-{
       downloadHandler(
         filename = function() {
           paste("Savepoint_",Sys.Date(), ".rds", sep = "")
@@ -5498,6 +6611,7 @@ tool10$server<-function (id,vals){
             min = 1,
             max = 1,
             {
+
               #tosave<-isolate(reactiveValuesToList(vals))
               #tosave<-c(tosave["saved_data"],tosave["saved_maps"],tosave["newcolhabs"],tosave['colors_img'],tosave[grep("cur",names(tosave))])
               tosave<-isolate(reactiveValuesToList(vals))
@@ -5509,15 +6623,37 @@ tool10$server<-function (id,vals){
               tosave$saved_data<-vals$saved_data
               tosave$newcolhabs<-vals$newcolhabs
               tosave$colors_img<-vals$colors_img
+              tosave$update_state[names(vals$input_state)]<-vals$input_state
+              tosave$update_state[sapply(tosave$update_state,length)>20]<-NULL
+              vals$input_state<-NULL
+
+
+
               saveRDS(tosave, file)
+              vals$collectInputs<-0
+              print(vals$collectInputs)
               beep(10)
 
             }
           )
 
         }
-      )
-    }
+      )}
+
+    observeEvent(input$create_savepoint,{
+      message("collecting inputs....")
+      vals$collectInputs<-1
+
+    })
+    observeEvent(vals$collectInputs,{
+      if(vals$collectInputs==2){
+
+        print(message("saved collectInputs state\n",vals$collectInputs))
+        shinyjs::click('download_savepoint')
+      }
+    })
+
+
 
     observeEvent(input$load_savepoint,ignoreInit = T,{
       validate(need(length(grep(".rds",input$load_savepoint$datapath))==length(input$load_savepoint$datapath),"Requires rds file"))
@@ -5535,8 +6671,9 @@ tool10$server<-function (id,vals){
 
     observeEvent(input$load_savepoint_yes,ignoreInit = T,{
       vals$saved_data<-NULL
+      vals$collectInputs<-0
       vals$cur_tab<-"menu_intro"
-      updateTextInput(session, "tabs", value = 'menu_intro')
+      #updateTextInput(session, "tabs", value = 'menu_intro')
       validate(need(length(grep(".rds",input$load_savepoint$datapath))==length(input$load_savepoint$datapath),"Requires rds file"))
       if(length(input$load_savepoint$datapath)>1){
 
@@ -5554,6 +6691,10 @@ tool10$server<-function (id,vals){
       } else{
         mybooks<-readRDS(input$load_savepoint$datapath)
       }
+      savepoint_on(TRUE)
+      updateCheckboxInput(session,'update_under_demand',value=F)
+      vals$module_states<-NULL
+      vals$update_state<-NULL
       vnew<-list()
       vnew$saved_data<-mybooks$saved_data
       for(i in names(vnew$saved_data)) {
@@ -5576,28 +6717,48 @@ tool10$server<-function (id,vals){
       vals$colors_img[vals$colors_img$val%in%colors$colors_img$val,]<-colors$colors_img
       vals$newcolhabs[names(colors$newcolhabs)]<-colors$newcolhabs
 
+      vals$module_states<-newvals$update_state
+      newvals$update_state<-NULL
+      vals$update_state<-NULL
 
+
+      newvals$collectInputs<-0
       for (var in names(newvals) ) {
         vals[[var]]<-newvals[[var]]
       }
+
+
+
+
       delay(500,{
-        updateTextInput(session, "tabs", value = newvals$cur_tab)
+        #updateTextInput(session, "tabs", value = newvals$cur_tab)
         runjs("Shiny.setInputValue('last_btn', 'fade');")
       })
+      message("collectInputs while saving\n",vals$collectInputs)
       beep(10)
+
       removeModal()
-      vals$update_curtab<-"menu_upload"
+      ###vals$update_curtab<-"menu_upload"
+      vals$restore_inputs<-TRUE
       vals$update_pp<-"tool_close"
+
     })
+
+
     output$savepoint_request<-renderUI({
       validate(need(length(grep(".rds",input$load_savepoint$datapath))==length(input$load_savepoint$datapath),"Requires rds file"))
       column(12,
-             h5('Are you sure? '),
-             column(12,p(strong("Warning:", style="color: #0093fcff"),"The application will restart with the loaded savepoint and unsaved changes will be lost")))
+             h5(strong('Are you sure? '),style="color: brown"),
+             column(
+               12,
+               p(strong("Warning:", style="color: #0093fcff"),"The application will restart with the loaded savepoint and unsaved changes will be lost")
+
+             ))
 
     })
   })
 }
+
 head_data<-list()
 head_data$ui<-function(id,options=1:4){
   ns<-NS(id)
@@ -5641,6 +6802,7 @@ head_data$server<-function(id, data,height="200px", width="300px",dt=F,page_leng
 
   })
 }
+
 pp_data$ui<-function(id){
   ns<-NS(id)
   div(class="pp_datacontrol",style="display: none;",
@@ -5717,1073 +6879,9 @@ pp_data$server<-function(id,vals){
 
 }
 
-tool2<-list()
-tool2$ui<-function(id){
-  ns=NS(id)
-  div(style="margin-top: -35px",
-      div(class="toolkit_items",style="width: 550px; height: 320px;      background: #00000095;; position: fixed;right: 0px; z-index: 9",),
-      div(
-        class="toolkit_items",id=ns("toolkit"),
-
-        lapply(seq_along(tool2_tabs),function(i){
-          style=""
-          if(i%in%c(10,11)){
-            style="color: brown"
-          }
-          div(actionButton(ns(paste0('tool_kit_',i)),
-                           tool2_tabs[i],style=style,class="toolkit"))
-        }),
-
-      ),
-      div(class="tool_page tool2-tabs",
-          div(
-            class="nav-tools",
-            tabsetPanel(type ="hidden",selected="none",
-                        id=ns("tabs_tool2"),
-                        tabPanel(tool2_tabs[1],value="tab1",
-                                 tool2_tab1$ui(ns("rename")),
-                                 uiOutput(ns('tool2_tab1_out'))
-
-
-
-                        ),
-                        tabPanel(tool2_tabs[2],value="tab2",
-                                 tool2_tab2$ui(ns("merge")),
-                                 uiOutput(ns('tool2_tab2_out'))
-
-                        ),
-                        tabPanel(tool2_tabs[3],value="tab3",
-                                 tool2_tab3$ui(ns("exchange")),
-                                 uiOutput(ns('update_tab3_exchange')),
-                                 uiOutput(ns('tool2_tab3_out'))
-
-                        ),
-                        tabPanel(tool2_tabs[4],value="tab4",
-                                 div(tool2_tab4$ui(ns("replace")),
-                                     uiOutput(ns('update_tab4'))),
-                                 uiOutput(ns('tool2_tab4_out'))
-                        ),
-                        tabPanel(tool2_tabs[5],value="tab5",
-                                 div(tool2_tab5$ui(ns("editcol"))),
-                                 uiOutput(ns('tool2_tab5_out'))
-
-                        ),
-                        tabPanel(tool2_tabs[6],value="tab6",
-                                 div(tool2_tab6$ui(ns("editmod")),
-                                     uiOutput(ns('update_tab6'))),
-                                 uiOutput(ns('tool2_tab6_out'))
-                        ),
-                        tabPanel(tool2_tabs[7],value="tab7",
-                                 tool2_tab7$ui(ns("transpose")),
-                                 uiOutput(ns('tool2_tab7_out'))
-                        ),
-                        tabPanel(tool2_tabs[8],value="tab8",
-                                 tool2_tab8$ui(ns("shp")),
-                                 uiOutput(ns('tool2_tab8_out'))),
-                        tabPanel(tool2_tabs[9],value="tab9",
-                                 tool2_tab9$ui(ns("code")),
-                                 uiOutput(ns('tool2_tab9_out'))),
-                        tabPanel(tool2_tabs[10],value="tab10",
-                                 div(tool2_tab10$ui(ns("gen")),
-                                     uiOutput(ns('update_tab10'))),
-                                 uiOutput(ns('tool2_tab10_out'))
-
-                        ),
-                        tabPanel(tool2_tabs[11],value="tab11",
-                                 tool2_tab11$ui(ns("deldatalist")),
-                                 uiOutput(ns('tool2_tab11_out'))
-                        )
-            )
-          )
-      )
-
-  )
-}
-tool2$server<-function(id,vals){
-
-  moduleServer(id,function(input,output,session){
-
-
-    shinyjs::onevent("mouseleave", "toolkit", {
-      hide(selector=".toolkit_items")
-      show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_1,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab1")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_2,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab2")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_3,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab3")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_4,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab4")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_5,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab5")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_6,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab6")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_7,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab7")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_8,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab8")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_9,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab9")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-    observeEvent(input$tool_kit_10,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab10")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-
-    observeEvent(input$tool_kit_11,{
-      updateTabsetPanel(session,"tabs_tool2",selected="tab11")
-      shinyjs::hide(selector=".toolkit_items")
-      shinyjs::show(selector='.tool2-tabs')
-    })
-
-    tool2_tab3$update_server("exchange",vals)
-
-
-
-
-
-    output$tool2_tab1_out<-renderUI({
-      tool2_tab1$server('rename',vals)
-      NULL
-    })
-
-    output$tool2_tab2_out<-renderUI({
-      tool2_tab2$server('merge',vals)
-      NULL
-    })
-    output$tool2_tab3_out<-renderUI({
-      tool2_tab3$server('exchange',vals)
-      NULL
-    })
-
-    output$tool2_tab4_out<-renderUI({
-      tool2_tab4$server('replace',vals)
-      NULL
-    })
-
-    output$tool2_tab5_out<-renderUI({
-      tool2_tab5$server('editcol',vals)
-      NULL
-    })
-
-
-    output$tool2_tab6_out<-renderUI({
-      tool2_tab6$server('editmod',vals)
-      NULL
-    })
-
-    output$tool2_tab7_out<-renderUI({
-      tool2_tab7$server('transpose',vals)
-      NULL
-    })
-    output$tool2_tab8_out<-renderUI({
-      tool2_tab8$server('shp',vals)
-      NULL
-    })
-    output$tool2_tab9_out<-renderUI({
-      tool2_tab9$server('code',vals)
-      NULL
-    })
-
-    output$tool2_tab10_out<-renderUI({
-      tool2_tab10$server('gen',vals)
-      NULL
-    })
-
-    output$tool2_tab11_out<-renderUI({
-      tool2_tab11$server('deldatalist',vals)
-      NULL
-    })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  })
-}
-
-tool2_tab3<-list()
-tool2_tab3$ui<-function(id){
-  ns<-NS(id)
-  div(style="height: calc(100vh - 100px);",
-
-      div(style="position: fixed; top: 60px;right: 0px",
-
-          div(
-            style="display: flex; gap:10px",
-            bsButton(ns("prev_import"), "< Previous",width='100px'),
-            bsButton(ns("next_import"), "Next >",width='100px'))
-
-      ),
-
-      hidden(bsButton(ns("cancel_import"), "Cancel")),
-
-      div(strong("Exchange Factors/Variables")),
-
-      div(id = ns('step1'),
-
-          radioButtons(ns("copy_transfer"),"Action:", c("Copy","Move"),inline=T),
-          uiOutput(ns("update_estep1")),
-          column(12,  class="mp0",
-                 column(2,style="margin:0px;padding: 0px;width: 70px",
-                        tags$label('Datalist:', style="padding-top:30px"),
-                        tags$label('Attribute:', style="padding-top:25px")),
-
-                 column(4,style="margin:0px;padding: 0px",
-                        uiOutput(ns("import_from_data")),
-
-                        pickerInput(ns("import_from_attr"), NULL ,choices=c("Factor-Attribute"="factor","Numeric-Attribute"="numeric"),selected="factor"),
-                 ),
-
-                 column(1,style="margin:0px;padding: 0px; width: 30px",align="center",
-                        div(actionLink(ns('rev_datalist'),icon("arrow-right-arrow-left")), style="position: absolute; top: 35px;left: 10px "),
-                        div(actionLink(ns('rev_attr'),icon("arrow-right-arrow-left")), style="position: absolute;top:80px; left: 10px;"),
-                        bsTooltip(ns('rev_datalist'),"Switch","right"),
-                        bsTooltip(ns('rev_attr'),"Switch","right")
-                 ),
-
-                 column(4,style="margin:0px;padding: 0px",
-                        uiOutput(ns("import_to_data")),
-                        pickerInput(ns("import_to_attr"), NULL, choices=c("Numeric-Attribute"="numeric","Factor-Attribute"="factor"),selected="numeric")
-                 )
-          ),
-          column(12,  class="mp0",
-                 column(6,class="virtual_small",
-                        virtualPicker(ns("importvar"), label="Columns","selected" )
-                 ),
-                 column(6,
-                        hidden(
-                          radioButtons(
-                            ns("hand_facs"),"Convertion type:",
-                            choiceValues = list("Binary","Ordinal"),
-                            choiceNames = list(div("Binary",span(id="conv_bin",icon("question-circle"))),div("Integer",span(id="conv_ord",icon("question-circle")))),
-                            inline=T
-                          )
-                        ),
-                        div(     uiOutput(ns("error_transf0"))),
-                 )
-          ),
-          bsTooltip(ns("conv_bin"),"Creates a single binary column per factor level,with 1 indicating the class of that particular observation", placement = "right",options =list(style="width: 600px")),
-          bsTooltip(ns("conv_ord"),"Creates a single column using numeric (integer) representation (values) of the factor levels", placement = "right")
-      ),
-
-
-      div(
-        id = ns('step2'),
-        uiOutput(ns("from_to")),
-
-        div(style="height:450px;overflow-y: scroll;overflow-x: scroll",
-            div(
-              checkboxInput(ns("cutfacs"),span("Cut into intervals",tiphelp("divides the range of x into intervals and codes the values in x according to which interval they fall (cut function from R base).", "right")), F),
-              uiOutput(ns("cut_fac_method")),
-              div(
-
-                div(uiOutput(ns("tofactor")),style="font-size: 11px;"),
-
-
-
-              )
-            ),
-
-            uiOutput(ns("error_transf")),
-            uiOutput(ns("ordinal_page")),
-            uiOutput(ns("binary_page"))),
-
-      ),
-      div(id = ns('step3'),
-          uiOutput(ns("page3")),
-
-      )
-
-  )
-}
-tool2_tab3$update_server<-function(id,vals){
-  moduleServer(id,function(input,output,session){
-    observeEvent(input$rev_attr,{
-      a=input$import_from_attr
-      req(a)
-      b=input$import_to_attr
-      req(b)
-      updatePickerInput(session,'import_from_attr',selected=b)
-      updatePickerInput(session,'import_to_attr',selected=a)
-    })
-    observe({
-
-      #shinyjs::toggle("rev_attr",condition=input$import_from_attr!=input$import_to_attr)
-      shinyjs::toggle("rev_datalist",condition=input$import_from_data!=input$import_to_data)
-    })
-    observeEvent(input$rev_datalist,{
-      a=input$import_from_data
-      b=input$import_to_data
-      updatePickerInput(session,'import_from_data',selected=b)
-      updatePickerInput(session,'import_to_data',selected=a)
-    })
-  })
-}
-tool2_tab3$server<-function(id,vals){
-  moduleServer(id,function(input,output,session){
-
-    ns<-session$ns
-
-    output$cut_fac_method<-renderUI({
-      req(isTRUE(input$cutfacs))
-      div(class="half-drop half-drop-inline",
-          selectInput(
-            ns("bin_method"),
-            label = span("Bin method",tipify(actionLink(ns("bin_method_help"), icon("fas fa-question-circle")), "Click for details")
-            ),
-            choices = c("Sturges" = "sturge", "Scott" = "scott", "Freedman-Diaconis" = "freedman")
-          )
-      )
-    })
-
-    observeEvent(input$bin_method_help, {
-
-      showModal(
-        modalDialog(
-          title = "Methods to initial guess of the number of cuts (or bins)",
-          easyClose = TRUE,
-          fluidRow(class='mp0',
-                   tags$style(HTML(".formulas div.MathJax_Display{text-align: left !important;color: gray;white-space:normal;font-size: 11px}")),
-                   div(class="formulas",
-                       column(6,
-                              strong("Sturges' Rule"),
-                              div(withMathJax("$$\\text{Number of bins} = \\lceil \\log_2(n) + 1 \\rceil$$")),
-                              hr(),
-                              strong("Scott's Rule"),
-                              div(withMathJax(helpText("$$\\text{Bin width} = \\frac{3.5 \\cdot \\sigma}{n^{1/3}}$$"))),
-                              div(withMathJax(helpText("$$\\text{Number of bins} = \\left\\lceil \\frac{\\text{Range of data}}{\\text{Bin width}} \\right\\rceil$$"))),
-                              hr(),
-                              strong("Freedman-Diaconis Rule"),
-                              div(withMathJax(helpText("$$\\text{Bin width} = 2 \\cdot \\frac{\\text{IQR}}{n^{1/3}}$$"))),
-                              div(withMathJax(helpText("$$\\text{Number of bins} = \\left\\lceil \\frac{\\text{Range of data}}{\\text{Bin width}} \\right\\rceil$$"))),
-                       ),
-                       column(6,
-                              div("Where:"),
-                              div(withMathJax(helpText("$$n=\\text{number of observations}$$"))),
-                              div(withMathJax(helpText("$$\\sigma=\\text{the standard deviation of the data}$$"))),
-
-                              div(withMathJax(helpText("$$\\text{IQR}=\\text{the interquartile range of the data}$$")))
-                       )
-
-
-
-
-
-
-                   ))
-        )
-      )
-    })
-
-
-    output$from_to<-renderUI({
-      div("from",strong(embrown(convert()[1])),"to",strong(emgreen(convert()[2])))
-    })
-
-    output$import_to_data<-renderUI({
-      pickerInput(session$ns("import_to_data"), "To:", choices=names(vals$saved_data),selected=vals$cur_import_to_data)
-    })
-    output$import_from_data<-renderUI({
-      pickerInput(session$ns("import_from_data"),  "From:", choices=names(vals$saved_data),
-                  selected=vals$cur_import_from_data,
-                  #selected=names(vals$saved_data)[5]
-      )
-    })
-    observeEvent(input$import_from_data,{
-      vals$cur_import_from_data<-input$import_from_data
-    })
-    observeEvent(input$import_to_data,{
-      vals$cur_import_to_data<-input$import_to_data
-    })
-    observe({
-      req(input$import_from_attr)
-      req(input$import_from_data)
-      req(input$import_from_data!="")
-      data<-vals$saved_data[[input$import_from_data]]
-      if(input$import_from_attr=="factor"){
-        data<-attr(data,"factors")
-      }
-
-      shinyWidgets::updateVirtualSelect("importvar",choices=colnames(data), selected=colnames(data)[1])
-    })
-    gdata_from<-reactive({
-      req(input$import_from_data)
-      req(input$import_from_attr)
-      data0<-data<-vals$saved_data[[input$import_from_data]]
-      data<-data[rownames(vals$saved_data[[input$import_to_data]]),,drop=F]
-
-      data<-data_migrate(data0,data)
-
-
-      attr(data,"attr")<-"Numeric-Attribute"
-      afrom<-input$import_from_attr
-      if(afrom=="factor"){
-        data<-attr(data,"factors")
-        attr(data,"attr")<-"Factor-Attribute"
-      }
-      attr(data,"name")<-input$import_from_data
-      data
-    })
-    gdata_to<-reactive({
-      req(input$import_to_data)
-      data<-vals$saved_data[[input$import_to_data]]
-      ato=input$import_to_attr
-      attr(data,"attr")<-"Numeric-Attribute"
-      if(ato=="factor"){
-        data<-attr(data,"factors")
-        attr(data,"attr")<-"Factor-Attribute"
-      }
-      attr(data,"name")<-input$import_to_data
-      data
-    })
-    val_transf<-reactive({
-      try({
-
-        dfrom<-gdata_from()
-        req(dfrom)
-        dto<-gdata_to()
-        req(dto)
-        result<-validate_transf(dfrom,dto)
-        result
-
-      },silent=T)
-    })
-    output$error_transf0<-renderUI({
-      result<-val_transf()
-      message<-attr(result,"logs")
-
-      div(class="small_print2",
-          render_message(message)
-      )
-
-    })
-    output$error_transf<-renderUI({
-      render_message(vals$error_transf)
-    })
-    page<-reactiveVal(1)
-    step_max<-3
-    observeEvent(input$next_import,{
-
-      next_page<-page()+1
-      page(next_page)
-    })
-    observe({
-      if(page()==1){
-        data2(NULL)
-        vals$error_transf<-NULL
-      }
-    })
-    observeEvent(input$prev_import,{
-      vals$error_transf<-NULL
-      data2(NULL)
-      req(page()>1)
-      next_page<-page()-1
-      page(next_page)
-    })
-    observe({
-      shinyjs::toggle( "prev_import", condition=page()>1)
-      shinyjs::toggle('next_import',condition=page()<3&isTRUE(val_transf()))
-      shinyjs::toggle('step1',condition=page()==1)
-      shinyjs::toggle('step2',condition=page()==2)
-      shinyjs::toggle('step3',condition=page()==3)
-    })
-    rank_dfs<-reactive({
-
-      data<-get_data_cutted()
-
-      vars<-colnames(data)
-
-      result<-lapply(seq_along(vars),function(i){
-
-        rank_lev<-input[[paste("rank_lev",vars[i],sep="_")]]
-
-        req(rank_lev)
-        level=as.numeric(rank_lev)
-        label=sapply(levels(data[,vars[i]]),function(x){
-          rank_label=input[[paste("ordrank_label",vars[i],x,sep="_")]]
-
-          req(rank_label)
-          rank_label
-        })
-        data.frame(level,label)
-      })
-      names(result)<-vars
-
-      result
-
-    })
-    go_exchange<-reactive({
-
-      req(page()>2)
-
-      if(all(convert()==c("numeric","numeric"))){
-
-        numeric2numeric()
-      }   else if(all(convert()==c("numeric","factor"))){
-
-        numeric2factor()
-      } else if(all(convert()==c("factor","numeric"))){
-        if(input$hand_facs=="Ordinal"){
-
-          factor2numeric_ordinal()
-        } else if (input$hand_facs=="Binary"){
-
-          factor2numeric_binary()
-        }
-      } else if(all(convert()==c("factor","factor"))){
-
-        factor2factor()
-      }
-    })
-    numeric2numeric<-reactive({
-      data<-get_data_cutted()
-      newnames<-sapply(colnames(data),function(var){
-        input[[paste("newbin",var, sep="_")]]
-      })
-      colnames(data)<-newnames
-      data
-    })
-    factor2factor<-reactive({
-
-      data<-get_data_cutted()
-
-      vars<-colnames(data)
-
-
-      rd<-rank_dfs()
-
-      resdf<-data.frame(lapply(names(rd),function(var){
-        levels<-levels(data[,var])
-        numfac<-as.factor(as.numeric(data[,var]))
-        levels0<-levels(numfac)
-        ord<-as.numeric(rd[[var]]$level)
-        labels=rd[[var]]$label
-        fac<-factor(numfac,levels=ord,labels=  labels[ord])
-        fac<-factor(fac,levels=levels(fac)[levels(fac)%in%fac])
-        fac<-data.frame(fac)
-        colnames(fac)<-input[[paste0("newcol",var,sep="_")]]
-        fac
-      }))
-      rownames(resdf)<-rownames(gdata_from())
-
-      resdf
-    })
-    numeric2factor<-reactive({
-      factor2factor()
-    })
-    factor2numeric_binary<-reactive({
-
-
-      data<-get_data_cutted()
-      result<-capture_log2(factor2numeric_fun)(data,input)
-
-      req(!inherits(result,"error"))
-      result
-
-
-    })
-    factor2numeric_ordinal<-reactive({
-      data<-get_data_cutted()
-      vars<-colnames(data)
-      result<-lapply(seq_along(vars),function(i){
-        num_values<-sapply(seq_along(levels(data[,vars[i]])),function(x){
-          input[[paste0("fac2num_value",x)]]
-        })
-
-
-        rank_lev<-input[[paste("rank_lev",vars[i],sep="_")]]
-        level_labels= gsub("*.\\\n","",rank_lev)
-        res<-as.numeric(as.character(factor(data[,vars[i]],levels=level_labels,labels = num_values)))
-        print(res)
-
-        res
-      })
-      names(result)<-vars
-      result<-data.frame(result)
-      rownames(result)<-rownames(gdata_from())
-      result
-    })
-    factor2numeric_fun<-function(data, input){
-
-      vars<-colnames(data)
-      df<-data.frame(do.call(cbind,lapply(data,function(x) classvec2classmat(x))))
-      cols<-colnames(getclassmat(data))
-      newnames<-sapply(cols,function(var){
-        input[[paste("newbin",var, sep="_")]]
-      })
-      rownames(df)<-rownames(data)
-      colnames(df)<-newnames
-      df
-    }
-    r_exchange<-reactiveVal()
-    observeEvent(go_exchange(),{
-      new<-go_exchange()
-      r_exchange(new)
-    })
-    ##### page2
-    action<-reactive({
-
-      req(input$import_from_attr)
-      req(input$import_to_attr)
-      action0<-""
-      if(input$import_from_attr!=input$import_to_attr){
-        action0<- span(input$copy_transfer,
-                       embrown(strong(input$import_from_attr)),
-                       "to",
-                       emgreen(strong(input$import_to_attr)))
-      }
-      action<-span(strong("Convert"))
-      vars<- inline(div(style="max-width: 200px; color: brown; background: Gainsboro",em(paste0(input$importvar,collapse="; "))))
-      sub<-NULL
-      sub<- if(input$import_from_attr=="numeric"){
-        if(input$import_to_attr=="numeric"){} else {
-          span("(as factor)")
-        }
-      }
-      sub<- if(input$import_from_attr=="factor"){
-        if(input$import_to_attr=="numeric"){
-          if(input$hand_facs=="Binary"){
-            "(as binary columns)"
-          } else{
-            "(as value-factor-levels)"
-          }
-        }
-      }
-
-      div(
-        div(
-          h4(div(action0)),
-          action,
-          vars,
-          span(sub, style="color:  #05668D;"),
-
-        ))
-    })
-    observeEvent(page(),{
-      try({
-        if(page()==3){
-          prep_exchange()
-          page(2)
-          if(!is.null(data2())){
-
-            req(nrow(data2())==nrow(get_data_from()))
-            confirm_modal(session$ns,action=action(),
-                          data1=get_data_from(),
-                          data2= data2(),
-                          left='Original Data:',right="New Data:",
-                          from='',
-                          to=''
-            )
-          }
-        }
-
-      })
-    })
-    observeEvent(input$confirm,ignoreInit = T,{
-      req(data2())
-      removeModal()
-      run_exchange()
-      page(1)
-      success_modal()
-    })
-    data_from0<-reactive({
-      req(input$import_from_data)
-      if(input$import_from_attr=="factor"){
-        data<- attr(vals$saved_data[[input$import_from_data]],"factors")
-      } else{
-        data<-vals$saved_data[[input$import_from_data]]
-      }
-      data
-    })
-    data2<-reactiveVal()
-    success_modal<-reactive({
-      req(input$import_from_data)
-      req(input$import_to_data)
-      req(is.data.frame(data2()))
-
-
-      data1=data_from0()
-      data2=vals$saved_data[[input$import_to_data]]
-      showModal(
-        modalDialog(
-          easyClose = T,
-          h4("Success!"),
-          get_basic_compare(data1=NULL,data2=data2(),left="",right="New:",to=paste(paste0(input$import_to_data,">"),paste0(first_upper(input$import_to_attr),"-Attribute")))
-
-        )
-      )
-    })
-    prep_exchange_fun<-function(from,to,afrom,ato,saved_data,r_exchange){
-
-      if(ato=="factor"){
-        factors<-attr(saved_data[[to]],"factors")[rownames(r_exchange),,drop=F]
-        newfac<-cbind(factors,r_exchange)
-        colnames(newfac)<-make.unique(colnames(newfac))
-        return(newfac)
-
-      } else{
-        new<-saved_data[[to]][rownames(r_exchange),,drop=F]
-        newdat<-cbind(new,r_exchange)
-        colnames(newdat)<-make.unique(colnames(newdat))
-        newdat<-data_migrate(saved_data[[from]],newdat)
-        return(newdat)
-      }
-    }
-    prep_exchange<-reactive({
-      try({
-
-        datalist_name<-input$import_to_data
-        result<-capture_log2(prep_exchange_fun)(from=input$import_from_data,to=input$import_to_data,afrom=input$import_from_attr,ato=input$import_to_attr,saved_data=vals$saved_data,r_exchange=r_exchange())
-        vals$error_transf<-attr(result,"logs")
-        if(!inherits(result,"error")){
-          attr(result,"datalist")<-datalist_name
-          data2(result)
-        }
-      })
-    })
-    run_exchange<-reactive({
-      from<-input$import_from_data
-      to<-input$import_to_data
-      afrom<-input$import_from_attr
-      ato<-input$import_to_attr
-      if(ato=="factor"){
-        newfac<-data2()
-        attr(vals$saved_data[[to]],"factors")<-newfac
-        if(input$copy_transfer=="Move"){
-          attr(vals$saved_data[[to]],"factors")[input$importvar]<-NULL
-        }
-      } else{
-        newdat<-data2()
-        vals$saved_data[[to]]<-newdat
-        if(input$copy_transfer=="Move"){
-          vals$saved_data[[to]][input$importvar]<-NULL
-        }
-      }
-      updatePickerInput(session,"import_from_data",selected=from)
-      updatePickerInput(session,"import_to_data",selected=to)
-    })
-    convert<-reactive({
-      list(
-        from=input$import_from_attr,
-        to=input$import_to_attr
-      )
-    })
-    getconvert_datavars<-reactive({
-
-      req(input$import_from_attr)
-      req(input$importvar)
-      req(input$import_from_attr)
-      data0<-data<-vals$saved_data[[input$import_from_data]]
-      data<-data[rownames(vals$saved_data[[input$import_to_data]]),,drop=F]
-
-      req(nrow(data)>0)
-      data<-data_migrate(data0,data)
-
-      datalist_name<-input$import_from_data
-
-      if(input$import_from_attr=="factor"){
-        data<- attr(vals$saved_data[[input$import_from_data]],"factors")
-
-      }
-      if(all(convert()==c("numeric","factor"))){
-        res<-do.call(data.frame,lapply(data,function(x) as.factor(x)))
-        rownames(res)<-rownames(data)
-        data<-res
-      }
-
-      attr(data,"datalist")<-datalist_name
-      vars<-as.list(input$importvar)
-      req(vars%in%colnames(data))
-
-      result<-list(data,vars)
-    })
-    observeEvent(convert(),{
-      if(all(convert()[2]==c("factor"))){
-        shinyjs::hide('hand_facs')
-      } else if(all(convert()==c("numeric","numeric"))) {
-        shinyjs::hide('hand_facs')
-      } else{
-        shinyjs::show('hand_facs')
-      }
-    })
-    observeEvent(convert(),{
-      if(all(convert()==c("factor","numeric"))){
-        updateCheckboxInput(session,'cutfacs',value=F)
-        shinyjs::hide('cutfacs')
-      } else{
-        if(all(convert()==c("factor","factor"))){
-          updateCheckboxInput(session,'cutfacs',value=F)
-          shinyjs::hide('cutfacs')
-        } else{
-          shinyjs::show('cutfacs')
-        }
-
-      }
-    })
-    output$tofactor<-renderUI({
-      ns<-session$ns
-      if(all(convert()==c("factor","numeric"))){
-        req(input$hand_facs=="Ordinal")
-      } else{
-        req(all(convert()[2]==c("factor")))
-      }
-      div(
-
-        div(icon("hand-point-right"),"Drag and drop the levels (green blocks) to define their values",style='white-space: normal;'),
-        if(all(convert()[2]==c("factor")))
-          div(icon("hand-point-right"),"Edit label names (blue blocks)"),
-        if(all(convert()==c("factor","numeric")))
-          div(icon("hand-point-right"),"Edit numeric values (blue blocks)"),
-        div(uiOutput(ns("dropLevelsEdit_a")),
-            style="font-size: 11px;"),
-        div(uiOutput(ns('dropLevelsEdit_b'))),
-      )
-    })
-
-
-    dropLevelsEdit<-reactive({
-      ns<-session$ns
-      data<-get_data_cutted()
-      vars<-getconvert_datavars()[[2]]
-      vars<-unlist(vars)
-      l1<-lapply(seq_along(vars),function(i){
-        output[[paste0('facord_level',vars[i])]]<-renderUI({i})
-        output[[paste0('facord_outl',vars[i])]]<-renderUI({
-          valid<-input[[paste0("cutfacs_breaks_",vars[i])]]
-          col1<-column(4,class="mp0",
-                       lapply(seq_along(levels(data[,vars[i]])),function(x){
-                         if(convert()[2]=="numeric"){
-                           column(12,class="mp0 ord_label",
-                                  div(class="num_label",
-                                      numericInput(ns(paste0("fac2num_value",x)),NULL,x,width= '75px')
-                                  ))
-                         }else{div(x,style="border-top:1px solid; border-bottom:1px solid; height: 24px;margin: 0px;text-align: center")}
-
-                       }))
-          col2<-column(8,class="mp0",{
-
-            sortable:: rank_list(
-              labels = lapply(1:nlevels(data[,vars[i]]),function(x){
-                lev<-levels(data[,vars[i]])[x]
-                div(class="ord_label factor_label",x,
-                    if(convert()[2]=="factor"){
-                      div(textInput(ns(paste("ordrank_label",vars[i],lev,sep="_")),NULL,lev, width= "95px"))
-                    } else {div(lev,class='form form-group form-control shiny-input-container',style="padding-top: 5px; ;padding-left: 5px;position: absolute;left: 0px;background: #D0F0C0;")}
-                )
-              }),
-              input_id = ns(paste("rank_lev",vars[i],sep="_")),
-              class="rankcol sortable"
-            )
-          })
-          if(convert()[2]=="numeric"){
-            div(col2,col1)
-          } else{
-            div(col1,col2)
-          }
-
-
-        })
-      })
-      NULL
-    })
-    output$dropLevelsEdit_a<-renderUI({
-      ns<-session$ns
-      data<-getconvert_datavars()[[1]]
-      vars<-getconvert_datavars()[[2]]
-      vars<-unlist(vars)
-      getl1<-function(id_text,text_value,div2_before="",div1="Value",div2="Label",class_1="form-control", class_2="form-control", style_1="",style_2="",div1_out="",div2_out=""){
-        col1<-column(4,class="mp0",
-                     div(div(div1,style="text-align: center"),
-                         class="half-drop rankcol",
-                         style=style_1),
-                     div1_out
-
-        )
-        col2<-column(8,class="half-drop rankcol",
-                     #column(3,class="mp0",div2_before),
-                     column(12,class="mp0",div2,style="text-align: center"))
-        column(4,style="padding-right: 5px;",
-               column(12,
-                      class="half-drop rankcol",
-                      textInput(id_text,NULL,text_value)),
-               column(12,class="mp0",
-                      if(convert()[2]=="numeric"){
-                        div(col2,col1)
-                      } else{
-                        div(col1,col2)
-                      },
-                      column(12, div2_out,class="mp0")
-               )
-
-        )
-      }
-      data<-get_data_from()
-      data_o<-vals$saved_data[[input$import_from_data]]
-
-      div1="Levels"
-      col2_name<-"Label"
-      if(convert()[2]=="numeric"){
-        div1="Level"
-        col2_name="Numeric-Value"
-      }
-      vars<-colnames(data)
-      if(isTRUE(input$cutfacs)){
-        div2_before="Cut"
-        div2=function(data=NULL,var=NULL){
-          fun<-switch(input$bin_method,
-                      'sturge'=bin_Sturges,
-                      'scott'=bin_Scott,
-                      'freedman'=bin_Freedman
-          )
-
-          div(class="rankcol",
-              numericInput(ns(paste0("cutfacs_breaks_",var)),
-                           NULL,
-                           value =fun(data_o[,var])
-              ))
-        }
-      } else{
-        div2_before=""
-        div2=function(data=NULL,var=NULL){div(col2_name)}
-      }
-
-      l1<-lapply(vars,function(var){
-        div(style="margin-top: 5px;margin-bottom: 15px",
-            getl1(id_text=ns(paste0("newcol",var,sep="_")),
-                  var,
-                  div1=div(if(convert()[2]=="numeric"){div2(data,var)}else{div1},style=""),
-                  #div2_before=div(div2_before,style="border: 1px solid blue"),
-                  div2=div(
-                    if(convert()[2]=="numeric"){div1}else{div2(data,var)},style=""
-                  ),
-                  div2_out= div(style="padding-bottom: 30px",
-                                uiOutput(ns(paste0('facord_outl',var)))
-                  )
-
-            )
-
-
-        )
-      })
-      div(
-        id="rank_levels",
-        l1)
-    })
-    output$dropLevelsEdit_b<-renderUI({
-      dropLevelsEdit()
-    })
-    get_factor_cuts<-function(l1){
-      do.call(data.frame,lapply(l1, function (x) {
-        cut(as.numeric(as.character(x[[1]])),as.numeric(x[[2]]))
-      }))
-    }
-    ns<-session$ns
-    get_data_from<-reactive({
-
-      data<-getconvert_datavars()[[1]]
-      vars<-getconvert_datavars()[[2]]
-      data<-data[,unlist(vars),drop=F]
-      datalist_name<-input$import_from_data
-      if(convert()[[2]]=="factor"){
-        data<-data.frame(lapply(data,as.factor))
-      }
-
-      colnames(data)<-vars
-      attr(data,"datalist")<-datalist_name
-      data
-    })
-    get_data_cutted<-reactive({
-      data<-get_data_from()
-      datalist_name<-attr(data,"datalist")
-      vars<-colnames(data)
-      if(isTRUE(input$cutfacs)){
-        res<-lapply(vars, function(var) {
-          cut=input[[paste0("cutfacs_breaks_",var)]]
-          req(cut)
-          cut(as.numeric(as.character(data[,var])),cut)
-        })
-        res<-data.frame(res)
-        colnames(res)<-colnames(data)
-        data<-res
-      } else{
-        if(convert()[2]=="factor"){
-          data<-data.frame(lapply(data,as.factor))
-        }
-      }
-      attr(data,"datalist")<-datalist_name
-      data
-    })
-    output$binary_page<-renderUI({
-      ns<-session$ns
-      req(input$import_from_data)
-      req(input$importvar)
-      data<-vals$saved_data[[input$import_from_data]]
-      if(input$import_from_attr=="factor"){
-        req(input$import_to_attr=="numeric")
-        req(input$hand_facs=="Binary")
-        factors<-attr(data,"factors")[,input$importvar,drop=F]
-        cols<-colnames(getclassmat(factors))
-      }
-      if(input$import_from_attr=="numeric"){
-        req(input$import_to_attr=="numeric")
-        cols<-colnames(data[,input$importvar,drop=F])
-      }
-
-      lbin<-lapply(cols,function(x){
-        div(class="new_colnames",textInput(ns(paste("newbin",x, sep="_")), NULL, value=x))
-      })
-
-      div(style="overflow-y: auto; max-height: calc(100vh - 200px);margin-top: 20px",
-          div(icon("hand-point-right"),"Edit column names",style='white-space: normal;font-size: 11px'),
-          h5(strong("New column names:")),
-          lbin)
-    })
-  })
-}
+#' @export
 toolbar<-list()
+#' @export
 toolbar$ui<-function(id){
   ns<-NS(id)
   choiceNames_preprocess<-{list(
@@ -6893,7 +6991,7 @@ toolbar$ui<-function(id){
           )))
   )
 }
-
+#' @export
 toolbar$server<-function(id, vals=NULL){
   moduleServer(id,function(input, output,session){
 
@@ -7048,8 +7146,6 @@ toolbar$server<-function(id, vals=NULL){
   })
 }
 
-
-
 #' @export
 pre_process<-list()
 #' @export
@@ -7060,58 +7156,58 @@ Shiny.onInputChange('",ns('last_btn'),"', this.id);
 });")))),
 
 
-div(class="needed",id="fade",
-    div(class="fade_pp pp-full",style="display: none",
-        div(style="position: fixed; right: 550px;top: 50px ",
-            actionButton(ns("exit_preprocess"), label = NULL, icon = icon("times"), style = "padding: 0px; font-size: 15px; width: 20px; height: 20px;background: Brown; color: white; border: 0px;"))
-    )
-),
-div(class="fade_pp track_changes_panel",
-    style="position: fixed; right: 550px;top: 115px;overflow-y:auto;  box-shadow: 0 0px 1px  grey; z-index: 999;font-size: 9px;background: white; padding: 10px;display: none;",
-    div(
-      div(style="display: flex",align="right",
-          actionButton(ns("summary_on"),"Track changes",style="font-size: 11px; padding: 1px;border: 0px solid;font-style: italic;"),
-          div(class="swib off on"),
-      )),
-    div(style="display: none;",id=ns("summary_pp_out"),
-        uiOutput(ns('summary_pp'))
-    )
-),
-
-div(class="needed pp_head",id="not_fade",
-    div(
-      div(
-        div(style="display: flex; gap: 5px",class="preproc_control",
-            pp_data$ui(ns('head')),
-            div(class="pp_datacontrol half-drop",style="display: none;",
-                div(style=" display: flex; gap: 5px",actionButton(ns("reset_change"),icon("undo"), width="40px"),
-                    div(
-                      class='save_pp',
-                      actionButton(ns("tools_save_changes"),icon("fas fa-save"), width="40px")
-                    ))
-            ),
-            bsTooltip(ns("reset_change"),"Reset changes"),
-            bsTooltip(ns("tools_save_changes"),"Save Changes")
-        )
-      ),
-      div(class="toolbar",
-          id=ns("tool_pages"),
-          div(class="dl_btn",
-              cogs_title="Create Datalit",
-              popify(bsButton(ns("create_datalist"), strong(icon("fas fa-plus")), style=""),"Data Input",textinput())
-          ),
-          div(
-
-            toolbar$ui(ns("toolbar"))
+      div(class="needed",id="fade",
+          div(class="fade_pp pp-full",style="display: none",
+              div(style="position: fixed; right: 550px;top: 50px ",
+                  actionButton(ns("exit_preprocess"), label = NULL, icon = icon("times"), style = "padding: 0px; font-size: 15px; width: 20px; height: 20px;background: Brown; color: white; border: 0px;"))
           )
+      ),
+      div(class="fade_pp track_changes_panel",
+          style="position: fixed; right: 550px;top: 115px;overflow-y:auto;  box-shadow: 0 0px 1px  grey; z-index: 999;font-size: 9px;background: white; padding: 10px;display: none;",
+          div(
+            div(style="display: flex",align="right",
+                actionButton(ns("summary_on"),"Track changes",style="font-size: 11px; padding: 1px;border: 0px solid;font-style: italic;"),
+                div(class="swib off on"),
+            )),
+          div(style="display: none;",id=ns("summary_pp_out"),
+              uiOutput(ns('summary_pp'))
+          )
+      ),
+
+      div(class="needed pp_head",id="not_fade",
+          div(
+            div(
+              div(style="display: flex; gap: 5px",class="preproc_control",
+                  pp_data$ui(ns('head')),
+                  div(class="pp_datacontrol half-drop",style="display: none;",
+                      div(style=" display: flex; gap: 5px",actionButton(ns("reset_change"),icon("undo"), width="40px"),
+                          div(
+                            class='save_pp',
+                            actionButton(ns("tools_save_changes"),icon("fas fa-save"), width="40px")
+                          ))
+                  ),
+                  bsTooltip(ns("reset_change"),"Reset changes"),
+                  bsTooltip(ns("tools_save_changes"),"Save Changes")
+              )
+            ),
+            div(class="toolbar",
+                id=ns("tool_pages"),
+                div(class="dl_btn",
+                    cogs_title="Create Datalit",
+                    popify(bsButton(ns("create_datalist"), strong(icon("fas fa-plus")), style=""),"Data Input",textinput())
+                ),
+                div(
+
+                  toolbar$ui(ns("toolbar"))
+                )
+
+            )
+
+          ),
+
+          uiOutput(ns("pp_out"))
 
       )
-
-    ),
-
-    uiOutput(ns("pp_out"))
-
-)
   )
 }
 #' @export
@@ -7218,8 +7314,8 @@ pre_process$server<-function(id, vals){
     new_datalist_name<-reactive({
       req(input$create_replace)
       if(input$create_replace=="Create"){
-          req(input$newdatalit)
-          input$newdatalit
+        req(input$newdatalit)
+        input$newdatalit
       } else {
         req(input$overdatalist)
         input$overdatalist
@@ -7228,9 +7324,9 @@ pre_process$server<-function(id, vals){
     })
     observeEvent(new_datalist_name(),{
       if(r_action()%in%"datalist"){
-       # attr(vals$tosave,"new_datalist")<-new_datalist_name()
+        # attr(vals$tosave,"new_datalist")<-new_datalist_name()
       } else{
-       # attr(vals$tosave,"new_datalist")<-attr(vals$pp_data,'datalist_root')
+        # attr(vals$tosave,"new_datalist")<-attr(vals$pp_data,'datalist_root')
       }
     })
 
@@ -7360,3 +7456,8 @@ pre_process$server<-function(id, vals){
     toolbar$server("toolbar",vals)
   })
 }
+
+
+
+
+

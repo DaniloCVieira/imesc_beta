@@ -4098,6 +4098,26 @@ imesc_supersom$server<-function (id,vals ){
 
         )
       })
+      observe({
+        req(vals$update_state)
+        update_state<-vals$update_state
+        ids<-names(update_state)
+        update_on<-grepl(id,ids)
+        names(update_on)<-ids
+        to_loop<-names(which(update_on))
+        withProgress(min=1,max=length(to_loop),message="Restoring",{
+          for(i in to_loop) {
+            idi<-gsub(paste0(id,"-"),"",i)
+            incProgress(1)
+            restored<-restoreInputs2(session, idi, update_state[[i]])
+
+            if(isTRUE(restored)){
+              vals$update_state[[i]]<-NULL
+            }
+
+          }
+        })
+      })
 
 
 

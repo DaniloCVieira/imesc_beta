@@ -176,7 +176,7 @@ mod_comp_plot_options$ui<-function(id){
 mod_comp_plot_options$server<-function(id,vals,type="density"){
   moduleServer(id,function(input,output,session){
 
-    print("plot_server")
+
     if(type=="density"){
       updatePickerInput(session,"gg_fill",choices=c("Model name"='x',"Y"="supervisor",'Model type'="model_tag"))
     }
@@ -235,7 +235,7 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
 
 
 
-    args_plot<-function(){
+    args_plot<-reactive({
       results<-vals$resample_results
       req(!is.null(results))
       list(
@@ -257,7 +257,7 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
         gg_fill=input$gg_fill
 
       )
-    }
+    })
     observeEvent(args_plot(),{
       shinyjs::addClass("run_plot_btn","save_changes")
     })
@@ -268,8 +268,19 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
       shinyjs::removeClass("run_plot_btn","save_changes")
       vals$box_metrics
     })
-    output$plot<-renderPlot({
-      get_plot()
+
+
+    output$plot<-renderUI({
+      validate(need(length(vals$resample_results$models)>1,"Error: at least two models are needed"))
+      height=length(vals$resample_results$models)*70
+      if(height>600){
+        height=600
+      }
+      div(style='height: 500px; overflow-y: auto',
+        renderPlot({
+          get_plot()
+        },height=height)
+      )
     })
 
     output$page<-renderUI({
@@ -283,7 +294,7 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
 
 
 
-        plotOutput(ns("plot"))
+        uiOutput(ns("plot"))
       )
     })
 
@@ -368,7 +379,7 @@ compare_models$ui<-function(id){
            radioGroupButtons(
              ns("tab_results"),NULL,
              choiceValues =paste0("tab",1:6),
-             selected="tab2",
+             selected="tab1",
              choiceNames =c("3.1. Summary","3.2. Boxplot","3.3.densityplot","3.4. dotplot","3.5. GGpairs","3.6. Pairwise")
            )
          )
@@ -566,7 +577,7 @@ compare_models$server<-function(id,vals){
       updatePickerInput(session,"summary_show",choices=choices)
     })
 
-    get_modelist<-function(){
+    get_modelist<-reactive({
 
       req(input$compare)
       model_boxes<-get_modelist_boxes()
@@ -578,11 +589,11 @@ compare_models$server<-function(id,vals){
       ids<-sapply(box_selected,function(x) attr(x,"id"))
 
       box_selected[ids%in%input$model_in]
-    }
+    })
 
 
     #input<-readRDS("input.rds")
-    resample_models<-function(){
+    resample_models<-reactive({
       modelist_boxes<-get_modelist_boxes()
       model_list<-get_modelist()
       names(model_list)<-NULL
@@ -609,7 +620,7 @@ compare_models$server<-function(id,vals){
       } else{
         NULL
       }
-    }
+    })
 
     observeEvent(input$model_in,{
       # print(input$model_in)
@@ -655,10 +666,10 @@ compare_models$server<-function(id,vals){
         "model_in",choices=values,selected=as.character(values))
     })
 
-    data_x<-function(){
+    data_x<-reactive({
       req(input$data_x%in%names(vals$saved_data))
       vals$saved_data[[input$data_x]]
-    }
+    })
     #observe(print(get_modelist_boxes()$choices_names))
 
 
@@ -670,7 +681,7 @@ compare_models$server<-function(id,vals){
 
       updatePickerInput(
         session,"compare",
-        choices=rev(choices),
+        choices=choices,
         choicesOpt =list(subtext =subtext),
         options=shinyWidgets::pickerOptions(showSubtext =T)
       )
@@ -681,7 +692,7 @@ compare_models$server<-function(id,vals){
     })
 
 
-    get_modelist_boxes<-function(){
+    get_modelist_boxes<-reactive({
       data<-data_x()
       choices<-lapply(available_models,function(x){
         if(check_model(data,x))x})
@@ -751,6 +762,8 @@ compare_models$server<-function(id,vals){
         x
       })
 
+
+
       model_names_boxes<-split(model_names,as.factor(restable$id_value))
       model_names_boxes<-lapply(model_names_boxes,function(x){
         make.unique(as.character(x))
@@ -769,11 +782,32 @@ compare_models$server<-function(id,vals){
       subtext<-as.character(sapply(model_boxes,function(x) x$subtext[1]))
 
 
+
       result_list<-list(choices_values=choices_values,choices_names=choices_names,model_boxlist=model_boxlist,model_boxes=model_boxes,subtext=subtext,model_names_boxes=model_names_boxes)
       return(result_list)
-    }
+    })
 
+    observe({
+      req(vals$update_state)
+      update_state<-vals$update_state
+      ids<-names(update_state)
+      update_on<-grepl(id,ids)
+      names(update_on)<-ids
+      to_loop<-names(which(update_on))
+      withProgress(min=1,max=length(to_loop),message="Restoring",{
+        for(i in to_loop) {
+          idi<-gsub(paste0(id,"-"),"",i)
+          incProgress(1)
+          restored<-restoreInputs2(session, idi, update_state[[i]])
 
+          if(isTRUE(restored)){
+            vals$update_state[[i]]<-NULL
+          }
+
+        }
+      })
+
+    })
 
 
   })

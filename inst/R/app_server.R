@@ -52,6 +52,7 @@
 #roxygen2::roxygenise()
 #' @export
 #' @noRd
+
 app_server<-server<-function(input, output, session) {
   t0<-Sys.time()
   # init_server<-Sys.time()
@@ -331,7 +332,7 @@ app_server<-server<-function(input, output, session) {
     updateTabsetPanel(session,"tabs",selected="menu_upload")
   })
   observeEvent(ignoreInit = T,input$tabs,{
-   # remove_unsaved_models()
+    # remove_unsaved_models()
   })
   remove_unsaved_models<-reactive({
     req(length(vals$saved_data)>0)
@@ -574,11 +575,17 @@ app_server<-server<-function(input, output, session) {
   }
 
   output$map_header<-renderUI({
-    #validate(need(length(vals$saved_data)>0,"No Datalist found"))
-
     sptools_data$server('sptools_data',vals)
     NULL
   })
+
+  output$map_panels<-renderUI({
+    sptools_panels$server('sptools_panels',vals=vals)
+    NULL
+  })
+
+
+
 
   validate_data_map<-reactive({
     validate_data(vals$data_map)
@@ -597,9 +604,6 @@ app_server<-server<-function(input, output, session) {
     }
   })
 
-  observe({
-    sptools_panels$server('sptools_panels',vals=vals)
-  })
 
 
   savereac<-reactive({
@@ -844,7 +848,9 @@ app_server<-server<-function(input, output, session) {
   output$menu_bank_out<-renderUI({
     #validate(need(length(vals$saved_data)>0,"No Datalist found"))
 
-    databank_module$server('databank', vals=vals)
+
+    databank_module$server('module_databank', vals=vals)
+
     NULL
 
   })
@@ -853,14 +859,12 @@ app_server<-server<-function(input, output, session) {
 
 
   output$menu_div_out<-renderUI({
-
-
-    mod_div<-diversity_tool$server("module_div",  vals=vals, df_colors=vals$colors_img,newcolhabs=newcolhabs)
+    mod_div<-diversity_tool$server("module_div",  vals=vals)
     NULL
   })
   output$menu_hc_out<-renderUI({
 
-    hc_module$server('hc', vals=vals)
+    hc_module$server('module_hc', vals=vals)
     NULL
   })
   output$menu_kmeans_out<-renderUI({
@@ -879,7 +883,7 @@ app_server<-server<-function(input, output, session) {
 
 
   output$menu_sl_out<-renderUI({
-    caret_models$server("sl_models",vals)
+    caret_models$server("module_sl",vals)
     NULL
   })
 
@@ -887,13 +891,13 @@ app_server<-server<-function(input, output, session) {
 
 
   output$menu_som_out<-renderUI({
-    div(imesc_supersom$ui("som",vals),
+    div(imesc_supersom$ui("module_supersom",vals),
         uiOutput('som_out'))
 
 
   })
   output$som_out<-renderUI({
-    imesc_supersom$server("som",vals=vals)
+    imesc_supersom$server("module_supersom",vals=vals)
     NULL
   })
 
@@ -996,7 +1000,23 @@ app_server<-server<-function(input, output, session) {
 
   })
 
-}
 
+
+  observeEvent(vals$collectInputs,{
+    req(vals$collectInputs==1)
+    input_ids<- names(input)
+    state <- collectInputs(session, input_ids)  # Collect all inputs dynamically
+    vals$input_state<-state  # Save the current state
+    vals$collectInputs<-2
+
+  })
+
+  module_ids<-c('module_databank','module_desctools','module_div', 'sptools_data','sptools_panels','module_supersom','module_hc','module_kmeans','module_sl','module_comp')
+
+
+
+
+
+}
 
 

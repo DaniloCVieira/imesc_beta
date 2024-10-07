@@ -1267,67 +1267,8 @@ triggler_snap_plotly<-  function(id,out_id){
 
 
 
-add_long_km<-function(long = -45, add_km = 50, lat = 0) {
-  # Raio da Terra em quilômetros
-  earth_radius_km <- 6371
-
-  # Converter latitude para radianos
-  lat_rad <- lat * pi / 180
-
-  # Conversão de km para a variação de longitude
-  delta_long_km <- add_km / (earth_radius_km * cos(lat_rad))
-
-  # Converter variação de longitude de radianos para graus
-  delta_long_deg <- delta_long_km * 180 / pi
-
-  # Retornar a nova longitude
-  new_long <- long + delta_long_deg
-  return(new_long)
-}
-prep_axis_blocks <- function(p,breaks, is_longitude = TRUE) {
-  data.frame(
-    pos = breaks,
-    group = as.factor(1:length(breaks)),
-    color = rep(c("black", "white"), length.out = length(breaks)),
-    is_longitude=is_longitude
-  )
-}
-axis_barblock<-function(p,longitude_breaks,latitude_breaks,add_km=10,base_limits){
-  longitude_breaks<-prep_axis_blocks(p,longitude_breaks)
-  latitude_breaks<-prep_axis_blocks(p,latitude_breaks,is_longitude=F)
-  longitude_breaks$y<-base_limits["ymin"]
-  latitude_breaks$x<-base_limits["xmin"]
-  longitude_breaks$y2<-base_limits["ymax"]
-  latitude_breaks$x2<-base_limits["xmax"]
-
-  longitude_breaks$label<-round(longitude_breaks$pos)
-  latitude_breaks$label<-round(latitude_breaks$pos)
-  longitude_breaks<-data.frame(xmin=longitude_breaks$pos,xmax=c(longitude_breaks$pos[-1],NA),longitude_breaks[-1])
-
-  latitude_breaks<-data.frame(ymin=latitude_breaks$pos,ymax=c(latitude_breaks$pos[-1],NA),latitude_breaks[-1])
-
-  latitude_breaks<-na.omit(latitude_breaks)
-  longitude_breaks<-na.omit(longitude_breaks)
 
 
-  pscales<-ggplot2:::layer_scales(p)
-  pyrange<-pscales$y$range$range
-
-  aw<-(max(pyrange)-min(pyrange))*add_km
-
-
-
-  latitude_breaks$xh<-latitude_breaks$x+aw
-  longitude_breaks$yh<-longitude_breaks$y[1]-(latitude_breaks$x[1]-latitude_breaks$xh[1])
-
-  latitude_breaks$xh2<-  latitude_breaks$x2-aw
-
-  longitude_breaks$yh2<-longitude_breaks$y2[1]-(latitude_breaks$x2[1]-latitude_breaks$xh2[1])
-  return(list(
-    longitude_breaks=longitude_breaks,
-    latitude_breaks=latitude_breaks
-  ))
-}
 #p<-readRDS("p.rds")
 #data<-readRDS("savepoint.rds")$saved_data$nema_araca
 #axis_width=0.01
@@ -2326,208 +2267,7 @@ add_label_bar<-function(coords,n_bins,bins_km,unit,position_label="above",paddin
   posx_label_bar$label[nrow(posx_label_bar)] <- paste(posx_label_bar$label[nrow(posx_label_bar)], unit)
   posx_label_bar
 }
-gg_rst<-function(rst=NULL,data=NULL,limits=NULL,legend.text_size=13,layer_shape=NULL,extra_shape=NULL,breaks=T,nbreaks=5,pal="turbo",key.height=NULL,newcolhabs=list(turbo=viridis::turbo),add_extra_shape=F,add_base_shape=T,add_layer_shape=F,show_labels=F,labels=attr(rst,"factors")[1],cex.fac=13,col.fac="red",show_coords=F,col.coords="black",cex.coords=13,custom_breaks=NULL,layer_col="gray",lighten=0.4,layer_shape_border="gray",width_hint=0.15,cex_scabar=0.7,fillOpacity=1,reverse_palette=F,scale_radius=T,min_radius=1,max_radius=5,addCircles=T,addMinicharts=F,buffer_zize=1,
-                 fun="sum",factor_chart=1,args_extra_shape=NULL,data_depth=NULL,data_o=NULL,base_shape_args,layer_shape_args,factor=F,light=0,legend.position="none",show_scale_bar=F,breaks_on=T,leg_title=NULL,...) {
 
-  if(!isTRUE(factor)){
-    custom_breaks00<-as.numeric(custom_breaks)
-  } else{
-    custom_breaks00<-custom_breaks
-
-  }
-
-  {
-
-    crs.info="+proj=longlat +datum=WGS84 +no_defs"
-    req(!is.null(rst)|!is.null(data))
-
-    if(class(rst)[1]=="RasterLayer"){
-      crs.info<-crs(rst)
-      rasterpoints <-  rasterToPoints(rst) |> data.frame()
-
-      if(isTRUE(factor)){
-        # labels=rst@data@attributes[[1]][,2][ rst@data@attributes[[1]][,2]%in%unique(rasterpoints[,3])]
-        labels<-rst@data@attributes[[1]][,2]
-
-
-        fac0<-factor(rasterpoints[,3],levels=1:length(rst@data@attributes[[1]][,2]),labels=rst@data@attributes[[1]][,2])
-
-        rasterpoints[,3]<-factor(fac0,levels= attr(rst,"data_levels"),labels=attr(rst,"data_levels"))
-
-        # rasterpoints[,3]<-factor(rasterpoints[,3], labels=rst@data@attributes[[1]][,2])
-        colnames(rasterpoints)[3]<-"z"
-      }
-
-
-
-      coords<-coordinates(rst) |> data.frame()
-    } else{
-      coords<-attr(data,"coords")
-      rasterpoints<-data.frame(cbind(coords,z=data[,1]))
-      rst<-data
-    }
-
-    validate(need(nrow(rasterpoints)>0,"Error"))
-
-
-    if(!is.factor(rasterpoints$z)){
-      custom_breaks0<-as.numeric(custom_breaks)
-      colnames(rasterpoints)<-c("x","y","z")
-      custom_breaks<-as.numeric(custom_breaks)
-
-    }
-
-
-
-    base_shape<-attr(rst,'base_shape')
-    layer_shape<-attr(rst,'layer_shape')
-    if(!exists('limits')){
-      limits<-NULL
-    }
-
-    if(is.null(limits)){
-      limits<-get_limits2(
-        rst,base_shape_args,
-        layer_shape_args,
-        args_extra_shape
-      )
-      limits<-list(x_min=limits$xmin,x_max=limits$xmax, y_min=limits$ymin,y_max=limits$ymax)
-    }
-
-
-
-
-    if(!exists('breaks')){
-      breaks<-NULL
-    }
-
-
-
-    if(!is.factor(rasterpoints$z)){
-      #breaks=    breaks_interval(z=rasterpoints$z,nbreaks)
-      breaks= as.numeric(custom_breaks)
-    } else{ breaks=    levels(rasterpoints$z)}
-
-
-
-
-    base_shape0<-st_as_sf(coords,coords = colnames( coords),crs=crs.info)
-    p<-ggplot() #+ coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
-
-
-    if(class(rst)[1]!="RasterLayer"){
-      p<-ggplot(base_shape0)
-    }
-    xlim<-unlist(limits[1:2])
-    ylim<-unlist(limits[3:4])
-    p<-add_gg_shape(p,base_shape_args,base_shape,xlim,ylim,crs.info)
-
-
-
-  }
-
-  if(class(rst)=="RasterLayer"){
-    breaks=NULL
-
-    if(isFALSE(factor)){
-      breaks<-as.numeric(custom_breaks)
-      custom_breaks0=as.numeric(custom_breaks0)
-    } else{
-      custom_breaks0=custom_breaks
-    }
-
-    #rst@data@values<-scales::rescale(rst@data@values,range(custom_breaks0))
-    breaks<-custom_breaks0
-    p<-rst_tile(p,rasterpoints,rst,newcolhabs,pal,fillOpacity,reverse_palette,name,breaks,factor, data_o=data_o,light, custom_breaks=custom_breaks0,show_legend=T,limits=NULL,breaks_on=breaks_on,leg_title=leg_title)
-
-  } else{
-
-
-    if(isTRUE(addCircles)){
-
-      p<-gg_circles(p,rasterpoints,rst,newcolhabs,pal,fillOpacity,reverse_palette,name,custom_breaks=sort(custom_breaks00),min_radius,max_radius, scale_radius, light,show_legend=T,leg_title=leg_title)}
-
-
-    if(isTRUE(addMinicharts)){
-      p<-gg_pie(p,rst,factor_chart,buffer_zize,fun,min_radius,max_radius,newcolhabs,pal,reverse_palette, fillOpacity,light,leg_title=leg_title)
-
-    }
-  }
-  names( p$layers)[length( p$layers)]<-paste0('points')
-
-
-
-  p0<-p
-
-
-  p<-p+
-
-    theme(panel.grid.major = element_blank(),
-          panel.background = element_rect(fill = "white"),
-          panel.border = element_rect(fill=NA,
-                                      color="black",
-                                      linewidth=0.5,
-                                      linetype="solid"),
-
-          #legend.text=element_text(size=legend.text_size),
-          #legend.title=element_text(size=legend.text_size)
-
-    )
-  if(!is.null(key.height)){
-    p<-p+theme(legend.key.size=unit(key.height, 'pt'))
-  }
-
-  extra_shape<-attr(rst,'extra_shape')
-
-  if(!is.null(args_extra_shape)){
-    p<-gg_add_extra_shape(p,rst,args_extra_shape)
-  }
-
-  if(show_coords!="None"){
-    coords_data<-attr(rst,"coords")
-    colnames(coords_data)<-c("x","y")
-    p<-p+geom_point( data=coords_data, aes(x=x, y=y),  size=cex.coords, pch=as.numeric(show_coords), colour=col.coords)}
-  p<-add_gg_shape(p,layer_shape_args,layer_shape,xlim,ylim,crs.info)
-
-  #  point_layer<-p$layers[ grep("points",  names(p$layers))]
-  #  old_layer<-p$layers[-grep("points",  names(p$layers))]
-  #  new_p <- append(old_layer, point_layer, after=0)
-  # p$layers<-new_p
-
-
-  if(!is.null(data_depth)) {
-    point_layer<-p$layers[ grep("points",  names(p$layers))]
-    old_layer<-p$layers[-grep("points",  names(p$layers))]
-    new_p <- append(old_layer, point_layer, after=data_depth-1)
-    p$layers<-new_p
-
-  }
-  if(isTRUE(show_labels)){
-    labels=attr(data,"factors")[labels]
-    coords_labels<-attr(data,"coords")
-    labs<-labels[rownames(coords_labels),]
-    df_labels<-cbind(coords_labels,labs)
-    colnames(df_labels)<-c("x","y","label")
-    p<-p+  geom_text( data=df_labels, aes(x=x, y=y, label=label),size=cex.fac,colour=col.fac)
-  }
-
-  p<-p+
-    coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
-
-  if(legend.position=="none"){
-    p<-p+guides(fill="none",color="none",size="none")
-  } else{
-    p<-p+
-      theme(legend.position=legend.position)
-  }
-
-
-
-
-
-  return(p)
-
-}
 
 gg_add_titles<-function(p,main="",plot.title_size=12,title.face="plain",subtitle="",plot.subtitle_size=10,subtitle.face='plain',grid_sub_hadj=0,...){
   p+ggtitle(main, subtitle = subtitle) +
@@ -2538,43 +2278,7 @@ gg_add_titles<-function(p,main="",plot.title_size=12,title.face="plain",subtitle
       plot.subtitle=element_text(size=plot.subtitle_size,
                                  face=subtitle.face))
 }
-gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',axis.text_size=13,axis.title_size=13,x.n.breaks=5,y.n.breaks=5,axis_width=0.1,show_guides=F,guides_color="gray",guides_linewidth=0.15,guides_linetype= "dashed",...){
 
-  #print("start_saving")
- # saveRDS(list(p=p,axis_style="default",xlab='Longitude',ylab='Latitude',axis.text_size=13,axis.title_size=13,x.n.breaks=5,y.n.breaks=5,axis_width=0.1,show_guides=F,guides_color="gray",guides_linewidth=0.15,guides_linetype= "dashed"),"args_ggaxes.rds")
-#print("saved")
-  p<-p+theme(
-    axis.text=element_text(size=axis.text_size),
-    axis.title=element_text(size=axis.title_size,face="bold"),
-  )+xlab(xlab) +
-    ylab(ylab)
-
-
-
-  #buid<-ggplot2::ggplot_build(p)
-  #buid$layout$panel_scales_x[[1]]$n.breaks<-x.n.breaks
-  #buid$layout$panel_scales_y[[1]]$n.breaks<-y.n.breaks
-  #xbreaks<- buid$layout$panel_scales_x[[1]]$get_breaks()
-  #ybreaks<- buid$layout$panel_scales_y[[1]]$get_breaks()
-
-  show_guides=F
-  if(isTRUE(show_guides)){
-    p<-p+geom_hline(yintercept=ybreaks,color =guides_color, linetype =guides_linetype, linewidth = guides_linewidth)+
-      geom_vline(xintercept =xbreaks,color =guides_color, linetype = guides_linetype, linewidth = guides_linewidth)
-  }
-
- # pxrange<-buid$layout$panel_scales_x[[1]]$range$range
-  #pyrange<-buid$layout$panel_scales_y[[1]]$range$range
-  #names(pxrange)<-c("xmin","xmax")
- # names(pyrange)<-c("ymin","ymax")
- # p<-p+scale_x_continuous(breaks=xbreaks)+scale_y_continuous(breaks=ybreaks)
-  #attr(p,"panel_info")<-list(    xbreaks=xbreaks,    ybreaks=ybreaks,    pxrange=pxrange,    pyrange=pyrange  )
-  p<-add_custom_axis(p,axis_width,axis_style)
-
-
-  return(p)
-
-}
 add_custom_axis<-function(p,axis_width=0.1,axis_style="default"){
   #print("starting saving...")
   #saveRDS(list(p=p,axis_width=0.1,axis_style="default"),"args_ggaxes.rds")
@@ -2787,4 +2491,452 @@ plot_variogram <- function(v, m, sized=F, show_vgm_lines=T) {
 
 
   g
+}
+gg_rst<-function(rst=NULL,data=NULL,limits=NULL,legend.text_size=13,layer_shape=NULL,extra_shape=NULL,breaks=T,nbreaks=5,pal="turbo",key.height=NULL,newcolhabs=list(turbo=viridis::turbo),add_extra_shape=F,add_base_shape=T,add_layer_shape=F,show_labels=F,labels=attr(rst,"factors")[1],cex.fac=13,col.fac="red",show_coords=F,col.coords="black",cex.coords=13,custom_breaks=NULL,layer_col="gray",lighten=0.4,layer_shape_border="gray",width_hint=0.15,cex_scabar=0.7,fillOpacity=1,reverse_palette=F,scale_radius=T,min_radius=1,max_radius=5,addCircles=T,addMinicharts=F,buffer_zize=1,
+                 fun="sum",factor_chart=1,args_extra_shape=NULL,data_depth=NULL,data_o=NULL,base_shape_args,layer_shape_args,factor=F,light=0,legend.position="none",show_scale_bar=F,breaks_on=T,leg_title=NULL,...) {
+
+  if(!isTRUE(factor)){
+    custom_breaks00<-as.numeric(custom_breaks)
+  } else{
+    custom_breaks00<-custom_breaks
+
+  }
+
+  {
+
+    crs.info="+proj=longlat +datum=WGS84 +no_defs"
+    req(!is.null(rst)|!is.null(data))
+
+    if(class(rst)[1]=="RasterLayer"){
+      crs.info<-crs(rst)
+      rasterpoints <-  rasterToPoints(rst) |> data.frame()
+
+      if(isTRUE(factor)){
+        # labels=rst@data@attributes[[1]][,2][ rst@data@attributes[[1]][,2]%in%unique(rasterpoints[,3])]
+        labels<-rst@data@attributes[[1]][,2]
+
+
+        fac0<-factor(rasterpoints[,3],levels=1:length(rst@data@attributes[[1]][,2]),labels=rst@data@attributes[[1]][,2])
+
+        rasterpoints[,3]<-factor(fac0,levels= attr(rst,"data_levels"),labels=attr(rst,"data_levels"))
+
+        # rasterpoints[,3]<-factor(rasterpoints[,3], labels=rst@data@attributes[[1]][,2])
+        colnames(rasterpoints)[3]<-"z"
+      }
+
+
+
+      coords<-coordinates(rst) |> data.frame()
+    } else{
+      coords<-attr(data,"coords")
+      rasterpoints<-data.frame(cbind(coords,z=data[,1]))
+      rst<-data
+    }
+
+    validate(need(nrow(rasterpoints)>0,"Error"))
+
+
+    if(!is.factor(rasterpoints$z)){
+      custom_breaks0<-as.numeric(custom_breaks)
+      colnames(rasterpoints)<-c("x","y","z")
+      custom_breaks<-as.numeric(custom_breaks)
+
+    }
+
+
+
+    base_shape<-attr(rst,'base_shape')
+    layer_shape<-attr(rst,'layer_shape')
+    if(!exists('limits')){
+      limits<-NULL
+    }
+
+    if(is.null(limits)){
+      limits<-get_limits2(
+        rst,base_shape_args,
+        layer_shape_args,
+        args_extra_shape
+      )
+      limits<-list(x_min=limits$xmin,x_max=limits$xmax, y_min=limits$ymin,y_max=limits$ymax)
+    }
+
+
+
+
+    if(!exists('breaks')){
+      breaks<-NULL
+    }
+
+
+
+    if(!is.factor(rasterpoints$z)){
+      #breaks=    breaks_interval(z=rasterpoints$z,nbreaks)
+      breaks= as.numeric(custom_breaks)
+    } else{ breaks=    levels(rasterpoints$z)}
+
+
+
+    xlim<-unlist(limits[1:2])
+    ylim<-unlist(limits[3:4])
+
+
+
+    base_shape0<-st_as_sf(coords,coords = colnames( coords),crs=crs.info)
+
+
+    p<-ggplot()
+
+    if(class(rst)[1]!="RasterLayer"){
+      p<-ggplot(data=base_shape0)
+    }
+
+
+
+
+
+    p<-add_gg_shape(p,base_shape_args,base_shape,xlim,ylim,crs.info)
+
+
+
+  }
+
+  if(class(rst)=="RasterLayer"){
+    breaks=NULL
+
+    if(isFALSE(factor)){
+      breaks<-as.numeric(custom_breaks)
+      custom_breaks0=as.numeric(custom_breaks0)
+    } else{
+      custom_breaks0=custom_breaks
+    }
+
+    #rst@data@values<-scales::rescale(rst@data@values,range(custom_breaks0))
+    breaks<-custom_breaks0
+    p<-rst_tile(p,rasterpoints,rst,newcolhabs,pal,fillOpacity,reverse_palette,name,breaks,factor, data_o=data_o,light, custom_breaks=custom_breaks0,show_legend=T,limits=NULL,breaks_on=breaks_on,leg_title=leg_title)
+
+  } else{
+
+
+    if(isTRUE(addCircles)){
+
+      p<-gg_circles(p,rasterpoints,rst,newcolhabs,pal,fillOpacity,reverse_palette,name,custom_breaks=sort(custom_breaks00),min_radius,max_radius, scale_radius, light,show_legend=T,leg_title=leg_title)}
+
+
+    if(isTRUE(addMinicharts)){
+      p<-gg_pie(p,rst,factor_chart,buffer_zize,fun,min_radius,max_radius,newcolhabs,pal,reverse_palette, fillOpacity,light,leg_title=leg_title)
+
+    }
+  }
+  names( p$layers)[length( p$layers)]<-paste0('points')
+
+
+
+  p0<-p
+
+
+  p<-p+
+
+    theme(panel.grid.major = element_blank(),
+          panel.background = element_rect(fill = "white"),
+          panel.border = element_rect(fill=NA,
+                                      color="black",
+                                      linewidth=0.5,
+                                      linetype="solid"),
+
+          #legend.text=element_text(size=legend.text_size),
+          #legend.title=element_text(size=legend.text_size)
+
+    )
+  if(!is.null(key.height)){
+    p<-p+theme(legend.key.size=unit(key.height, 'pt'))
+  }
+
+  extra_shape<-attr(rst,'extra_shape')
+
+  if(!is.null(args_extra_shape)){
+    p<-gg_add_extra_shape(p,rst,args_extra_shape)
+  }
+
+  if(show_coords!="None"){
+    coords_data<-attr(rst,"coords")
+    colnames(coords_data)<-c("x","y")
+    p<-p+geom_point( data=coords_data, aes(x=x, y=y),  size=cex.coords, pch=as.numeric(show_coords), colour=col.coords)}
+  p<-add_gg_shape(p,layer_shape_args,layer_shape,xlim,ylim,crs.info)
+
+  #  point_layer<-p$layers[ grep("points",  names(p$layers))]
+  #  old_layer<-p$layers[-grep("points",  names(p$layers))]
+  #  new_p <- append(old_layer, point_layer, after=0)
+  # p$layers<-new_p
+
+
+  if(!is.null(data_depth)) {
+    point_layer<-p$layers[ grep("points",  names(p$layers))]
+    old_layer<-p$layers[-grep("points",  names(p$layers))]
+    new_p <- append(old_layer, point_layer, after=data_depth-1)
+    p$layers<-new_p
+
+  }
+  if(isTRUE(show_labels)){
+    labels=attr(data,"factors")[labels]
+    coords_labels<-attr(data,"coords")
+    labs<-labels[rownames(coords_labels),]
+    df_labels<-cbind(coords_labels,labs)
+    colnames(df_labels)<-c("x","y","label")
+    p<-p+  geom_text( data=df_labels, aes(x=x, y=y, label=label),size=cex.fac,colour=col.fac)
+  }
+
+
+
+  if(legend.position=="none"){
+    p<-p+guides(fill="none",color="none",size="none")
+  } else{
+    p<-p+
+      theme(legend.position=legend.position)
+  }
+
+
+
+
+  p<-p+    coord_sf(xlim = xlim, ylim = ylim, expand = FALSE)
+  return(p)
+
+}
+
+
+
+gg_bwaxes0<-function(xb,yb,yh){
+  {axis1<-data.frame(
+    xmin=xb[1:(length(xb)-1)],
+    xmax=xb[2:length(xb)],
+    ymin=min(yb)-yh,
+    ymax=min(yb),
+    color=rep(c("black","white"),len=length(xb)-1),
+    axis="axis1"
+  )
+  axis2<-data.frame(
+    xmin=max(xb),
+    xmax=max(xb)+yh,
+    ymin=yb[1:(length(yb)-1)],
+    ymax=yb[2:length(yb)],
+    color=rep(c("black","white"),len=length(yb)-1),
+    axis="axis2"
+  )
+  axis3<-data.frame(
+    xmin=xb[1:(length(xb)-1)],
+    xmax=xb[2:length(xb)],
+    ymin=max(yb),
+    ymax=max(yb)+yh,
+    color=rep(c("black","white"),len=length(xb)-1),
+    axis="axis3"
+
+  )
+
+  axis4<-data.frame(
+    xmin=min(xb)-yh,
+    xmax=min(xb),
+    ymin=yb[1:(length(yb)-1)],
+    ymax=yb[2:length(yb)],
+    color=rep(c("black","white"),len=length(yb)-1),
+    axis="axis4"
+  )
+  }
+
+  axis1$xmin[1]<-min(axis4$xmin)
+  axis1$xmax[length(axis1$xmax)]<-max(axis2$xmax)
+  axis3$xmin[1]<-min(axis4$xmin)
+  axis3$xmax[length(axis1$xmax)]<-max(axis2$xmax)
+  df<-data.frame(rbind(axis1,axis2,axis3,axis4))
+  df
+}
+any_shape<-function(data){
+  res<-c(
+    length(attr(data,"base_shape"))>0,
+    length(attr(data,"layer_shape"))>0,
+    length(attr(data,"extra_shape"))>0
+  )
+  any(res)
+}
+adaptative_rounding<-function(vetor){
+  # Calcula as diferenças absolutas entre os números do vetor
+  diferencas <- diff(sort(vetor))
+
+  # Encontra a menor diferença
+  min_diferenca <- min(diferencas)
+
+  # Calcula o número de casas decimais necessário para preservar essa diferença
+  num_casas <- ceiling(-log10(min_diferenca))
+
+  # Arredonda o vetor com o número de casas decimais calculado
+  vetor_arredondado <- round(vetor, num_casas)
+  vetor_arredondado=format(vetor_arredondado, nsmall = num_casas)
+  # Exibe o resultado
+  vetor_arredondado
+}
+gg_bwaxes<-function(axis_width,x.n.breaks,y.n.breaks,data,base_shape_args,p,layer_shape_args,args_extra_shape){
+  lims<-get_limits2(data,base_shape_args,layer_shape_args,args_extra_shape)
+  axis_width=axis_width/10
+  #x.n.breaks=x.n.breaks-5
+  #y.n.breaks=y.n.breaks-5
+  scales<-ggplot2::layer_scales(p)
+  pyrange<-do.call(c,c(lims[c("ymin","ymax")]))
+  pxrange<-do.call(c,c(lims[c("xmin","xmax")]))
+  yh<-(max(pyrange)-min(pyrange))*axis_width
+  x.nb=x.n.breaks
+  y.nb=y.n.breaks
+  if(!x.nb%%2==0){
+    x.nb<-x.nb+1
+  }
+  if(!y.nb%%2==0){
+    y.nb<-y.nb+1
+  }
+
+
+  xb<-seq(pxrange['xmin'],pxrange['xmax'],len=x.nb)
+  yb<-seq(pyrange['ymin'],pyrange['ymax'],len=y.nb)
+
+  #xb<-pretty(attr(data,"coords")[,1],x.nb)
+  #yb<-pretty(attr(data,"coords")[,],y.nb)
+
+  # xb<-scales::breaks_pretty(x.nb)(seq(lims$xmin,lims$xmax,len=100))
+  # yb<-scales::breaks_pretty(y.nb)(seq(lims$ymin,lims$ymax,len=100))
+  #xb<-round(xb,max(sapply(pretty(xb),decimal_places)))
+  #yb<-round(yb,max(sapply(pretty(yb),decimal_places)))
+  #xb<-c(min(xb),xb,max(xb))
+  #yb<-c(min(yb),yb,max(yb))
+  print(any_shape(data))
+  if(!any_shape(data)){
+    #  xb<-c(min(xb),xb,max(xb)+(yh*4))
+    # yb<-c(min(yb),yb,max(yb)+(yh*4))
+  }
+  adf<-gg_bwaxes0(xb,yb,yh)
+  adf
+}
+gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',axis.text_size=13,axis.title_size=13,x.n.breaks=5,y.n.breaks=5,axis_width=0.1,show_guides=F,guides_color="gray",guides_linewidth=0.15,guides_linetype= "dashed",data=NULL,base_shape_args=NULL,layer_shape_args=NULL,args_extra_shape=NULL,...){
+
+  p<-p+xlab(xlab)+ylab(ylab)
+
+  if(axis_style=="default"){
+    return(p)
+  }
+  adf<-gg_bwaxes(axis_width,x.n.breaks, y.n.breaks, data,base_shape_args,p,layer_shape_args,args_extra_shape)
+  labelx<-subset(adf,axis=='axis1')$xmin
+  labelx<-c(labelx[-c(1)])
+  labely<-subset(adf,axis=='axis4')$ymin
+  labely<-labely[-c(1)]
+  labelsx<-adaptative_rounding(labelx)
+  # labelsx<-format(labelsx, nsmall = max(sapply(labelsx,decimalplaces)))
+  labelsy<-adaptative_rounding(labely)
+  # labelsy<-format(labelsy, nsmall = max(sapply(labely,decimalplaces)))
+
+  xmin=min(adf$xmin)
+  xmax=max(adf$xmin)
+  ymin=min(adf$ymin)
+  ymax=max(adf$ymax)
+  xxyy<-data.frame(x=c(xmin,xmin,xmax,xmax),
+                   y=c(ymin,ymax,ymax,ymin))
+
+  p<-p+geom_sf( inherit.aes = F)+coord_sf(
+    xlim=range(c(adf$xmin,adf$xmax)),
+    ylim=range(c(adf$ymin,adf$ymax)),
+    #label_axes=list(bottom=labelx),
+    expand=F
+  )
+
+  p<-p+
+    geom_rect(data=adf,aes(ymin=ymin,ymax=ymax,xmin=xmin,xmax=xmax),color="black",linewidth=0.3,fill=adf$color)
+
+
+  p<-p+
+    scale_x_continuous(breaks =labelx,
+                       labels=as.character(labelsx) )+
+    scale_y_continuous(breaks =labely,labels=labelsy )+
+    guides(y= guide_axis(angle=90,cap="upper",minor.ticks=F))+
+    theme(
+      axis.ticks=element_blank()
+    )
+  if(isTRUE(show_guides)){
+    p<-p+geom_hline(yintercept=labely,color =guides_color, linetype =guides_linetype, linewidth = guides_linewidth)+
+      geom_vline(xintercept =labelx,color =guides_color, linetype = guides_linetype, linewidth = guides_linewidth)
+  }
+  p
+
+}
+# Function to restore all inputs
+restoreInputs<-function(session, input_ids, state) {
+  print("RESTORING")
+
+  withProgress(message="Loading...",min=1,max=length(input_ids),{
+    for (id in input_ids) {
+      incProgress(1, #detail = paste("Updating", id)
+                  )
+     # runjs(paste0("Shiny.setInputValue('",id,"', '",state[[id]],"');"))
+      if (!is.null(state[[id]])) {
+        # Verifique se o input já existe no session$input
+        if (!is.null(session$input[[id]])) {
+          # Atualizar para inputs de texto
+          if (is.character(session$input[[id]])) {
+            #updateRadioButtons(session, id, selected = state[[id]])
+
+            updateTextInput(session, id, value = state[[id]])
+            updateRadioGroupButtons(session, id, selected = state[[id]])
+            # Atualizar para inputs numéricos
+          } else if (is.numeric(session$input[[id]])) {
+            updateNumericInput(session, id, value = state[[id]])
+          }
+
+
+          if (is.logical(session$input[[id]])) {
+            updateCheckboxInput(session, id, value = state[[id]])
+          }
+
+
+        }
+      }
+
+    }
+  })
+
+}
+restoreInputs2<-function(session, id, state) {
+  updated=F
+  if (!is.null(state)) {
+    if (!is.null(session$input[[id]])) {
+      if (is.character(session$input[[id]])) {
+        updateTextInput(session, id, value = state)
+        updateRadioGroupButtons(session,id,selected = state)
+
+        updated=T
+      } else if (is.numeric(session$input[[id]])) {
+        updateNumericInput(session, id, value = state)
+        updated=T
+      }
+      if (is.logical(session$input[[id]])) {
+        updateCheckboxInput(session, id, value = state)
+        updated=T
+      }
+    }
+  }
+  updated
+}
+
+
+
+restore_all_inputs<-function(id,update_state,session){
+  ids<-names(update_state)
+  update_on<-grepl(id,ids)
+  names(update_on)<-ids
+  to_loop<-names(which(update_on))
+  withProgress(min=1,max=length(to_loop),message="Restoring Inputs",{
+    for(i in to_loop) {
+      idi<-gsub(paste0(id,"-"),"",i)
+      incProgress(1)
+      restored<-restoreInputs2(session, idi, update_state[[i]])
+
+      if(isTRUE(restored)){
+        update_state[[i]]<-NULL
+      }
+
+    }
+  })
+  update_state
 }
