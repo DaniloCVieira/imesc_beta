@@ -3825,6 +3825,7 @@ imesc_supersom$server<-function (id,vals ){
         req(length(vals$saved_data)>0)
         req(isFALSE(input$mysupersom))
         vals$som_unsaved<-NULL
+        req(input$data_som)
         attr(vals$saved_data[[input$data_som]],"som")[["new som (unsaved)"]]<-NULL
 
 

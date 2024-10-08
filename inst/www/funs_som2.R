@@ -42,6 +42,9 @@ screeplot_som<-function(m,k.max,hc_fun,hc_method, session = getDefaultReactiveDo
   if(is.null(whatmap)){
     whatmap<-names(m$codes)
   }
+  if(length(m$data)==1){
+    whatmap<-NULL
+  }
 
   withProgress(min=2,max=k.max,session=session,{
 
@@ -60,6 +63,9 @@ screeplot_som<-function(m,k.max,hc_fun,hc_method, session = getDefaultReactiveDo
         weights<-m$user.weights
         pic_w<-names(m$codes)%in%whatmap
         weights<-weights[pic_w]
+      }
+      if(length(weights)==0){
+        weights=1
       }
 
       qe<-weighted.mean(q,weights)

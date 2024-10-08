@@ -1720,6 +1720,7 @@ hc_module$server<-function(id, vals){
         req(input$vfm_layer)
         not<-which(!names(m$data)%in%input$vfm_layer)
         req(length(not)>0)
+        req(m$data[[not]])
         m$data[[not]]<-NULL
         m$codes[[not]]<-NULL
       }
@@ -2719,7 +2720,12 @@ hc_module$server<-function(id, vals){
         hc_fun=input$hc_fun;hc_method=input$method.hc0
 
 
+
+
+
         result<-screeplot_som(m,k.max,hc_fun,hc_method,whatmap=vals$som_whatmap,use_weights=F)
+
+
 
         dend_hei<-somC$hc.object$height
         result$dh<-rev(dend_hei)[1:k.max]
