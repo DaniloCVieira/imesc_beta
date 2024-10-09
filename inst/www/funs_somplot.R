@@ -218,18 +218,7 @@ supersom_summaries3<-function(m,name){
 
 
 #' @export
-getpxpy<-function(m){
-  px<-diff(unique(m$grid$pts[,1])[1:2])/2
-  py<-diff(unique(m$grid$pts[,2])[1:2])/3
-  nx=m$grid$xdim
-  ny=m$grid$ydim
-  rang<-range(m$grid$pts[,1])
-  rang<-c(rang[1]-px,rang[2]+px)
-  rang2<-range(m$grid$pts[,2])
-  py2<-2*py
-  rang2<-c(rang2[1]-(py2),rang2[2]+(py2))
-  list(c(px,py),rang,rang2,c(nx,ny))
-}
+
 #' @export
 gethex<-function(m){
   grid<-data.frame(m$grid$pts)
@@ -596,9 +585,7 @@ add_codebook_pies<-function(p,m,hc=NULL,n=5,var_pie_type=c('top_hc','top','top_w
   p
 }
 #' @export
-bmu_plot<-function(m,hexs,points_tomap=NULL,bp=NULL,points=T,points_size=2,points_palette="turbo",pch=16,text=F,text_factor=NULL,text_size=1.5,text_palette="turbo",bg_palette="viridis",newcolhabs= vals$newcolhabs,bgalpha=1,border="white",indicate=NULL,cex.var=1,col.text="black",col.bg.var="white",col.bg.var.alpha=.8, newdata=NULL, show_error=NULL,base_size=12,show_neucoords=T,title="", hc=NULL, plotY=F,Y_palette="turbo", property=NULL,
-                   fill_neurons=F,
-                   border_width=0.5,
+bmu_plot<-function(m,hexs,points_tomap=NULL,bp=NULL,points=T,points_size=2,points_palette="turbo",pch=16,text=F,text_factor=NULL,text_size=1.5,text_palette="turbo",bg_palette="viridis",newcolhabs= vals$newcolhabs,bgalpha=1,border="white",indicate=NULL,cex.var=1,col.text="black",col.bg.var="white",col.bg.var.alpha=.8, newdata=NULL, show_error=NULL,base_size=12,show_neucoords=T,title="", hc=NULL, plotY=F,Y_palette="turbo", property=NULL,fill_neurons=F,border_width=0.5,
                    var_pie=F,
                    var_pie_type="top",
                    var_pie_transp=0.1,
@@ -762,8 +749,10 @@ bmu_plot<-function(m,hexs,points_tomap=NULL,bp=NULL,points=T,points_size=2,point
 
 
 
-  p<-p+scale_x_continuous(limits=rang,breaks=mybreaks ,labels=1:nx)+
-    scale_y_continuous(limits=rang2,breaks=mybreaksy ,labels=1:ny)
+  if(nx>1){
+    p<-p+scale_x_continuous(limits=rang,breaks=mybreaks ,labels=1:nx)
+  }
+  p<-p+scale_y_continuous(limits=rang2,breaks=mybreaksy ,labels=1:ny)
   p<-p+ coord_fixed()
   if(isTRUE(show_neucoords)){
     p<-p+ theme_light(
@@ -2428,3 +2417,30 @@ pbox<-function(res, palette="viridis", coefic=1.5, lab_out=NULL ,cex.lab=1, lwd=
 
 }
 
+getpxpy<-function(m){
+  px0<-unique(m$grid$pts[,1])[1:2]
+  py0<-unique(m$grid$pts[,2])[1:2]
+  if(anyNA(py0)){
+    py0<-c(0,py0[1])
+  }
+  if(anyNA(px0)){
+    px0<-c(0,px0[1])
+  }
+
+  px<-diff(px0)/2
+  if(length(unique(m$grid$pts[,"x"]))==2&length(unique(m$grid$pts[,"y"]))>1){
+    px<-px*2
+  }
+
+
+  py<-diff(py0)/3
+  nx=m$grid$xdim
+  ny=m$grid$ydim
+  rang<-range(m$grid$pts[,1])
+  rang<-c(rang[1]-px,rang[2]+px)
+  rang2<-range(m$grid$pts[,2])
+
+  py2<-2*py
+  rang2<-c(rang2[1]-(py2),rang2[2]+(py2))
+  list(c(px,py),rang,rang2,c(nx,ny))
+}
