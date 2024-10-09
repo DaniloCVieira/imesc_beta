@@ -781,9 +781,10 @@ databank_module$server<-function(id, vals){
     })
 
     output$DT_factors<-{
-      req(getdata_bank())
-      data<-attr(getdata_bank(),"factors")
+
       DT::renderDataTable({
+        req(getdata_bank())
+        data<-attr(getdata_bank(),"factors")
         validate(need(ncol(data) < 1000, "Preview not available for data with more than 1000 columns"))
         data},
         extensions = c('FixedColumns',"FixedHeader"),

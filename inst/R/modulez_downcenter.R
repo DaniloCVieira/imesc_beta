@@ -14,7 +14,7 @@ module_ui_downcenter<-function(id){
 #' @export
 module_server_downcenter<-function (input, output, session,vals, name=NULL,message=NULL,data=NULL){
   ns<-session$ns
-  print("server")
+
 
 
 

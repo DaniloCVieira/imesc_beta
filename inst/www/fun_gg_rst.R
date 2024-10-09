@@ -2813,7 +2813,10 @@ gg_bwaxes<-function(axis_width,x.n.breaks,y.n.breaks,data,base_shape_args,p,laye
 }
 gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',axis.text_size=13,axis.title_size=13,x.n.breaks=5,y.n.breaks=5,axis_width=0.1,show_guides=F,guides_color="gray",guides_linewidth=0.15,guides_linetype= "dashed",data=NULL,base_shape_args=NULL,layer_shape_args=NULL,args_extra_shape=NULL,...){
 
-  p<-p+xlab(xlab)+ylab(ylab)
+  p<-p+xlab(xlab)+ylab(ylab)+theme(
+    axis.title=element_text(size=axis.title_size),
+    axis.text=element_text(size=axis.text_size),
+  )
 
   if(axis_style=="default"){
     return(p)
