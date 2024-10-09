@@ -1635,7 +1635,6 @@ tool2_tab3$server<-function(id,vals){
         rank_lev<-input[[paste("rank_lev",vars[i],sep="_")]]
         level_labels= gsub("*.\\\n","",rank_lev)
         res<-as.numeric(as.character(factor(data[,vars[i]],levels=level_labels,labels = num_values)))
-        print(res)
 
         res
       })
@@ -4184,7 +4183,7 @@ tool2_tab8$server<-function(id,vals){
     observeEvent(data_shp(),{
 
       new=get_new_shape_attr()
-      print(new)
+
       updatePickerInput(session,"shp_include",selected=new)
     })
 
@@ -5758,10 +5757,9 @@ tool6$server<-function(id,vals){
     observeEvent(input$run_na,ignoreInit = T,{
       try({
 
-        # print("run_na")
+
 
         shinyjs::removeClass("run_na_btn","save_changes")
-        #req(isTRUE(vals$r_impute))
 
         data=vals$pp_data
         na_method=input$na_method
@@ -6631,7 +6629,7 @@ tool10$server<-function (id,vals){
 
               saveRDS(tosave, file)
               vals$collectInputs<-0
-              print(vals$collectInputs)
+
               beep(10)
 
             }
@@ -6648,7 +6646,7 @@ tool10$server<-function (id,vals){
     observeEvent(vals$collectInputs,{
       if(vals$collectInputs==2){
 
-        print(message("saved collectInputs state\n",vals$collectInputs))
+
         shinyjs::click('download_savepoint')
       }
     })

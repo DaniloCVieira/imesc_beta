@@ -130,7 +130,7 @@ filter_multipart_result<-function(indicator_r.g,npic){
   sss<-imesc_summary_multipatt(indicator_r.g)
 
   top_result<-do.call(c,lapply(  seq_along(sss),function(i){
-    print(i)
+
     x<-sss[[i]]
     vec<-rownames(na.omit(x[1:npic,]))
     vec1<-rep(i,length(vec))
@@ -659,7 +659,7 @@ diversity_tool$server<-function (id,vals ){
       )
 
       p<-do.call(gg_indicators,args)
-      print(p)
+
       p
     })
 

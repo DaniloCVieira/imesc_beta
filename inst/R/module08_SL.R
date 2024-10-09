@@ -2640,7 +2640,7 @@ permimp_metric<-function(predtable, m,metric="Accuracy", class=F, newdata,obc,se
       for(i in seq_along(rands_lis)){
 
         incProgress(1,   session=session)
-        print(paste0(i,"/",length(rands_lis)))
+        #print(paste0(i,"/",length(rands_lis)))
         xx<-rands_lis[[i]]
         pred_metric=as.vector(c(postResample(xx$pred,xx$obs)[metric]))
         var=xx$var
@@ -4789,7 +4789,7 @@ model_results$server<-function(id,vals){
     })
 
     observe({
-      print(cur_vars_feature())
+
       shinyjs::toggle('create_from_feature',
                       condition=!is.null(cur_vars_feature())
       )
@@ -4900,7 +4900,7 @@ model_results$server<-function(id,vals){
         max=nrow(imp)
       }
       if(isTRUE(stack)){
-        print("yes")
+
 
         m<-rf<- model()
         rfimp0<-rfimp<-rf_impotance2(rf,positive=!influence,scale=T,npic=nvars,only_sign=F, classes=xvar)
@@ -5640,7 +5640,7 @@ model_predic$server<-function(id,vals){
           data_x<-attr(m,"Datalist")
 
 
-          # print(model_names)
+
           data<-vals$saved_data[[data_x]]
 
           newdata= get_new_data()
@@ -5649,7 +5649,7 @@ model_predic$server<-function(id,vals){
           models<-lapply(model_names,function(name){
             attr(data,"rf")[[name]]$m
           })
-          #print(models)
+
           preds_list<-list()
 
 
@@ -5748,9 +5748,7 @@ model_predic$server<-function(id,vals){
       newnames<-make.unique(c(names(vals$saved_data),bag))
       bag<-newnames[length(newnames)]
       attr(data,'bag')<-bag
-      print(str(data))
-      print(str(attr(data,"coords")))
-      print(str(attr(data,"factors")))
+
       vals$newdatalist<-data
       module_save_changes$ui(session$ns("caret_predictions"),vals)
     })
@@ -6883,16 +6881,7 @@ caret_models$server<-function(id,vals){
               vals$model_error<-m<-try(suppressWarnings({
                 set.seed(seed)
                 do.call(train,args_train)}))
-              #try({
-              #rsq<-m$results[rownames(m$bestTune),"Rsquared"]
-              #if(rsq>0.6){
-              # cat("\014")
-              # names(rsq)<-var_y
-              # m_rsq<-c(m_rsq,rsq)
-              # print(sort(m_rsq))
-              #saveRDS(m_rsq,"m_rsq.rds")
-              #}
-              # })
+
 
 
               time1<-Sys.time()

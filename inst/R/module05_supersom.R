@@ -13,7 +13,7 @@ recreate_som<-function(m,length.out,session=MockShinySession$new()){
 
   withProgress(min=1,max=length(seq),message="Running...",session=session,{
     for( i in seq) {
-      print(i)
+
       set.seed(seed)
       m2<-supersom(m$data,m$grid,
                    radius = m$radius,
@@ -2006,7 +2006,7 @@ table_predict_som$server<-function(id,vals){
 
                                     as.list(postResample(pr,ob)))
                                 })))
-        #unlist(sapply(get_sompred()$predictions,colnames)) |>  print()
+
 
 
 
