@@ -1111,9 +1111,6 @@ hc_module$server<-function(id, vals){
 
     })
 
-    observe({
-      rownames(bp_som())
-    })
 
     module_save_changes$server("som-imp-create", vals)
     observeEvent(input$show_hc_imp,{
