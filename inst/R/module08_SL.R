@@ -5737,10 +5737,10 @@ model_predic$server<-function(id,vals){
 
       data_o<-vals$saved_data[[data_x]]
       req(data_x)
-      factors<-data.frame(id=rownames(data))
+      factors<-attr(data_o,"factors")
       rownames(factors)<-factors$id
       if(is.factor(data[,1])){
-        factors[supervisor]<-data[,1]
+        factors[paste0("pred_",supervisor)]<-data[,1]
         data<-data_o[rownames(data),]
       }
       data<-data_migrate(data_o,data)

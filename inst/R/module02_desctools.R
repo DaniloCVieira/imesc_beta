@@ -14,8 +14,6 @@ transform_module$server<-function(id,data){
 
 
 
-    #print(summary(result))
-
     return(transf_data(data,input$transf,colnames(data)))
 
   })
@@ -1067,7 +1065,7 @@ desctools_tab4$server<-function(id,vals){
     })
 
     observeEvent(ignoreInit = T,input$fm_downplot4,{
-      vals$hand_plot<-"generic_gg"
+      vals$hand_plot<-"generic_ggmatrix"
       generic=get_ggpair()
       message<-name_c<-"Pairs-plot"
       module_ui_figs("downfigs")
@@ -1135,7 +1133,7 @@ desctools_tab4$server<-function(id,vals){
     get_ggpair_args<-reactive({
       args<-try(silent = T,{
         req(getdata_descX())
-        saveRDS(reactiveValuesToList(input),"input.rds")
+
 
         req(input$ggpair.variables)
         req(input$fm_palette)
