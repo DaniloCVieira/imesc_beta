@@ -545,7 +545,7 @@ multipimp<-function(rf, mean_sample = "top_trees", measures = NULL){
 }
 #' @export
 plot_mdd<-function (min_depth_frame, k = 10, min_no_of_trees = 0, mean_sample = "top_trees",mean_scale = FALSE, mean_round = 2, main = "Distribution of minimal depth and its mean",newcolhabs,palette="viridis",
-                    size_mmd=5,size_plot=10){
+                    size_mmd=5,size_plot=10) {
   minimal_depth <- NULL
   mean_minimal_depth_label <- NULL
   mean_minimal_depth <- NULL
@@ -583,6 +583,9 @@ plot_mdd<-function (min_depth_frame, k = 10, min_no_of_trees = 0, mean_sample = 
   data_for_labels$mean_minimal_depth <- round(data_for_labels$mean_minimal_depth, digits = mean_round)
 
 
+  #print(aggregate(data["count"],data["variable"],sum))
+  # print(unique(data[order(data$count),"variable"]))
+
 
   #colors<-colors[mdepth]
   plot<- ggplot(data, aes(x = variable, y = count)) +
@@ -600,8 +603,11 @@ plot_mdd<-function (min_depth_frame, k = 10, min_no_of_trees = 0, mean_sample = 
   if (!is.null(main)) {
     plot <- plot + ggtitle(main)
   }
+  attr(plot,"sigs")<-  levels(data$variable)
   return(plot)
 }
+
+
 
 #' @export
 prf<-function(res_multi, sigs=T, sig.value=0.05,size_plot=10,
@@ -626,7 +632,7 @@ prf<-function(res_multi, sigs=T, sig.value=0.05,size_plot=10,
   sig_vars<-which(min_depth_frame$variable%in%BoldImportance$variable)
 
   if(isTRUE(sigs)){min_depth_frame_sigs<-min_depth_frame[sig_vars,]
-} else{    min_depth_frame_sigs<-min_depth_frame
+  } else{    min_depth_frame_sigs<-min_depth_frame
   }
 
   if(isTRUE(sigs)){pick<-nrow(BoldImportance)} else{pick=sigs}
@@ -635,25 +641,14 @@ prf<-function(res_multi, sigs=T, sig.value=0.05,size_plot=10,
 
 
   MDD.plot<-plot_mdd(min_depth_frame_sigs, k=pick,
-                                        min_no_of_trees = min_no_of_trees,
-                                        mean_sample = mean_sample,
-                                        mean_scale = mean_scale,
+                     min_no_of_trees = min_no_of_trees,
+                     mean_sample = mean_sample,
+                     mean_scale = mean_scale,
                      newcolhabs=newcolhabs,palette=palette,size_mmd=size_mmd,size_plot=size_plot)
-#  MDD.plot<-MDD.plot+theme_set(theme_grey(base_size = size_plot))
-
-  a<-MDD.plot$layers[[3]]$data
-  a<-a[order(a$mean_minimal_depth),]
 
 
-  MWI1.plot<-randomForestExplainer::plot_multi_way_importance(multi_imps, no_of_labels = nrow(BoldImportance))
-  attr(MDD.plot,"sigs")<-multi_imps[  a$variable,]
-
-
-  MDD.plot$layers[[2]]$layer_data
-   par(mfrow=c(1,2))
   return(MDD.plot)
-  }
-
+}
 
 
 #' @export

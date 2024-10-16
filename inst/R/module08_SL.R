@@ -5738,8 +5738,10 @@ model_predic$server<-function(id,vals){
       data_o<-vals$saved_data[[data_x]]
       req(data_x)
       factors<-attr(data_o,"factors")
-      rownames(factors)<-factors$id
+      factors<-factors[rownames(data),]
       if(is.factor(data[,1])){
+
+
         factors[paste0("pred_",supervisor)]<-data[,1]
         data<-data_o[rownames(data),]
       }
@@ -5748,6 +5750,8 @@ model_predic$server<-function(id,vals){
       newnames<-make.unique(c(names(vals$saved_data),bag))
       bag<-newnames[length(newnames)]
       attr(data,'bag')<-bag
+
+      print(attr(data,"factors"))
 
       vals$newdatalist<-data
       module_save_changes$ui(session$ns("caret_predictions"),vals)

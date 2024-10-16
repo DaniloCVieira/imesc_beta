@@ -1,3 +1,5 @@
+
+
 box35_help_content<-"Plot two measures of importance of variables in a random forest"
 explainer_ggpair<-list()
 explainer_ggpair$ui<-function(id,title=NULL,tip=NULL){
@@ -1554,25 +1556,33 @@ rf_explainer$server<-function(id,vals){
 
 
     observeEvent(input$create_rf,ignoreInit = T,{
-      m<-model()
-      data<-get_measure_table()
-      data_x<-attr( model(),"Datalist")
-      req(data_x)
-      data_o<-vals$saved_data[[data_x]]
-      data<-data_o[,as.character(vals$rf_sigs$variable),drop=F]
-      data<-data_migrate(data_o,data)
+      try({
+
+        m<-model()
+        data<-get_measure_table()
+        data_x<-attr( model(),"Datalist")
+        req(data_x)
+        data_o<-vals$saved_data[[data_x]]
 
 
-      bag<-attr(m,'model_name')
-      if(is.null(bag)){
-        bag<-attr(m,"model_tag")
-      }
-      bag<-paste0(bag,"_sig_vars")
-      newnames<-make.unique(c(names(vals$saved_data),bag))
-      bag<-newnames[length(newnames)]
-      attr(data,"bag")<-bag
-      vals$newdatalist<-data
-      module_save_changes$ui(ns("explainer-create"),vals)
+        data<-data_o[,as.character(vals$rf_sigs),drop=F]
+
+        data<-data_migrate(data_o,data)
+        print(colnames(data))
+
+
+        bag<-attr(m,'model_name')
+        if(is.null(bag)){
+          bag<-attr(m,"model_tag")
+        }
+        bag<-paste0(bag,"_sig_vars")
+        newnames<-make.unique(c(names(vals$saved_data),bag))
+        bag<-newnames[length(newnames)]
+        attr(data,"bag")<-bag
+        vals$newdatalist<-data
+        module_save_changes$ui(ns("explainer-create"),vals)
+
+      })
     })
     module_save_changes$server("explainer-create",vals)
     observeEvent(rf_inputsmeasure(),{
