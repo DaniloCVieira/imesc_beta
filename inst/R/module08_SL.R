@@ -4686,7 +4686,7 @@ model_results$server<-function(id,vals){
         ),
         div(style="display: flex; gap: 3px; font-size: 11px",
 
-            div(strong_forest(paste0("Final model - "))),
+            div(strong_forest(paste0("Resamling performace - "))),
             div(style="display: flex; gap: 6px",
 
                 emgray(paste0(metric$metric[1],':')),

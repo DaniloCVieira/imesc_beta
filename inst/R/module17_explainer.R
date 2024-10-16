@@ -1,4 +1,3 @@
-
 box35_help_content<-"Plot two measures of importance of variables in a random forest"
 explainer_ggpair<-list()
 explainer_ggpair$ui<-function(id,title=NULL,tip=NULL){
@@ -129,7 +128,7 @@ rf_explainer$ui<-function(id){
                                                                                                                                                               "accuracy_decrease","gini_decrease" ,"no_of_nodes","times_a_root"),selected=c("mean_min_depth","accuracy_decrease","gini_decrease" ,"no_of_nodes","times_a_root"))
                                       ),
                                       checkboxInput(ns("loop_measures"),span("Calculate for all saved models"))
-                                      )
+                                    )
 
                           )),
                    column(8,class="mp0",
@@ -1551,16 +1550,19 @@ rf_explainer$server<-function(id,vals){
       updateNumericInput(session,'plot_height',value=n_displaying())
     })
 
+
+
+
     observeEvent(input$create_rf,ignoreInit = T,{
       m<-model()
       data<-get_measure_table()
       data_x<-attr( model(),"Datalist")
       req(data_x)
       data_o<-vals$saved_data[[data_x]]
-      data<-data_o[,vals$rf_sigs$variable,drop=F]
+      data<-data_o[,as.character(vals$rf_sigs$variable),drop=F]
       data<-data_migrate(data_o,data)
 
-      module_save_changes$ui(ns("explainer-create"))
+
       bag<-attr(m,'model_name')
       if(is.null(bag)){
         bag<-attr(m,"model_tag")
@@ -1570,10 +1572,9 @@ rf_explainer$server<-function(id,vals){
       bag<-newnames[length(newnames)]
       attr(data,"bag")<-bag
       vals$newdatalist<-data
-
-      module_save_changes$server("explainer-create",vals)
+      module_save_changes$ui(ns("explainer-create"),vals)
     })
-
+    module_save_changes$server("explainer-create",vals)
     observeEvent(rf_inputsmeasure(),{
       updateCheckboxGroupInput(session,"rf_measures",choices=rf_inputsmeasure(),selected=rf_inputsmeasure())
     })
