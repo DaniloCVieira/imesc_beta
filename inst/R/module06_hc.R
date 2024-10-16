@@ -664,7 +664,7 @@ hc_module$ui<-function(id){
 
                             ),
                             div(id=ns('varfac_out'),
-                                pickerInput_fromtop(ns("vfm_layer"),"Layer:",choices =NULL),
+                               # pickerInput_fromtop(ns("vfm_layer"),"Layer:",choices =NULL),
                                 pickerInput_fromtop(ns("vfm_type"),"Show correlation:",choices =list("Highest"='var', "Chull"="cor","Cluster"="cor_hc")),
 
                                 numericInput(ns("npic"), span(tiphelp("Number of variables to display"),"Number"), value = 10, min = 2),
@@ -1046,7 +1046,10 @@ hc_module$server<-function(id, vals){
 
       args<-argsplot_somplot()
 
+
+
       args$hc<-cur_som.hc.clusters()
+
       p<-do.call(bmu_plot_hc,args)
       hcplot4(p)
       p
@@ -1145,6 +1148,7 @@ hc_module$server<-function(id, vals){
       m<-getmodel_hc()
 
 
+      req(input$var_pie_layer%in%names(m$codes))
       order<-order(colMeans(abs( m$codes[[input$var_pie_layer]])),decreasing=T)
       choices<-colnames(m$codes[[input$var_pie_layer]])[order]
 
@@ -1691,21 +1695,7 @@ hc_module$server<-function(id, vals){
       iind=list(indicate=indicate,npic=npic)
       iind
     })
-    observe({
-      m<-getmodel_hc()
-      datalists<-attr(m,"Datalist")
-      if(is.null(datalists)){
-        datalists<-input$data_hc
-      }
-      ord<-1:length(datalists)
-      if(length(unique(m$user.weights))>1){
-        ord<-ord[order(m$user.weights,decreasing=T)]
-      }
-      choices<-datalists[ord]
-      selected<-vals$cur_vfm_layer
-      selected=get_selected_from_choices(selected,choices)
-      updatePickerInput(session,'vfm_layer',choices=choices,selected=selected)
-    })
+
 
 
 
@@ -1713,14 +1703,7 @@ hc_module$server<-function(id, vals){
 
       iind=indicate_hc()
       m<-getmodel_hc()
-      if(length(m$data)>1){
-        req(input$vfm_layer)
-        not<-which(!names(m$data)%in%input$vfm_layer)
-        req(length(not)>0)
-        req(m$data[[not]])
-        m$data[[not]]<-NULL
-        m$codes[[not]]<-NULL
-      }
+
 
       bp<-getbp_som2(m=m,indicate=iind$indicate,npic=iind$npic,hc=vals$cutsom)
       bp
@@ -1730,8 +1713,8 @@ hc_module$server<-function(id, vals){
       m<-getmodel_hc()
       vars<-rownames(bp_som())
       data_o<-vals$saved_data[[names(m$data)[1]]]
-      data_n<-data.frame(m$data[[input$vfm_layer]])
-      colnames(data_n)<-colnames(m$data[[input$vfm_layer]])
+      data_n<-data.frame(do.call(rbind,m$data))
+
       data_n<-data_n[,vars,drop=F]
       data_n<-data_migrate(data_o,data_n)
       npic=input$npic
@@ -1740,7 +1723,7 @@ hc_module$server<-function(id, vals){
                    "var"='Highest',
                    "cor"="Chull",
                    "cor_hc"="Cluster")
-      bag<-paste0(input$vfm_layer,"_vfm",type,npic,"vars")
+      bag<-paste0(input$som_model_name,"_vfm",type,npic,"vars")
 
       attr(data_n,"bag")<-bag
       vals$newdatalist<-data_n

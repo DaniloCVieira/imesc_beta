@@ -6639,7 +6639,7 @@ tool10$server<-function (id,vals){
       )}
 
     observeEvent(input$create_savepoint,{
-      message("collecting inputs....")
+
       vals$collectInputs<-1
 
     })
@@ -6732,7 +6732,7 @@ tool10$server<-function (id,vals){
         #updateTextInput(session, "tabs", value = newvals$cur_tab)
         runjs("Shiny.setInputValue('last_btn', 'fade');")
       })
-      message("collectInputs while saving\n",vals$collectInputs)
+
       beep(10)
 
       removeModal()
