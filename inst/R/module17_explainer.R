@@ -181,8 +181,8 @@ rf_explainer$ui<-function(id){
                               numericInput(ns("labrfsize"),"Base size:", value=10),
                               textInput(ns("title_prf"),"Title:", value=NULL),
 
-                              textInput(ns("xlab_prf"),"X label:", value="Variable"),
-                              textInput(ns("ylab_prf"),"Y label:", value="Number of Trees"),
+                              textInput(ns("xlab_prf"),"X label:", value="Number of Trees"),
+                              textInput(ns("ylab_prf"),"Y label:", value="Variable"),
 
                               numericInput(ns('prf_axis_size'),"Axis size", 12),
                               numericInput(ns('prf_label_axis_size'),"Label axis size", 12),

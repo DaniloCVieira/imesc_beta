@@ -2304,31 +2304,35 @@ panel_box_caret2$server<-function(id,vals){
 
 
     result<-reactive({
+      try({
 
-      x<-vals$cur_xtrain
-      y<-vals$cur_var_y
-      model<-vals$cmodel
-      req(x)
-      req(y)
-      req(model)
-      req(!model%in%"rfGA")
-      res0<-res<-run_gridcaret(x,y,model)
-      classes<-res$classes
-      param<-res$param
-      req(classes)
-      reslist<-list()
-      for(x in colnames(res0[[2]])){
-        req(input[[x]])
 
-        if(classes[[x]]%in%c("numeric","integer")){
-          vec<-gsub(" ","",strsplit(input[[x]],",")[[1]])
-          vec<-as.numeric(vec)
-        } else{
-          vec<-input[[x]]
+        x<-vals$cur_xtrain
+        y<-vals$cur_var_y
+        model<-vals$cmodel
+        req(x)
+        req(y)
+        req(model)
+        req(!model%in%"rfGA")
+        res0<-res<-run_gridcaret(x,y,model)
+        classes<-res$classes
+        param<-res$param
+        req(classes)
+        reslist<-list()
+        for(x in colnames(res0[[2]])){
+          req(input[[x]])
+
+          if(classes[[x]]%in%c("numeric","integer")){
+            vec<-gsub(" ","",strsplit(input[[x]],",")[[1]])
+            vec<-as.numeric(vec)
+          } else{
+            vec<-input[[x]]
+          }
+          reslist[[x]]<-vec
         }
-        reslist[[x]]<-vec
-      }
-      reslist
+        reslist
+
+      })
     })
     observeEvent(result(),{
       req(result())
@@ -4139,10 +4143,8 @@ model_results$ui<-function(id){
                                           radioGroupButtons(ns("useModel"), span("Use Model:",tipright(paste0("Use a model based technique for measuring variable importance?. TRUE is only available for ", code('rf','gbm','glm','cforest', 'avNNet','nnet','rpart')))), choices = FALSE)
                                       ),
                                       numericInput(ns("nvars"),span("+ nvars:",tipright("Number of variables to display")), value=20,  step=1),
-                                      pickerInput_fromtop(ns("feat_palette"),
-                                                          label ='Palette:',
-                                                          choices = NULL,
-                                                          options=shinyWidgets::pickerOptions(windowPadding="top")),
+                                      colourpicker::colourInput(ns("feat_palette"),"Palette:","#191970"),
+
                                       numericInput(ns("feat_size"),'+ size', value=12,  step=1),
                                       numericInput(ns("feat_barhei"),'+ bar height', value=.95,  step=.1),
                                       checkboxInput(ns("stack"),"+ Multi-Importance",F),
@@ -4275,14 +4277,6 @@ model_results$server<-function(id,vals){
 
 
 
-    observeEvent(input$stack,{
-
-      selected='midnight'
-      updatePickerInput(session,'feat_palette',
-                        selected=selected,
-                        choices =     vals$colors_img$val,
-                        choicesOpt = list(content =vals$colors_img$img))
-    })
 
 
 
@@ -4413,7 +4407,7 @@ model_results$server<-function(id,vals){
       vars0<-as.character(impdf$var)
       vars2<-as.character(impdf$var2)
       names(vars0)<-vars2
-      fill=vals$newcolhabs[[input$feat_palette]](1)
+      fill=input$feat_palette
       p<-ggplot(impdf,aes(x=value,y=var2))+geom_bar(stat="identity",show.legend = F,fill=fill)
 
       p<-p+facet_wrap(vars(class2),scales="free",ncol=length(m$levels)) +ylab("Variables")+xlab("Influence score")
@@ -4917,14 +4911,14 @@ model_results$server<-function(id,vals){
         vars0<-as.character(impdf$var)
         vars2<-as.character(impdf$var2)
         names(vars0)<-vars2
-        fill=newcolhabs[[feat_palette]](1)
+        fill=feat_palette
         p<-ggplot(impdf,aes(x=value,y=var2))+geom_bar(stat="identity",show.legend = F,fill=fill)
 
         p<-p+facet_wrap(vars(class2),scales="free",ncol=length(m$levels)) +ylab("Variables")+xlab("Influence score")
         p<-p+ scale_y_discrete(labels=impdf$var,breaks=impdf$var2)
 
       } else{
-        fill=newcolhabs[[feat_palette]](1)
+        fill=feat_palette
         imp<-imp[order(imp[,1], decreasing=T),,drop=F][1:max,1, drop=F]
         colnames(imp)<-"value"
         imp<-data.frame(var=rownames(imp),imp)
@@ -5740,8 +5734,6 @@ model_predic$server<-function(id,vals){
       factors<-attr(data_o,"factors")
       factors<-factors[rownames(data),]
       if(is.factor(data[,1])){
-
-
         factors[paste0("pred_",supervisor)]<-data[,1]
         data<-data_o[rownames(data),]
       }
@@ -5750,9 +5742,6 @@ model_predic$server<-function(id,vals){
       newnames<-make.unique(c(names(vals$saved_data),bag))
       bag<-newnames[length(newnames)]
       attr(data,'bag')<-bag
-
-      print(attr(data,"factors"))
-
       vals$newdatalist<-data
       module_save_changes$ui(session$ns("caret_predictions"),vals)
     })

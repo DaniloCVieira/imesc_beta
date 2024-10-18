@@ -2838,7 +2838,7 @@ gg_style_axes<-function(p,axis_style="default",xlab='Longitude',ylab='Latitude',
   xxyy<-data.frame(x=c(xmin,xmin,xmax,xmax),
                    y=c(ymin,ymax,ymax,ymin))
 
-  p<-p+geom_sf( inherit.aes = F)+coord_sf(
+  p<-p+coord_sf(
     xlim=range(c(adf$xmin,adf$xmax)),
     ylim=range(c(adf$ymin,adf$ymax)),
     #label_axes=list(bottom=labelx),

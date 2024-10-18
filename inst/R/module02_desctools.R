@@ -375,9 +375,9 @@ desctools_tab2$ui<-function(id){
                           ),
 
                           div(class="picker-flex",
-                              pickerInput_fromtop( ns("box_y"),tipify(
+                              virtualPicker_unique( ns("box_y"),tipify(
                                 span("Variable"),
-                                "the numeric values to be split into groups according to the grouping variable"),choices = NULL, multiple=T, options=shinyWidgets::pickerOptions(liveSearch =T)))
+                                "the numeric values to be split into groups according to the grouping variable"),choices = NULL, multiple=T))
 
 
 
@@ -625,7 +625,7 @@ desctools_tab2$server<-function(id,vals){
       if(is.null(selected)){
         selected=choices[1]
       }
-      updatePickerInput(session,'box_y',choices=choices,selected= selected,options=shinyWidgets::pickerOptions(liveSearch=T))
+      shinyWidgets::updateVirtualSelect('box_y',choices=choices,selected= selected)
     })
 
     observeEvent(input$box_y,{
