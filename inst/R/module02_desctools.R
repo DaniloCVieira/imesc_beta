@@ -1,5 +1,5 @@
 
-print.ggmatrix<-GGally:::print.ggmatrix
+
 transform_module<-list()
 transform_module$ui<-function(id, label="Transformation"){
   ns<-NS(id)
@@ -1821,6 +1821,7 @@ desctools_tab7$server<-function(id,vals){
         req(input$pca_points_factor)
         data<-getdata_descX()
         factors<-attr(data,"factors")
+        req(input$pca_points_factor%in%colnames(factors))
         factors[rownames(data),input$pca_points_factor, drop=F]
       } else{NULL}
 
@@ -3044,6 +3045,7 @@ desctools_tab9$server<-function(id,vals){
       if(length(vals$window_pool)>1){w.effect=TRUE
       main="Window size effect"} else{w.effect=F
       main="Dissimilary Profile"}
+      #saveRDS(vals$smw_dp,"smw_dp.rds")
 
       suppressWarnings(plot( vals$smw_dp, w.effect =w.effect  , main=main))
       res<-recordPlot()
@@ -3220,7 +3222,7 @@ desctools_tab9$server<-function(id,vals){
       colnames(y)<-colnames(vals$saved_data[[input$segrda_Y]])
       x<-na.omit(x[rownames(y),,drop=F])
       if(isTRUE(input$segrda_ord)){
-        sim1o<-OrdData(x=y,y=x, axis=input$axis_ord_segrda,scale=input$segrda_scale)} else{
+        sim1o<-segRDA::OrdData(x=y,y=x, axis=input$axis_ord_segrda,scale=input$segrda_scale)} else{
           sim1o<-list()
           sim1o$xo<-y
           sim1o$yo<-x

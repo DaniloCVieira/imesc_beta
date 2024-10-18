@@ -1,3 +1,4 @@
+#' @import segRDA
 #' @import kohonen sf  ggplot2
 #' @import shiny viridis colorRamps wesanderson shinyTree sortable
 #' @import randomForestExplainer

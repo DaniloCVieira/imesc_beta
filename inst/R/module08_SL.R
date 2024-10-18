@@ -5357,7 +5357,10 @@ model_predic$server<-function(id,vals){
       obs<-SL_predobs()$obs
       pred<-SL_predobs()$pred
 
+      req(length(obs)==length(pred))
+
       m<-model
+      NULL
 
       table<-stats_ml(obs,pred,m)
 
@@ -5368,6 +5371,12 @@ model_predic$server<-function(id,vals){
     output$predict_metrics<-renderUI({
       if(input$svmpred_which=="Datalist"){
         req(input$predSL_newY!="None")
+        validate(need(length(getobssvm())>0,paste(
+          "Observed Data was not found for the Datalist",input$predSL_new
+        )))
+
+
+
       }
       validate(need(inherits(model,"train"),"No trained  models found"))
 
@@ -5408,6 +5417,7 @@ model_predic$server<-function(id,vals){
 
 
     getobssvm<-reactive({
+      req(input$predSL_new)
       req(model)
       sup_test<-attr(model,"supervisor")
 
@@ -5416,20 +5426,27 @@ model_predic$server<-function(id,vals){
         datalist=lapply(datalist,function(x) attr(x,"factors"))}
 
       m<-model
-      res0<-unlist(
-        lapply(datalist, function (x){
-          res<-any(colnames(x)==sup_test)
+      res0<-
+        sapply(datalist, function (x){
+          any(colnames(x)==sup_test)&
+            all(
+              rownames(x)%in%rownames(vals$saved_data[[input$predSL_new]])
+
+            )
 
         })
-      )
-      names(res0[res0==T])
+      names(which(res0))
+
+
     })
 
 
     output$sl_observed<-renderUI({
+
       sup_test<-attr(model,"supervisor")
       from<-paste0(" ",input$svmpred_which)
       if(input$svmpred_which=="Datalist"){
+        req(length(getobssvm())>0)
         from=span(emgreen("Datalist: "),tipright(
           paste0("<p>Data containing <code>",sup_test,"</code> column to be compared with predicted values</p>")
         ))
@@ -5732,7 +5749,7 @@ model_predic$server<-function(id,vals){
       data_o<-vals$saved_data[[data_x]]
       req(data_x)
       factors<-attr(data_o,"factors")
-      factors<-factors[rownames(data),]
+      factors<-factors[rownames(data),,drop=F]
       if(is.factor(data[,1])){
         factors[paste0("pred_",supervisor)]<-data[,1]
         data<-data_o[rownames(data),]
