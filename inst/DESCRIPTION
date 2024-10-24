@@ -16,10 +16,9 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.3.2
-Depends: R (>= 3.5.0),  aweSOM
+Depends: R (>= 3.5.0), shinyTree, aweSOM
 Imports: 
     ade4,
-    shinyTree,
     base,
     base64enc,
     beepr,
@@ -98,8 +97,7 @@ Imports:
     plot3D,
     ggparty,
     MLmetrics,
-    gbRd,
- corrplot
+    gbRd
 Suggests: 
     knitr,
     rmarkdown
