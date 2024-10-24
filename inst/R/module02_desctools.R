@@ -2097,8 +2097,8 @@ desctools_tab5$ui<-function(id){
                  corrplot_module$ui(ns("module_corrplot"))
                ),
                div(
-                 id=ns("ggcorrplot_options"),
-                 ggcorrplot_module$ui(ns("module_ggcorr"))
+                 #id=ns("ggcorrplot_options"),
+                 #ggcorrplot_module$ui(ns("module_ggcorr"))
                )
              )
 
@@ -2113,7 +2113,7 @@ desctools_tab5$ui<-function(id){
         button_title2=
           radioGroupButtons(
             ns("corr_engenier"),NULL,
-            c("heatmap","corrplot",'ggcorrplot'),selected='heatmap'
+            c("heatmap","corrplot"),selected='heatmap'
           )
         ,button_title =actionLink(ns('corr_downp'), "Download",icon("download")),
 
@@ -2191,12 +2191,10 @@ desctools_tab5$server<-function(id,vals){
     })
 
     ggplot_corrplot_args<-reactive({
-      ggcorrplot_module$server('module_ggcorr',get_corrdata(),vals)
+     # ggcorrplot_module$server('module_ggcorr',get_corrdata(),vals)
     })
 
-    observeEvent(ggplot_corrplot_args(),{
-      shinyjs::addClass('run_ggcorrplot_btn',"save_changes")
-    })
+  #  observeEvent(ggplot_corrplot_args(),{  shinyjs::addClass('run_ggcorrplot_btn',"save_changes")   })
     ggplot_corrplot<-eventReactive(input$run_ggcorrplot,ignoreInit = T,{
       args<-ggplot_corrplot_args()
       shinyjs::removeClass('run_ggcorrplot_btn',"save_changes")
@@ -2272,7 +2270,7 @@ desctools_tab5$server<-function(id,vals){
 
     corrplot_module$server_update('module_corrplot',vals)
 
-    ggcorrplot_module$server_update('module_ggcorr',vals)
+    #ggcorrplot_module$server_update('module_ggcorr',vals)
 
 
     get_corrdata<-reactive({
