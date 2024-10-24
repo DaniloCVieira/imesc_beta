@@ -2042,7 +2042,7 @@ retype<-function(data){
 }
 
 
-virtualPicker_unique<-function(id,label,choices,selected=NULL,search=T,multiple=F,allOptionsSelectedText="All",alwaysShowSelectedOptionsCount=F,width=NULL){
+virtualPicker_unique<-function(id,label,choices,selected=NULL,search=T,multiple=F,allOptionsSelectedText="All",alwaysShowSelectedOptionsCount=F,width=NULL,position="bottom"){
   div(class="picker13",
       shinyWidgets::virtualSelectInput(
         id,
@@ -2051,7 +2051,7 @@ virtualPicker_unique<-function(id,label,choices,selected=NULL,search=T,multiple=
         alwaysShowSelectedOptionsCount=alwaysShowSelectedOptionsCount,
         allOptionsSelectedText=allOptionsSelectedText,
 
-        optionHeight='24px',position="bottom",
+        optionHeight='24px',position=position,
         width=width
       )
   )

@@ -34,7 +34,7 @@ surface_add_points$ui<-function(id){
 
 
 
-          pickerInput_fromtop(ns("surf_ap_palette"),"Palette", choices=NULL),
+          pickerInput_fromtop_live(ns("surf_ap_palette"),"Palette", choices=NULL),
 
           numericInput(ns('surf_ap_size'),"Size",1.5),
           checkboxInput(ns("surf_z_scale"),"Scale Size", F ),
@@ -391,7 +391,7 @@ sptools_colors$ui<-function(id){
 
     div(
       tags$div(
-        pickerInput_fromtop(inputId = ns("palette"),
+        pickerInput_fromtop_live(inputId = ns("palette"),
                             label ="Palette",
                             NULL),
         radioButtons(ns("scale_color"),"Color Range:",c(
@@ -2516,7 +2516,8 @@ sptools_tab$server<-function(id, raster=F, interp=F, pie=F,circles=F,vals,surfac
       if(vals$cur_factor_filter!="None"){
         name_c=paste0(name_c,"-",vals$cur_level_filter)
       }
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Map", name_c)
+      datalist_name=attr(vals$data_map,"datalist")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Map", name_c=name_c,datalist_name=datalist_name)
     })
 
     observe({

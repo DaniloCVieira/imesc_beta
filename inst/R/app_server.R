@@ -237,9 +237,9 @@ app_server<-server<-function(input, output, session) {
       "plasma" = get('plasma'),
       "Rushmore1"=colorRampPalette(wes_palette("Rushmore1",100,type ="continuous")),
       "FantasticFox1"=colorRampPalette(wes_palette("FantasticFox1",100,type ="continuous")),
-      "inferno"=colorRampPalette(viridis::inferno(7)[-1]),
-      "Blues"=colorRampPalette(RColorBrewer::brewer.pal(9,"Blues")),
+      "inferno"=get('inferno'),
       "heat"=get('heat.colors'),
+      "Blues"=colorRampPalette(RColorBrewer::brewer.pal(9,"Blues")),
       "Purples"=colorRampPalette(RColorBrewer::brewer.pal(9,"Purples")),
       "Greens"=colorRampPalette(RColorBrewer::brewer.pal(9,"Greens")),
       "Grays"=colorRampPalette(c("gray90","gray10")),
@@ -250,13 +250,67 @@ app_server<-server<-function(input, output, session) {
       "royalblue" = colorRampPalette("royalblue"),
       "firebrick" = colorRampPalette("firebrick"),
       "forestGreen" = colorRampPalette("forestGreen"),
-      "goldenrod3" =  colorRampPalette("goldenrod3")
+      "goldenrod3" =  colorRampPalette("goldenrod3"),
+      'spectral'=colorRampPalette(RColorBrewer::brewer.pal(11,name='Spectral')),
+      'RdYlGn'=colorRampPalette(RColorBrewer::brewer.pal(11,name='RdYlGn')),
+      'RdYlBu'=colorRampPalette(RColorBrewer::brewer.pal(11,name='RdYlBu')),
+      'RdGy'=colorRampPalette(RColorBrewer::brewer.pal(11,name='RdGy')),
+      'RdBu'=colorRampPalette(RColorBrewer::brewer.pal(11,name='RdBu')),
+      'PuOr'=colorRampPalette(RColorBrewer::brewer.pal(11,name='PuOr')),
+      'PRGn'=colorRampPalette(RColorBrewer::brewer.pal(11,name='PRGn')),
+      'PiYG'=colorRampPalette(RColorBrewer::brewer.pal(11,name='PiYG')),
+      'BrBG'=colorRampPalette(RColorBrewer::brewer.pal(11,name='BrBG')),
+
+
+
+      "BuGn"=colorRampPalette(RColorBrewer::brewer.pal(9,"BuGn")),
+      "BuPu"=colorRampPalette(RColorBrewer::brewer.pal(9,"BuPu")),
+      "GnBu"=colorRampPalette(RColorBrewer::brewer.pal(9,"GnBu")),
+
+
+      "Oranges"=colorRampPalette(RColorBrewer::brewer.pal(9,"Oranges")),
+      "OrRd"=colorRampPalette(RColorBrewer::brewer.pal(9,"OrRd")),
+      "PuBu"=colorRampPalette(RColorBrewer::brewer.pal(9,"PuBu")),
+
+
+      "PuBuGn"=colorRampPalette(RColorBrewer::brewer.pal(9,"PuBuGn")),
+      "PuRd"=colorRampPalette(RColorBrewer::brewer.pal(9,"PuRd")),
+      "Purples"=colorRampPalette(RColorBrewer::brewer.pal(9,"Purples")),
+
+      "RdPu"=colorRampPalette(RColorBrewer::brewer.pal(9,"RdPu")),
+      "Reds"=colorRampPalette(RColorBrewer::brewer.pal(9,"Reds")),
+      "YlGn"=colorRampPalette(RColorBrewer::brewer.pal(9,"YlGn")),
+
+
+      "YlGnBu"=colorRampPalette(RColorBrewer::brewer.pal(9,"YlGnBu")),
+      "YlOrBr"=colorRampPalette(RColorBrewer::brewer.pal(9,"YlOrBr")),
+      "YlOrRd"=colorRampPalette(RColorBrewer::brewer.pal(9,"YlOrRd"))
+
+
+
+
+
+
+
+
 
     ) ## in global
   )
 
 
 
+  invert_color <- function(color) {
+    # Convert the color to RGB
+    rgb_val <- col2rgb(color)
+
+    # Invert the RGB values (255 - original value)
+    inverted_rgb <- 255 - rgb_val
+
+    # Convert the inverted RGB values back to hexadecimal color
+    inverted_hex <- rgb(inverted_rgb[1], inverted_rgb[2], inverted_rgb[3], maxColorValue = 255)
+
+    return(inverted_hex)
+  }
 
   get_colorimages<-reactive({
 
@@ -266,14 +320,32 @@ app_server<-server<-function(input, output, session) {
       palette_name<-paste("palette",i)
       outfile<-tempfile(fileext = ".png")
 
-      png(outfile, height =70, width=200)
+      png(outfile, height =70, width=300)
       par(mar=c(0,0,0,0),mai=c(0,0,0,0),mgp=c(0,0,0),oma=c(0,0,0,0),omi=c(0,0,0,0),xpd=T,ann=F, bg=NA, fg=NA)
-      colors<-getcolhabs(vals$newcolhabs,names(vals$newcolhabs)[i],1000)
-      image(t(matrix(seq(0,1,length.out=1000), nrow=1)), axes=F,col=  colors)
+      colors<-getcolhabs(vals$newcolhabs,names(vals$newcolhabs)[i],256)
+      image(t(matrix(seq(0,1,length.out=256), nrow=1)), axes=F,col=  colors)
+     # rect(0.3,0.3,0.7,0.8, col=adjustcolor("white",0.5))
+     # text(0.5,.5,label=i,cex=5,col="black")
+
+      style=   paste0("background:",adjustcolor("white",0.3),";position: absolute; left: 10px; z-index: 9999; top: 3px; padding: 3px; font-size:11px;color: black")
+
+
+
+
 
       dev.off()
       palette1<-base64enc::dataURI(file =outfile,mime = "image/png")
-      vals$colors_img<-rbind(vals$colors_img,data.frame(val=palname,img= sprintf(paste0(img(src = palette1, height = '20',width = '100',style="margin-top:-40px;margin-bottom:-40px;margin-left:-20px;margin-right:-20px;") ))))
+      vals$colors_img<-rbind(vals$colors_img,
+                             data.frame(
+                               val=palname,img= sprintf(
+                                 HTML(
+                                   paste0(
+                                     img(src = palette1, height = '20',width = '100',style="margin-top:-40px;margin-bottom:-40px;margin-left:-20px;margin-right:-20px;"),
+                                     div(em(palname),style=style)
+                                   )
+                                 )
+                               )
+                             ))
       vals$newcolhabs[[palname]]<-colorRampPalette(colors,alpha=T)
 
     }
@@ -939,7 +1011,7 @@ app_server<-server<-function(input, output, session) {
   })
 
   once_savepoint<-reactiveVal(F)
-  observeEvent(input$savepoint_yes,{
+  observeEvent(input$save_point_yes,{
     req(file.exists("savepoint.rds"))
     req(isFALSE(once_savepoint()))
     once_savepoint(TRUE)
@@ -949,6 +1021,9 @@ app_server<-server<-function(input, output, session) {
 
     newvals <-newvals0[!names(newvals)%in%c('newcolhabs','colors_img')]
 
+
+    newvals$module_states<-NULL
+    newvals$update_state<-NULL
 
 
     if(is.null(newvals$cur_data)){newvals$cur_data<-names(vals$saved_data)[[1]]}
@@ -1013,8 +1088,24 @@ app_server<-server<-function(input, output, session) {
   })
 
   module_ids<-c('module_databank','module_desctools','module_div', 'sptools_data','sptools_panels','module_supersom','module_hc','module_kmeans','module_sl','module_comp')
+  observe({
+    if(is.null(vals$fheight)){vals$fheight<-15}
+    if(is.null(vals$fwidth)){vals$fwidth<-20}
+    if(is.null(vals$fres)){vals$fres<-100}
+    if(is.null(vals$pointsize)){vals$pointsize<-12}
+    if(is.null(vals$fformat)){vals$fformat<-"png"}
+  })
 
-
+  observeEvent(vals$saved_data,{
+    datalist_names_in<-as.character(sapply(vals$saved_data,function(x){
+      attr(x,"datalist")
+    }))
+    if(any(datalist_names_in!=names(vals$saved_data))){
+      for(i in seq_along(vals$saved_data) ){
+        attr(vals$saved_data[[i]],"datalist")<-names(vals$saved_data)[i]
+      }
+    }
+  })
 
 
 

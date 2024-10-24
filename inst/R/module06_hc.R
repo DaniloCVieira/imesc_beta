@@ -377,7 +377,7 @@ hc_module$ui<-function(id){
                  ),
                  radioButtons(ns("model_or_data"), strong("Clustering target:"), choiceValues = c("data", "som codebook"), choiceNames = c("Numeric-Attribute", "SOM-codebook"),width="130px"),
                  div(
-                   virtualPicker_unique(ns("som_model_name"), strong("Som model:"), choices=NULL, selected=NULL),
+                   pickerInput_fromtop_live(ns("som_model_name"), strong("Som model:"), choices=NULL, selected=NULL),
                    div(class="small_check",style="",
 
                        checkboxInput(ns('show_hcsom_fine'),em("Select layers"))
@@ -542,7 +542,7 @@ hc_module$ui<-function(id){
                      color="#c3cc74ff",
                      div(
                        div(
-                         pickerInput_fromtop(inputId = ns("hcdata_palette"),label = "HC Palette:",NULL),
+                         pickerInput_fromtop_live(inputId = ns("hcdata_palette"),label = "HC Palette:",NULL),
                          pickerInput_fromtop(ns("hcut_labels"),"Factor",NULL),
                          div(
                            pickerInput_fromtop(ns("hcut_theme"),"Theme:",c('theme_minimal','theme_grey','theme_linedraw','theme_light','theme_bw','theme_classic')),
@@ -600,7 +600,7 @@ hc_module$ui<-function(id){
                             div(
 
                               checkboxInput(ns("fill_neurons"),"Fill",T),
-                              pickerInput_fromtop(ns("bg_palette"),label ="Palette",NULL),
+                              pickerInput_fromtop_live(ns("bg_palette"),label ="Palette",NULL),
                               div(id=ns("neu_options"),
 
 
@@ -619,7 +619,7 @@ hc_module$ui<-function(id){
                                        checkboxInput(ns("pclus_addpoints"),"Points",value=T,width="80px")
                             ),
                             div(id=ns("pclus_points_inputs"),
-                                pickerInput_fromtop(inputId = ns("pclus_points_palette"),label ="Palette",choices =NULL),
+                                pickerInput_fromtop_live(inputId = ns("pclus_points_palette"),label ="Palette",choices =NULL),
                                 div(
                                   id=ns("options_points_factor"),
                                   pickerInput_fromtop(ns("pclus_points_factor"),"Factor",
@@ -647,7 +647,7 @@ hc_module$ui<-function(id){
                                        checkboxInput(ns("pclus_addtext"),"Labels",value=F,width="80px")
                             ),
                             div(id=ns('pclus_addtext_out'),
-                                pickerInput_fromtop(ns("pclus_text_palette"),label ="Palette",NULL),
+                                pickerInput_fromtop_live(ns("pclus_text_palette"),label ="Palette",NULL),
                                 pickerInput_fromtop(ns("pclus_text_factor"),"Factor",choices = NULL),
                                 numericInput(ns("pclus_text_size"),"Size",value = 1,min = 0.1,max = 3,step = .1),
                                 checkboxInput(ns("text_repel"),"Repel Labels",F),
@@ -696,7 +696,7 @@ hc_module$ui<-function(id){
                                 ),
 
                                 numericInput(ns("var_pie_n"), span(tipright("Number of variables to display"),"Number"), value = 10, min = 2),
-                                pickerInput_fromtop(ns("var_pie_bg"),label = "Palette",choices = NULL),
+                                pickerInput_fromtop_live(ns("var_pie_bg"),label = "Palette",choices = NULL),
                                 numericInput(ns("var_pie_transp"), "Transparency", value = 0, min = 2))
                           ),
 
@@ -892,7 +892,13 @@ hc_module$server<-function(id, vals){
       model_name=hcargs()$model_name
       attr_hc=hcargs()$attr_hc
       req(input$data_hc)
-      cur<-attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"obs.clusters")[[ as.character(input$customKdata)]]
+
+      req(input$data_hc%in%names(vals$saved_data))
+      req(!is.null(attr(vals$saved_data[[input$data_hc]],attr_hc)))
+      req(model_name%in%names(attr(vals$saved_data[[input$data_hc]],attr_hc)))
+      cur0<-attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"obs.clusters")
+      req( as.character(input$customKdata)%in%names(cur0))
+      cur<-cur0[[ as.character(input$customKdata)]]
       shinyjs::toggleClass("hcut_btn","save_changes",condition = is.null(cur))
 
     })
@@ -900,7 +906,13 @@ hc_module$server<-function(id, vals){
       req(input$data_hc)
       model_name=hcargs()$model_name
       attr_hc=hcargs()$attr_hc
-      cur<-attr(attr(vals$saved_data[[input$data_hc]],attr_hc)[[model_name]],"obs.clusters")[[ as.character(input$customKdata)]]
+      req(input$data_hc%in%names(vals$saved_data))
+      attrs_hc<-attr(vals$saved_data[[input$data_hc]],attr_hc)
+      req(attrs_hc)
+      req(model_name%in%names(attrs_hc))
+      attrs_hc_obs<-attr(attrs_hc[[model_name]],"obs.clusters")
+      req(as.character(input$customKdata)%in%names(attrs_hc_obs))
+      cur<-attrs_hc_obs[[ as.character(input$customKdata)]]
       req(cur)
       cur
     })
@@ -969,8 +981,10 @@ hc_module$server<-function(id, vals){
     observeEvent(ignoreInit = T,input$download_plot3,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
-      generic=hcplot3()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Dendrogram - cut", name_c="dendcut")
+      generic=do.call(gg_dendrogram,hcut_argsplot())
+      name_c=paste0("Dendrogram_",input$customKdata,"groups")
+      datalist_name=attr(getdata_hc(),'datalist')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message=name_c, name_c=name_c,datalist_name=datalist_name)
     })
 
     argsplot_somplot<-reactive({
@@ -2216,7 +2230,7 @@ hc_module$server<-function(id, vals){
         selected<-choices[1]
       }
 
-      shinyWidgets::updateVirtualSelect('som_model_name',selected=selected,choices=choices)
+      updatePickerInput(session,'som_model_name',selected=selected,choices=choices)
     })
 
 
@@ -2225,7 +2239,9 @@ hc_module$server<-function(id, vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=hcplot4()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="som codebook - HC", name_c="codebook_hc")
+      datalist_name=attr(getdata_hc(),'datalist')
+      name_c=paste0("Codebook",input$customKdata,"groups")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="som codebook - HC", name_c=name_c,datalist_name=datalist_name)
     })
     observeEvent(input$model_or_data,{
       value=if(input$model_or_data=="som codebook"){
@@ -2541,19 +2557,23 @@ hc_module$server<-function(id, vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=getsmw_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Scree plot", name_c="screeplot")
+
+      datalist_name=attr(getdata_hc(),'datalist')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Scree plot", name_c="screeplot",datalist_name=datalist_name)
     })
     observeEvent(input$download_plot5,ignoreInit = T,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
+      datalist_name=attr(getdata_hc(),'datalist')
       generic=hcplot5()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="SOM- Scree plot", name_c="som_screeplot")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="SOM- Scree plot", name_c="screeplot",datalist_name=datalist_name)
     })
     observeEvent(ignoreInit = T,input$download_plot1,{
       vals$hand_plot<-"generic_replay"
       module_ui_figs("downfigs")
       generic=vals$hc_tab1_plot
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Dendrogram", name_c="dendplot")
+      datalist_name=attr(getdata_hc(),'datalist')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Dendrogram", name_c="dendrogram",datalist_name=datalist_name)
     })
     observe({
       shinyjs::toggle("Kcustom",condition=input$tabs%in%c("tab3","tab4"))

@@ -430,6 +430,8 @@ ggrda<-function(model, base_size=12, theme='theme_bw', title="Redundancy analysi
     }
     col_points=points_palette(nlevels(df1$points_factor))
     p<-p+geom_point(aes(x,y,color=points_factor, shape=shape), data=df1,size=points_size,show.legend=show.legend, shape=points_shape)+   scale_color_manual(colnames(points_factor),values=col_points)
+  } else{
+    col_points=NA
   }
   p0<-p
   if(isTRUE(species)){
@@ -493,6 +495,9 @@ ggrda<-function(model, base_size=12, theme='theme_bw', title="Redundancy analysi
     p<-switch_theme(p,theme, base_size)
   }
   p<-p+xlab(xlab)+ylab(ylab)+ggtitle(title)
+  if(length(unique(col_points))==1){
+    p<-p+guides(color="none")
+  }
   return(p)
 }
 #' @export

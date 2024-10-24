@@ -70,7 +70,8 @@ explainer_ggpair$server<-function(id,data,fun="plot_importance_ggpairs",vals){
       vals$hand_plot<-"generic_ggmatrix"
       module_ui_figs("downfigs")
       generic=run_box36_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Importance Measures - GGpairs", name_c="measures-ggpairs")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Importance Measures - GGpairs", name_c="measures-ggpairs",datalist_name=datalist_name)
     })
 
     observeEvent(
@@ -1054,7 +1055,7 @@ rf_explainer$server<-function(id,vals){
         tags$label("Model"),
         div(style="padding-left: 15px",
             pickerInput_fromtop(session$ns("sankey_metric"),"Metric",choices_metric),
-            pickerInput_fromtop(
+            pickerInput_fromtop_live(
               inputId = ns("sankey_paletteY"),
               label = "Palette:",
               selected="Grays",
@@ -1065,7 +1066,7 @@ rf_explainer$server<-function(id,vals){
         tags$label("Variables"),
         div(style="padding-left: 15px",
             pickerInput_fromtop(session$ns("sankey_values"),"Value",choices,selected="times_a_root"),
-            pickerInput_fromtop(
+            pickerInput_fromtop_live(
               inputId = ns("sankey_palette"),
               label = "Palette:",
               choices =vals$colors_img$val,
@@ -1075,7 +1076,7 @@ rf_explainer$server<-function(id,vals){
         tags$label("Middle value"),
         div(style="padding-left: 15px",
             pickerInput_fromtop(session$ns("sankey_values2"),"Middle value",c("None",choices)),
-            pickerInput_fromtop(
+            pickerInput_fromtop_live(
               inputId = ns("sankey_palette_middle"),
               label = "Palette Middle:",
               choices =vals$colors_img$val,
@@ -1143,7 +1144,8 @@ rf_explainer$server<-function(id,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=gg_sankey()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Sankey GGplot", name_c="sankey_gg")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Sankey GGplot", name_c="sankey_gg",datalist_name=datalist_name)
     })
 
 
@@ -1258,7 +1260,7 @@ rf_explainer$server<-function(id,vals){
     })
 
     output$mdd_palette<-renderUI({
-      pickerInput_fromtop(
+      pickerInput_fromtop_live(
         inputId = ns("mdd_palette"),
         label = "Palette:",
         choices =vals$colors_img$val,
@@ -1266,7 +1268,7 @@ rf_explainer$server<-function(id,vals){
     })
 
     output$inter_palette<-renderUI({
-      pickerInput_fromtop(
+      pickerInput_fromtop_live(
         inputId = ns("inter_palette"),
         label = "Palette:",
         choices =vals$colors_img$val,
@@ -1316,7 +1318,7 @@ rf_explainer$server<-function(id,vals){
       } else{
         pic<-getgrad_col()
       }
-      pickerInput_fromtop(
+      pickerInput_fromtop_live(
         inputId = ns("interframe_palette"),
         label = "Palette:",
         choices =vals$colors_img$val[pic],
@@ -1600,17 +1602,19 @@ rf_explainer$server<-function(id,vals){
 
 
     observeEvent(input$downp_prf,ignoreInit = T,{
-      model_name<-attr(model(),"model_name")
+
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=prf.reactive()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Minimal depth distribution", name_c=paste0("min-depth-plot-",model_name))
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Minimal depth distribution", name_c="min-depth-plot",datalist_name=datalist_name)
     })
     observeEvent(input$downp_mrf,ignoreInit = T,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=rf_multi()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Multiway Importance", name_c="multi-way-plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Multiway Importance", name_c="multi-way-plot",datalist_name=datalist_name)
     })
     rf_multi<-reactive({
       req(input$interframe_palette)
@@ -1757,11 +1761,12 @@ rf_explainer$server<-function(id,vals){
 
 
     observeEvent(input$down_plot_inter,ignoreInit = T,{
-      model_name<-attr(model(),"model_name")
+
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=inter_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Interactions Plot", name_c=paste0("inter-",model_name))
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Interactions Plot", name_c="interactions",datalist_name=datalist_name)
     })
 
 

@@ -36,43 +36,7 @@ generate_partiton<-function(data,split_t,split_y,split_p,split_seed,part_type="B
 
 }
 
-virtualPicker<-function(id,SelectedText="IDs selected", label=NULL,choices=NULL,selected=NULL,search =T,   optionHeight='24px',styles=NULL){
-  class='picker_open'
 
-
-  tag_style=NULL
-  if(!is.null(styles)){
-    tag_style<-tags$style(
-      HTML(paste(paste0(".vs-",id),".vscomp-wrapper{",styles,"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-search-wrapper{",styles,"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-search-container{",paste0('height:',optionHeight,";",styles),"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-toggle-button{",paste0('height:',optionHeight,";",styles),"}")),
-      HTML(paste(paste0(".vs-",id),".vscomp-search-input{",styles,"}"))
-    )
-    class=paste('picker_open',paste0("vs-",id))
-
-  }
-  div(
-    tag_style,
-    div(class=class,
-        shinyWidgets::virtualSelectInput(
-          inputId = id,
-          label = label,
-          optionHeight=optionHeight,
-          choices = choices,
-          selected=selected,
-          search = search,
-          keepAlwaysOpen = TRUE,
-          multiple =T,
-          hideClearButton=T,
-          alwaysShowSelectedOptionsCount=T,
-          searchPlaceholderText="Select all  -  Search",
-          optionsSelectedText=SelectedText,
-          optionSelectedText=SelectedText
-        )
-    )
-  )
-}
 
 get_scale<-function(data,scale,center){
   data0<-data
@@ -6613,8 +6577,10 @@ tool10$server<-function (id,vals){
               #tosave<-isolate(reactiveValuesToList(vals))
               #tosave<-c(tosave["saved_data"],tosave["saved_maps"],tosave["newcolhabs"],tosave['colors_img'],tosave[grep("cur",names(tosave))])
               tosave<-isolate(reactiveValuesToList(vals))
+              curs<-tosave[grepl("cur_",names(tosave))]
+
               tosave<-tosave[-which(names(vals)%in%c("saved_data","newcolhabs",'colors_img'))]
-              tosave<-tosave[-which(unlist(lapply(tosave,function(x) object.size(x)))>1000)]
+              tosave<-tosave[-which(unlist(lapply(tosave,function(x) object.size(x)))>2000)]
 
               tosave$saved_ensemble<-vals$saved_ensemble
               tosave$saved_maps<-vals$saved_maps
@@ -6623,8 +6589,21 @@ tool10$server<-function (id,vals){
               tosave$colors_img<-vals$colors_img
               tosave$update_state[names(vals$input_state)]<-vals$input_state
               tosave$update_state[sapply(tosave$update_state,length)>20]<-NULL
-              vals$input_state<-NULL
 
+              tosave$input_state<-NULL
+              tosave$rid_plot<-NULL
+              tosave$rda_plot <-NULL
+              tosave$smw_dp<-NULL
+              tosave$segrda_model<-NULL
+              tosave$mds<-NULL
+              tosave$corr_plot<-NULL
+              tosave$plot_dp<-NULL
+              tosave$seg_rda_plot<-NULL
+              tosave$pbox_plot<-NULL
+              tosave$dp_smw<-NULL
+              tosave$splitBP<-NULL
+              tosave$plot_correlation<-NULL
+              tosave[names(curs)]<-curs
 
 
               saveRDS(tosave, file)
@@ -6712,7 +6691,7 @@ tool10$server<-function (id,vals){
 
       newvals <-mybooks[!names(mybooks)%in%c('newcolhabs','colors_img')]
       colors<-mybooks[names(mybooks)%in%c('newcolhabs','colors_img')]
-      vals$colors_img[vals$colors_img$val%in%colors$colors_img$val,]<-colors$colors_img
+      #vals$colors_img[vals$colors_img$val%in%colors$colors_img$val,]<-colors$colors_img
       vals$newcolhabs[names(colors$newcolhabs)]<-colors$newcolhabs
 
       vals$module_states<-newvals$update_state

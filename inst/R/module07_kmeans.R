@@ -64,12 +64,12 @@ k_means_module$ui<-function(id){
                               radioButtons(ns("dot_label_clus"), 'Display', choices=c("symbols","labels"), inline=T),
                               checkboxInput(ns("hc_sort"),span("Sort clusters",tiphelp("Sort clusters by a  variable")),value=F),
                               div(style="margin-left: 15px",
-                                  pickerInput(ns("hc_ord_datalist"),div("Datalist:"),NULL) ,
-                                  pickerInput(ns("hc_ord_factor"),div("Variable:"),choices=NULL)),
-                              pickerInput(ns("psom_data_palette"),label='Palette',choices=NULL),
+                                  pickerInput_fromtop_live(ns("hc_ord_datalist"),div("Datalist:"),NULL) ,
+                                  pickerInput_fromtop_live(ns("hc_ord_factor"),div("Variable:"),choices=NULL)),
+                              pickerInput_fromtop_live(ns("psom_data_palette"),label='Palette',choices=NULL),
 
-                              pickerInput(ns("psom_factors"),'Labels',choices=NULL),
-                              pickerInput(inputId=ns("psom_facpalette"),
+                              pickerInput_fromtop_live(ns("psom_factors"),'Labels',choices=NULL),
+                              pickerInput_fromtop_live(inputId=ns("psom_facpalette"),
                                           label =span(tiphelp('Symbol colors. Choose a gradient to color observations by a factor'),"Obs color"),
                                           choices=NULL),
                               numericInput(ns("psom_bgalpha"),span(tiphelp("Transparency"),"Alpha"),value =0.5,min=0,max=1,step=.1),
@@ -98,7 +98,7 @@ k_means_module$ui<-function(id){
                   color="#c3cc74ff",
                   div(
 
-                    pickerInput(ns("bg_palette"),label ="Background palette",NULL),
+                    pickerInput_fromtop_live(ns("bg_palette"),label ="Background palette",NULL),
                     numericInput(ns("pcodes_bgalpha"),"Background lightness",value = 0,min = 0,max = 1,step = .1),
                     pickerInput(ns("pclus_border"),label ='Border:',choices = NULL),
                   )),
@@ -110,8 +110,8 @@ k_means_module$ui<-function(id){
                              checkboxInput(ns("pclus_addpoints"),"Points",value=T,width="80px")
                   ),
                   div(id=ns("pclus_points_inputs"),
-                      pickerInput(inputId = ns("pclus_points_palette"),label ="Palette",choices =NULL),
-                      pickerInput(ns("pclus_points_factor"),"Factor",
+                      pickerInput_fromtop_live(inputId = ns("pclus_points_palette"),label ="Palette",choices =NULL),
+                      pickerInput_fromtop_live(ns("pclus_points_factor"),"Factor",
                                   choices = NULL),
                       tags$div(id=ns("color_factor"),
                                class="form-group shiny-input-container",
@@ -874,8 +874,9 @@ k_means_module$server<-function (id,vals){
       vals$hand_plot<-switch(input$model_or_data,
                              "data"="k-means (pca reprentation)",
                              "som codebook"="k-means (codebook)")
+      datalist_name=attr(vals$saved_data[[input$data_kmeans]],'datalist')
       module_ui_figs("downfigs")
-      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals)
+      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals,datalist_name=datalist_name)
     })
 
     output$downModel_kmeans<-{

@@ -963,7 +963,7 @@ table_training_datalist<-function(saved_data,data_x){
         Datalist_x=data_x,
         Datalist_y=gety_datalist_model(m),
         Y=attr(m,"supervisor"),
-        nobs=length(nrow(m$training))
+        nobs=nrow(m$training)
       ),
       get_metric_model(m))
 

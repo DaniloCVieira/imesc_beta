@@ -1,5 +1,262 @@
-#' @export
 
+get_test_metrics<-function(m){
+  if(inherits(attr( m,"test"),"data.frame")){
+    test_data<-as.matrix(attr(m,"test"))
+    colnames(test_data)<-colnames(getdata_model(m))
+    pred<-suppressWarnings(predict(m,test_data))
+    if(inherits(attr(m,"sup_test"),"data.frame")){
+      obs<-attr(m,"sup_test")[,1]
+    } else{
+      obs<-attr(m,"sup_test")
+    }
+    if(length(obs)!=length(pred)){
+      df<-"None"
+    } else{
+      df<-cbind(data.frame(nobs=length(pred),rbind(  postResample(pred,obs))
+      ))
+    }
+    colnames(df)<-paste0("partition_",colnames(df))
+    df<-round(df)
+    return(df)
+  }
+  "None"
+
+}
+
+
+
+sl_metrics_table<-function(data,type="Classification"){
+  res<-lapply(available_models,function(tag){
+
+    models<-attr(data,tag)
+
+    res0<-lapply(models,function(x){
+
+      m<-x$m
+      training_model_type=m$modelType
+      if(training_model_type==type){
+        m$modelInfo$predict
+        available_models
+        #attr(m,"test")<-NULL
+        metrics<-metrics_default<-m$results[rownames(m$bestTune),]
+        metrics_default[colnames(m$bestTune)]<-NULL
+        colnames(metrics_default)<-paste0("resampling_",colnames(metrics_default))
+        metrics_tunning<-metrics[colnames(m$bestTune)]
+        #colnames(metrics_tunning)<-paste0("tunning_",colnames(metrics_tunning))
+
+        if(inherits(m$finalModel,"randomForest")){
+          pred<-rf_oob_pred(m$finalModel,getdata_model(m))
+        } else{
+          pred<-predict(m)
+
+        }
+
+        final_metrics<-data.frame(rbind(postResample(pred,getdata_model(m,"test"))))
+
+        colnames(final_metrics)<-paste0("finalModel_",colnames(final_metrics))
+        partion_metrics<-    get_test_metrics(m)
+        tunning<-do.call(paste0,lapply(1:ncol(metrics_tunning),function(i){
+          name<-colnames(metrics_tunning)[i]
+          a<-paste0(name,'=',metrics_tunning[,i])
+          b<-NULL
+          if(i<ncol(metrics_tunning)){
+            b<-"<br>"
+          }
+          paste0(a,b)
+        }))
+
+        data.frame(
+          training_model_tag=tag,
+          training_model_name=attr(m,'model_name'),
+          modelInfo_model_type=training_model_type,
+          modelInfo_datalist_y=gety_datalist_model(m),
+          modelInfo_y=attr(m,"supervisor"),
+          modelInfo_nobs=nrow(m$trainingData),
+          metrics_default,
+          tunning=tunning,
+          final_metrics,
+          partion_metrics
+        )
+
+
+      } else{
+        NULL
+      }
+
+    })
+    res0<-res0[sapply(res0,length)>0]
+    data.table::rbindlist(res0, fill=T)
+  })
+  res<-res[sapply(res,length)>0]
+
+
+
+  result<-data.table::rbindlist(res, fill=T)
+
+
+
+  table<-data.frame(result)
+  colnames(table)<-colnames(result)
+  table
+}
+sl_metrics_format<-function(table,round){
+  end_training<-NULL
+  end_resampling<-NULL
+  end_partition<-NULL
+  end_final<-NULL
+  end_modelInfo<-NULL
+
+  et<-which(grepl("training",colnames(table)))
+  er<-which(grepl("tunning",colnames(table)))
+  ep<-which(grepl("partition",colnames(table)))
+  ef<-which(grepl("finalModel",colnames(table)))
+  ei<-which(grepl("modelInfo",colnames(table)))
+
+
+  if(length(et)>0)
+    end_training<-max(et)
+
+  if(length(er)>0)
+    end_resampling<-max(er)
+
+  if(length(ep)>0)
+    end_partition<-max(ep)
+
+  if(length(ef)>0)
+    end_final<-max(ef)
+
+  if(length(ei)>0)
+    end_modelInfo<-max(ei)
+
+
+  border_positions<-c(end_training,end_modelInfo,end_resampling,end_final,end_partition)
+  numeric_cols <- sapply(table, is.numeric)
+  req(length(numeric_cols)>0)
+  container=sl_metrics_container(table)
+  dt<-DT::formatStyle(
+    DT::formatStyle(
+      DT::datatable(
+        as.matrix(table),
+        extensions = c('FixedColumns',"FixedHeader"),
+
+        escape=F,
+        container =container,
+        options=list(
+          info=FALSE,dom = 't',
+
+
+          rownames=F,
+          autoWidth=T,
+          deferRender = TRUE,
+          scroller = TRUE,
+          info = FALSE,
+          fixedColumns = list(leftColumns = 2, rightColumns = 0),
+          fixedHeader = 2
+        )
+      )%>%
+        DT::formatRound(columns = which(numeric_cols), digits = round) ,
+
+      c(1), `border-left` = "solid 1px"
+    ),       border_positions, `border-right` = "solid 1px"
+  )
+
+
+
+}
+
+
+
+get_sl_metric_cols<-function(cols,left=F){withTags(
+  lapply(seq_along(cols),function(i){
+    if(i==length(cols)){
+      th(cols[i],style="border-right: 1px solid")
+    } else{
+      if(i==1&isTRUE(left)){
+        th(cols[i],style="border-left: 1px solid")
+      } else{
+        th(cols[i])
+      }
+
+    }
+  })
+)}
+
+
+sl_metrics_container<-function(table){
+  table<-data.frame(table)
+  #table=data.frame(table)
+  #rownames(table)<-NULL
+  #colnames(table)<-NULL
+  end_modelInfo<-length(which(grepl("modelInfo",colnames(table))))
+  end_training<-length(which(grepl("training",colnames(table))))
+  end_resampling<-length(which(grepl("resampling|tunning",colnames(table))))
+  end_partition<-length(which(grepl("partition",colnames(table))))
+  end_final<-length(which(grepl("finalModel",colnames(table))))
+
+
+
+
+  cols_modelInfo<-colnames(table)[grepl("modelInfo_",colnames(table))]
+  cols_training<-colnames(table)[grepl("training_",colnames(table))]
+  cols_resampling<-colnames(table)[grepl("tunning|resampling_",colnames(table))]
+  cols_finalModel<-colnames(table)[grepl("finalModel_",colnames(table))]
+  cols_partition<-colnames(table)[grepl("partition_",colnames(table))]
+
+
+  cols_modelInfo<-gsub('modelInfo_',"",cols_modelInfo)
+  cols_training<-gsub('training_',"",cols_training)
+  cols_resampling<-gsub('resampling_',"",cols_resampling)
+  cols_finalModel<-gsub('finalModel_',"",cols_finalModel)
+  cols_partition<-gsub('partition_',"",cols_partition)
+
+  res<-withTags(table(
+    class = 'display',
+    thead(
+      tr(
+        if(end_training>0){
+          #th(colspan = end_training, 'Models',style = "border-top: solid 1px;border-left: solid 1px;border-right: solid 1px;")
+          HTML(paste0(
+            "<th style='border-top: solid 1px;border-left: solid 1px;border-right: solid 1px;position: sticky;' class='sorting dtfc-fixed-left' tabindex='0' rowspan='1' colspan='",end_training,"'><span style='color: royalblue'>Models</span></th>"
+          ))
+
+        },
+        if(end_modelInfo>0){
+          #th(colspan = end_modelInfo, 'modelInfo',style = "border-top: solid 1px;border-left: solid 1px;border-right: solid 1px;")
+          HTML(paste0(
+            "<th style='border-top: solid 1px;border-left: solid 1px;border-right: solid 1px;' class='sorting dtfc-fixed-left' tabindex='0' rowspan='1' colspan='",end_modelInfo,"'><span style='color: royalblue'>modelInfo</span></th>"
+          ))
+
+        },
+
+        if(end_resampling>0){
+          th(colspan = end_resampling, span('Resampling metrics',style='color: royalblue'),style = "border-top: solid 1px;border-right: solid 1px;")
+        },
+        if(end_final>0){
+          th(colspan = end_final, span('finalModel metrics',style='color: royalblue'),style = "border-top: solid 1px;;border-right: solid 1px;")
+        },
+        if(end_partition>0){
+          th(colspan =end_partition, span('Test metrics',style='color: royalblue'),style = "border-top: solid 1px;border-right: solid 1px;")}
+      ),
+      tr(
+
+        if(length(cols_training)>0)
+          get_sl_metric_cols(cols_training, left=T),
+        if(length(cols_modelInfo)>0)
+          get_sl_metric_cols(cols_modelInfo, left=T),
+        if(length(cols_resampling)>0)
+          get_sl_metric_cols(cols_resampling),
+        if(length(cols_finalModel)>0)
+          get_sl_metric_cols(cols_finalModel),
+        if(length(cols_partition)>0)
+          get_sl_metric_cols(cols_partition)
+
+      )
+
+
+    )))
+  res
+
+}
 
 fixed_dt_con<-list()
 #' @export
@@ -91,117 +348,104 @@ databank_module$ui<-function(id){
                 )),
       tags$style(HTML(
         "
-    .icon_summary{
-    padding-left: 5px;
- padding-right: 10px;
- padding-top: 10px;
-    box-sizing: content-box;
-    border: 0px solid;
-    border-radius: 0px;
 
-    font-size: 10px;
-    color: #696969;
- display: flex;
-align-items: flex-end;
- gap: 3px
-    }
-.text_summary{
-color:RoyalBlue
-}
     "
       )),
+      div(
 
-box_caret(ns("box_bank"),
-          button_title2=div(uiOutput(ns('summary_attr'))
+
+        div(
+          box_caret(
+            ns("box_bank"),
+            button_title2=div(
+              radioGroupButtons(ns("sl_radiotype"),NULL,c("Classification","Regression")),
+              uiOutput(ns('summary_attr'))
             ),
-          title=inline(
-            uiOutput(ns("selected_attr"))
-          ),
-          button_title = div(
-            actionLink(ns("download_table"),"Download",icon("download")),
-            actionLink(ns("download_plot"),"Download",icon("download")),
-            downloadLink(ns('comments_downs'), label = "Download",icon("download"))
-          ),
+            title=inline(
+              uiOutput(ns("selected_attr"))
+            ),
+            button_title = div(
+              actionLink(ns("download_table"),"Download",icon("download")),
+              actionLink(ns("download_plot"),"Download",icon("download")),
+              downloadLink(ns('comments_downs'), label = "Download",icon("download"))
+            ),
 
 
-          div(
-            class="half-drop-inline",
             div(
-              style="margin-top: -10px;padding-left: 20px;padding-top: 5px",
-              tabsetPanel(
-                id=ns("tab_bank"),
-                type="hidden",
-                header=uiOutput(ns("summary")),
-                tabPanel(
-                  'tab1',
-                  div(
-                    style = " background: white;",
-                    div(style="font-size: 11px; display: none",
-                        id=ns("split_columns"),
-                        render_warning(
-                          title=NULL,point_icon=F,icon=NULL,
-                          fluidRow(
-                            column(12,
+              class="half-drop-inline",
+              div(
+                style="margin-top: -10px;padding-left: 20px;padding-top: 5px",
+                tabsetPanel(
+                  id=ns("tab_bank"),
+                  type="hidden",
+                  header=uiOutput(ns("summary")),
+                  tabPanel(
+                    'tab1',
+                    div(
+                      style = " background: white;",
+                      div(style="font-size: 11px; display: none",
+                          id=ns("split_columns"),
+                          render_warning(
+                            title=NULL,point_icon=F,icon=NULL,
+                            fluidRow(
+                              column(12,
 
-                                   column(4,class="mp0",
-                                          div("The selected 'Datalist' has many columns, which may slow rendering. Columns were splitted based on the 'Max Nº of Columns'."),
+                                     column(4,class="mp0",
+                                            div("The selected 'Datalist' has many columns, which may slow rendering. Columns were splitted based on the 'Max Nº of Columns'."),
 
-                                   ),
-                                   column(8,class="mp0",
-                                          class="half-drop picker25",
-                                          div(style="display: flex;
+                                     ),
+                                     column(8,class="mp0",
+                                            class="half-drop picker25",
+                                            div(style="display: flex;
                                     flex-wrap:wrap; margin-left: 15px",
-                                    numericInput(ns('col_interval'),"Max Nº of Columns:",200),
-                                    uiOutput(ns('split_data_out'))
-                                          )
+                                                numericInput(ns('col_interval'),"Max Nº of Columns:",200),
+                                                uiOutput(ns('split_data_out'))
+                                            )
 
-                                   )
+                                     )
+                              )
                             )
                           )
-                        )
-                    ),
+                      ),
 
-                    DT::dataTableOutput(ns("DT_data"))
-
-                  )
-
-                ),
-                tabPanel('tab2',
-                         div(style = "background: white;",
-
-                             DT::dataTableOutput(ns("DT_factors"))
-
-                         )),
-                tabPanel('tab3',
-                         div(style = " background: white;",
-                             uiOutput(ns("viewcoords")))
-                ),
-                tabPanel('tab4',uiOutput(ns("viewshapes"))),
-                tabPanel('tab5',uiOutput(ns("viewsom"))),
-                tabPanel('tab6',div(
-                  tabsetPanel(
-                    id=ns("sl_type"),
-                    header=div(class='inline_pickers',
-                               numericInput(ns("round_sl"),"Round",3)),
-                    tabPanel("Classification Models",value="tab1",
-                             div(style="overflow: auto",
-                                 uiOutput(ns("viewsl_class"))
-                             )
-
-
-                    ),
-                    tabPanel("Regression Models",value="tab2",
-                             div(style="overflow: auto",
-                                 uiOutput(ns("viewsl_reg")))
+                      DT::dataTableOutput(ns("DT_data"))
 
                     )
-                  )
-                )),
-                tabPanel('tab7',uiOutput(ns("comments")))
-              )
 
+                  ),
+                  tabPanel('tab2',
+                           div(style = "background: white;",
+
+                               DT::dataTableOutput(ns("DT_factors"))
+
+                           )),
+                  tabPanel('tab3',
+                           div(style = " background: white;",
+                               uiOutput(ns("viewcoords")))
+                  ),
+                  tabPanel('tab4',uiOutput(ns("viewshapes"))),
+                  tabPanel('tab5',uiOutput(ns("viewsom"))),
+                  tabPanel('tab6',
+
+
+                           div(
+
+                             div(style="display: flex",
+
+                                 pickerInput_fromtop(ns("sl_metrics"),"Include:",c("modelInfo"="modelInfo","Resampling"="resampling|tunning","finalModel"='finalModel',"Test"="partition"),multiple=T,selected=c('modelInfo','resampling|tunning','finalModel','partition'),width="350px"),
+                                 numericInput(ns("round_sl"),"Round:",3)
+                             ),
+                             uiOutput(ns("summary_sl"))
+                           )
+                  ),
+                  tabPanel('tab7',uiOutput(ns("comments")))
+                )
+
+              )
             )
-          ))
+          )
+        )
+      )
 
     )
   )
@@ -215,6 +459,12 @@ databank_module$server<-function(id, vals){
 
     ns<-session$ns
     available_models<-SL_models$models
+
+    observe({
+      shinyjs::toggle('sl_radiotype',condition=input$view_datalist=="tab6")
+
+
+    })
 
 
 
@@ -311,11 +561,12 @@ databank_module$server<-function(id, vals){
              "tab4"={NULL},
              "tab5"={summary_som()},
              "tab6"={
-               if(input$sl_type=='tab1'){
-                 get_metrics()$class
-               } else{
-                 get_metrics()$reg
-               }
+
+               table<-table_sl_metrics()
+               table$tunning<-gsub("<br>","-",table$tunning)
+               table
+
+
              },
              "tab7"={NULL}
       )
@@ -323,7 +574,7 @@ databank_module$server<-function(id, vals){
     get_name_download<-reactive({
       name<-paste0(input$data_bank,"-",get_title_attr())
       if(input$view_datalist=="tab6"){
-        if(input$sl_type=='tab1'){
+        if(input$sl_radiotype=='Classification'){
           name<-paste0(input$data_bank,"-classification-summary")
         } else{
           name<-paste0(input$data_bank,"-regression-summary")
@@ -343,7 +594,8 @@ databank_module$server<-function(id, vals){
       generic=plot_shape()
       message<-name_c<-"Shape"
       module_ui_figs("downfigs")
-      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals,message=message, name_c=name_c,generic=generic)
+      datalist_name=attr(getdata_bank(),"datalist")
+      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals,message=message, name_c=name_c,generic=generic,datalist_name=datalist_name)
     })
 
     output$comments_downs<-{
@@ -425,8 +677,8 @@ databank_module$server<-function(id, vals){
       container<-container_global_caret(table)
       pic<-which(unlist(lapply(table,function(x) is.numeric(x))))
       table[,pic]<-round(table[,pic],round)
-      table
-      tables<-DT::formatStyle(
+      numeric_cols <- sapply(table, is.numeric)
+      tables<- DT::formatStyle(
         DT::formatStyle(
           DT::datatable(as.matrix(table),
                         escape=F,
@@ -443,19 +695,55 @@ databank_module$server<-function(id, vals){
 
 
     }
-    output$viewsl_class<-renderUI({
-      validate(need(get_metrics()$class,"No classification model found"))
+
+
+
+
+    table_sl_metrics<-reactive({
+      sl_metrics_table(getdata_bank(),input$sl_radiotype)
+    })
+
+
+    output$summary_sl<-renderUI({
+      print(input$sl_radiotype)
+      table<-table_sl_metrics()
+      # table<-readRDS('table.rds')
+      #input$sl_metrics<-c('resampling|tunning','finalModel','partition')
+
+      pic<-which(grepl(paste0(input$sl_metrics,collapse="|"),colnames(table)))
+      pic2<-which(grepl(c("model_tag|model_name"),colnames(table)))
+      table<-table[,unique(sort(c(pic,pic2)))]
+
+
+
+
       div(
-        render_metrics(get_metrics()$class,input$round_sl)
+        tags$style(HTML(
+          "
+          .sl-table table.dataTable>thead>tr>th {
+          padding: 5px
+          }
+         .sl-table table > thead > tr {}
+
+    .sl-table table > thead > tr:nth-child(1) > th:nth-child(1) {
+
+    z-index: 999;
+    left: 0px
+    }
+
+          "
+        )),
+        div(
+          class="half-drop-inline sl-table",
+
+          div(sl_metrics_format(table,input$round_sl) ,    style="overflow: auto;")
+        )
       )
     })
 
-    output$viewsl_reg<-renderUI({
-      validate(need(get_metrics()$reg,"No Regression model found"))
-      div(
-        render_metrics(get_metrics()$reg,input$round_sl)
-      )
-    })
+
+
+
 
     observeEvent(input$view_datalist,{
       updateTabsetPanel(session,"tab_bank",selected=input$view_datalist)
@@ -915,7 +1203,10 @@ databank_module$server<-function(id, vals){
 
       selected=get_selected_from_choices(vals$cur_view_datalist,choices)
 
+      #updateRadioGroupButtons(session,'view_datalist',choiceValues =choices,choiceNames =choices_names,selected="tab6")
+
       updateRadioGroupButtons(session,'view_datalist',choiceValues =choices,choiceNames =choices_names,selected=selected)
+
       shinyBS::addPopover(session,'tab1', NULL,"Numeric-Attribute")
       shinyBS::addPopover(session,'tab2', NULL,"Factor-Attribute")
       shinyBS::addPopover(session,'tab3', NULL,"Coords-Attribute")
@@ -1180,4 +1471,3 @@ databank_module$server<-function(id, vals){
 
 
 }
-

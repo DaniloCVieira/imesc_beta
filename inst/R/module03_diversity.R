@@ -263,7 +263,7 @@ diversity_tool$ui<-function(id){
 
                      pickerInput(ns("omi_result"),'Result',choices=c('Niche params',"species coordinates","variable coordinates","Site coordinates","Axis upon niche axis","EBNB"),selected="EBNB"),
                      uiOutput(ns("ebnb_pc")),
-                     pickerInput_fromtop(ns("palette"),
+                     pickerInput_fromtop_live(ns("palette"),
                                          label = "Palette:",
                                          choices=NULL)
                  )
@@ -428,7 +428,7 @@ diversity_tool$ui<-function(id){
                      title="Plot Options",
                      color="#c3cc74ff",
                      div(style="max-height: 250px; overflow-y: auto",
-                         pickerInput_fromtop(ns("isp_palette"),
+                         pickerInput_fromtop_live(ns("isp_palette"),
                                              label = "Palette:",
                                              choices=NULL),
 
@@ -670,7 +670,9 @@ diversity_tool$server<-function (id,vals ){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=get_indicators_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Indicators plot", name_c="indicators_plot")
+      datalist_name=attr(vals$saved_data[[input$isp_Y]],"datalist")
+
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Indicators plot", name_c="indicators_plot",datalist_name=datalist_name)
     })
 
     observeEvent(ignoreInit = T,input$isp_download_results,{
@@ -1398,7 +1400,8 @@ diversity_tool$server<-function (id,vals ){
     observeEvent(ignoreInit = T,input$downp_perf,{
       vals$hand_plot<-"EBNB"
       module_ui_figs("downfigs")
-      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals)
+      datalist_name=attr(vals$saved_data[[input$omi_X]],"datalist")
+      mod_downcenter<-callModule(module_server_figs, "downfigs",  vals=vals,datalist_name=datalist_name)
     })
 
     observeEvent(ignoreInit = T,input$omi_save_datalist,{

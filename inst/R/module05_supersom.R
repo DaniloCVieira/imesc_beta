@@ -271,7 +271,7 @@ table_results_tab3$ui<-function(id){
 
           ),
 
-          pickerInput_fromtop(inputId = ns("ss1_bg_palette"),"Palette",NULL),
+          pickerInput_fromtop_live(inputId = ns("ss1_bg_palette"),"Palette",NULL),
           numericInput(ns("border_width"),"Border width",value = 0.5,step=0.1),
           numericInput(ns("ss1_pcodes_bgalpha"), "Unit lightness",value = 0,min = 0,max = 1,step = .1),
           pickerInput_fromtop(ns("ss1_pclus_border"),label ='Border:',NULL),
@@ -287,7 +287,7 @@ table_results_tab3$ui<-function(id){
         ),
         div(
           div(id=ns("ss1_pclus_points_inputs"),
-              pickerInput_fromtop(inputId = ns("ss1_pclus_points_palette"),
+              pickerInput_fromtop_live(inputId = ns("ss1_pclus_points_palette"),
                                   label ="Palette",
                                   choices = NULL),
               pickerInput_fromtop(ns("ss1_pclus_points_factor"),"Factor",
@@ -309,7 +309,7 @@ table_results_tab3$ui<-function(id){
                    checkboxInput(ns("ss1_pclus_addtext"),strong("Labels"),value=F,width="80px")
         ),
         div(id=ns('ss1_pclus_text_inputs'),
-            pickerInput_fromtop(inputId = ns("ss1_pclus_text_palette"),
+            pickerInput_fromtop_live(inputId = ns("ss1_pclus_text_palette"),
                                 label ="Palette",
                                 choices =  NULL),
             pickerInput_fromtop(ns("ss1_pclus_text_factor"),"Factor",
@@ -371,7 +371,7 @@ table_results_tab3$ui<-function(id){
                 ),
 
                 numericInput(ns("var_pie_n"), span(tipright("Number of variables to display"),"Number"), value = 10, min = 2),
-                pickerInput_fromtop(ns("var_pie_bg"),label = "Palette",choices = NULL),
+                pickerInput_fromtop_live(ns("var_pie_bg"),label = "Palette",choices = NULL),
                 numericInput(ns("var_pie_transp"), "Transparency", value = 0, min = 2))
           )
       ),
@@ -684,7 +684,8 @@ table_results_tab2$server<-function(id,vals){
       vals$hand_plot<-"generic_replay"
       module_ui_figs("downfigs")
       generic=g_pchanges()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Changes plot", name_c="som_changes")
+      datalist_name=attr(current_som_model(),'model_name')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Changes plot", name_c="changes",datalist_name=datalist_name)
     })
     g_pchanges<-reactive({
       pchanges(current_som_model())
@@ -709,7 +710,8 @@ table_results_tab2$server<-function(id,vals){
       vals$hand_plot<-"generic_replay"
       module_ui_figs("downfigs")
       generic=g_pcounts()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Counting plot", name_c="som_counting")
+      datalist_name=attr(current_som_model(),'model_name')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Counting plot", name_c="counting",datalist_name=datalist_name)
     })
     return(NULL)
 
@@ -1340,7 +1342,8 @@ table_results_tab3$server<-function(id,vals){
 
         name_c=  gsub("[^[:alnum:]]","-", input$ss1_variable_pproperty)
       }
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="BMU plot", name_c=name_c)
+      datalist_name=attr(current_som_model(),'model_name')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="BMU plot", name_c=name_c,datalist_name=datalist_name)
     })
 
     return(NULL)
@@ -1413,7 +1416,8 @@ table_results_tab4$server<-function(id,vals){
       vals$hand_plot<-"generic_replay"
       module_ui_figs("downfigs")
       generic=get_plot_animation2()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Grid-Weighted Neuron Plot", name_c="grid_weig_neuronplot")
+      datalist_name=attr(current_som_model(),'model_name')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Grid-Weighted Neuron Plot", name_c="grid_weig_neuronplot",datalist_name=datalist_name)
     })
     return(NULL)
 
@@ -1515,7 +1519,7 @@ table_predict_som$ui<-function(id){
 
               ),
 
-              pickerInput_fromtop(inputId = ns("ss2_bg_palette"),"Palette",NULL),
+              pickerInput_fromtop_live(inputId = ns("ss2_bg_palette"),"Palette",NULL),
               numericInput(ns("ss2_pcodes_bgalpha"), "Unit lightness",value = 0,min = 0,max = 1,step = .1),
               pickerInput_fromtop(ns("ss2_pclus_border"),label ='Border:',NULL)
             )
@@ -1529,7 +1533,7 @@ table_predict_som$ui<-function(id){
             ),
             div(
               div(id=ns("ss2_pclus_points_inputs"),
-                  pickerInput_fromtop(inputId = ns("ss2_pclus_points_palette"),
+                  pickerInput_fromtop_live(inputId = ns("ss2_pclus_points_palette"),
                                       label ="Palette",
                                       choices = NULL),
                   pickerInput_fromtop(ns("ss2_pclus_points_factor"),"Factor",
@@ -1549,7 +1553,7 @@ table_predict_som$ui<-function(id){
                        checkboxInput(ns("ss2_pclus_addtext"),strong("Labels"),value=F,width="80px")
             ),
             div(id=ns('ss2_pclus_text_inputs'),
-                pickerInput_fromtop(inputId = ns("ss2_pclus_text_palette"),
+                pickerInput_fromtop_live(inputId = ns("ss2_pclus_text_palette"),
                                     label ="Palette",
                                     choices =  NULL),
                 pickerInput_fromtop(ns("ss2_pclus_text_factor"),"Factor",
@@ -2428,7 +2432,8 @@ table_predict_som$server<-function(id,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=getbmu_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="BMU plot - predictions", name_c="bmu_pred")
+      datalist_name=attr(current_som_model(),'model_name')
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="BMU plot - predictions", name_c="bmu_pred",datalist_name=datalist_name)
     })
 
     message_download_perfomace<-reactive({

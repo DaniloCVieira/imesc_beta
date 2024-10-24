@@ -272,7 +272,8 @@ msp_earth$server<-function(id,model,vals){
       vals$hand_plot<-"generic_replay"
       module_ui_figs("downfigs")
       generic=earth_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Eath plot", name_c="earth_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Eath plot",datalist_name=datalist_name,name_c="earth_plot")
     })
 
 
@@ -296,12 +297,12 @@ msp_dnn$ui<-function(id,vals){
              div(
                numericInput(ns("neu_radius"), "Neuron size", value =0.05,step=0.01),
                colourpicker::colourInput(ns('neuron_fill'),"Neuron fill",value="Grey"),
-               pickerInput_fromtop(inputId = ns("weight_palette"),
-                                   label ="Weight Palette",
-                                   choices =  vals$colors_img$val,
-                                   options=shinyWidgets::pickerOptions(windowPadding="top"),
-                                   choicesOpt = list(
-                                     content =  vals$colors_img$img)),
+               pickerInput_fromtop_live(inputId = ns("weight_palette"),
+                                        label ="Weight Palette",
+                                        choices =  vals$colors_img$val,
+                                        options=shinyWidgets::pickerOptions(windowPadding="top"),
+                                        choicesOpt = list(
+                                          content =  vals$colors_img$img)),
                div(style="display: flex",
                    numericInput(ns("xlim1"), "Xlims", value =-0.5,step=0.1),
                    numericInput(ns("xlim2"), "to", value =1.5,step=0.1)
@@ -372,7 +373,8 @@ msp_dnn$server<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=dnn_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Network plot", name_c="dnn_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Network plot",datalist_name=datalist_name,name_c="dnn_plot")
     })
 
 
@@ -437,7 +439,8 @@ msp_dnn$server_avNNet<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=avNNet_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Network plot", name_c="avNNet_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Network plot",datalist_name=datalist_name,name_c="avNNet_plot")
     })
 
 
@@ -528,7 +531,8 @@ msp_dnn$server_nnet<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=avNNet_plot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Network plot", name_c="avNNet_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Network plot",datalist_name=datalist_name,name_c="avNNet_plot")
     })
 
 
@@ -551,12 +555,12 @@ msp_monmlp$ui<-function(id,vals){
              color="#c3cc74ff",
              div(
                pickerInput_fromtop(ns("column"), "Variable",choices=choices,multiple = T,selected=choices[1:4], options=shinyWidgets::pickerOptions(windowPadding="top",liveSearch=T)),
-               pickerInput_fromtop(inputId = ns("palette"),
-                                   label ="Palette",
-                                   choices =  vals$colors_img$val,
-                                   choicesOpt = list(
-                                     content =  vals$colors_img$img),
-                                   options=shinyWidgets::pickerOptions(windowPadding="top")),
+               pickerInput_fromtop_live(inputId = ns("palette"),
+                                        label ="Palette",
+                                        choices =  vals$colors_img$val,
+                                        choicesOpt = list(
+                                          content =  vals$colors_img$img),
+                                        options=shinyWidgets::pickerOptions(windowPadding="top")),
                div(style="display: flex",
                    numericInput(ns("ncol"), "ncol", value =2,step=0.1),
                    numericInput(ns("nrow"), "nrow", value =NA,step=0.1)
@@ -672,7 +676,8 @@ msp_monmlp$server<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=plot_effect()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Gam Style plot", name_c="gam.style")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Gam Style plot",datalist_name=datalist_name,name_c="gam.style")
     })
 
     observeEvent(list(input$column,
@@ -772,7 +777,7 @@ msp_rpart$ui<-function(id,vals){
                    div(class="map_side",id=ns('args_terminal'),
                        selectInput(ns('type'),"Type",choices=c('simple',"pies","barplot")),
 
-                       pickerInput_fromtop(
+                       pickerInput_fromtop_live(
                          inputId = ns("palette"),
                          label ="Palette",
                          choices =  vals$colors_img$val,
@@ -1104,7 +1109,8 @@ msp_rpart$server<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=plot_tree()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Decision Tree", name_c="dt_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Decision Tree",datalist_name=datalist_name,name_c="dt_plot")
     })
 
   })}
@@ -1259,12 +1265,12 @@ msp_xyf$ui<-function(id,vals){
 
                    )
                ),
-               pickerInput_fromtop(inputId = ns("xyf_bg_palette"),
-                                   label ="Palette",
-                                   choices =  vals$colors_img$val,
-                                   choicesOpt = list(
-                                     content =  vals$colors_img$img),
-                                   options=shinyWidgets::pickerOptions(windowPadding="top")),
+               pickerInput_fromtop_live(inputId = ns("xyf_bg_palette"),
+                                        label ="Palette",
+                                        choices =  vals$colors_img$val,
+                                        choicesOpt = list(
+                                          content =  vals$colors_img$img),
+                                        options=shinyWidgets::pickerOptions(windowPadding="top")),
                numericInput(ns("xyf_pcodes_bgalpha"),'Lightness',value = 0,min = 0,max = 1,step = .1),
                pickerInput_fromtop(ns("xyf_pclus_border"),
                                    label ='Border:',
@@ -1285,12 +1291,12 @@ msp_xyf$ui<-function(id,vals){
                checkboxInput(ns("xyf_pclus_addpoints"),"Points",
                              value=T),
                div(id=ns("xyf_pclus_points_inputs"),style="padding-left: 20px",
-                   pickerInput_fromtop(inputId = ns("xyf_pclus_points_palette"),
-                                       label ="Palette:",
-                                       choices = vals$colors_img$val,
-                                       choicesOpt = list(content = vals$colors_img$img),
-                                       options=shinyWidgets::pickerOptions(windowPadding="top"),
-                                       selected="black"),
+                   pickerInput_fromtop_live(inputId = ns("xyf_pclus_points_palette"),
+                                            label ="Palette:",
+                                            choices = vals$colors_img$val,
+                                            choicesOpt = list(content = vals$colors_img$img),
+                                            options=shinyWidgets::pickerOptions(windowPadding="top"),
+                                            selected="black"),
                    selectInput(ns("xyf_pclus_points_factor"),"Factor:",
                                choices =NULL),
                    pickerInput_fromtop(inputId = ns("xyf_pclus_symbol"),
@@ -1309,10 +1315,10 @@ msp_xyf$ui<-function(id,vals){
                div(
                  checkboxInput(ns("xyf_pclus_addtext"),"Labels",F),
                  div(id=ns('xyf_pclus_text_inputs'),style="display: none;padding-left: 20px",
-                     pickerInput_fromtop(inputId = ns("xyf_pclus_text_palette"),
-                                         label ="Color",
-                                         choices = NULL,
-                                         options=shinyWidgets::pickerOptions(windowPadding="top")),
+                     pickerInput_fromtop_live(inputId = ns("xyf_pclus_text_palette"),
+                                              label ="Color",
+                                              choices = NULL,
+                                              options=shinyWidgets::pickerOptions(windowPadding="top")),
                      pickerInput_fromtop(ns("xyf_pclus_text_factor"),"Factor:",
                                          choices = NULL,
                                          options=shinyWidgets::pickerOptions(windowPadding="top",liveSearch = T)),
@@ -1491,14 +1497,14 @@ msp_xyf$server<-function(id,model,vals){
 
 
 
-    div(
-      column(12,
-             h4("Variable factor map"),
-             p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
-             p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
-      )
+        div(
+          column(12,
+                 h4("Variable factor map"),
+                 p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
+                 p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
+          )
 
-    )
+        )
       )
 
     })
@@ -1707,7 +1713,8 @@ msp_xyf$server<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=xyfplot()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Kohonen plot", name_c="kohonen_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Kohonen plot",datalist_name=datalist_name,name_c="kohonen_plot")
     })
 
   })
@@ -1743,12 +1750,12 @@ msp_rf$ui<-function(id,vals){
                           title="Plot options",
                           color="#c3cc74ff",
                           div(
-                            pickerInput_fromtop(inputId = ns("fm_palette"),
-                                                label = 'Palette',
-                                                choices =     vals$colors_img$val,
-                                                choicesOpt = list(content =vals$colors_img$img),
-                                                selected=vals$cm_palette,
-                                                options=shinyWidgets::pickerOptions(windowPadding="top")),
+                            pickerInput_fromtop_live(inputId = ns("fm_palette"),
+                                                     label = 'Palette',
+                                                     choices =     vals$colors_img$val,
+                                                     choicesOpt = list(content =vals$colors_img$img),
+                                                     selected=vals$cm_palette,
+                                                     options=shinyWidgets::pickerOptions(windowPadding="top")),
                             numericInput(ns("msp_plot_base_size"),"Base size",12),
                             numericInput(ns("text_size"),"Text size",8),
                             numericInput(ns("msp_plot_width"), "Plot width",600),
@@ -1798,13 +1805,15 @@ msp_rf$server<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=getcm()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix - Tree", name_c="cm_tree")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix - Tree",datalist_name=datalist_name,name_c="cm_tree")
     })
     observeEvent(ignoreInit = T,input$download_plot,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=gettree()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Tree from RandomForest", name_c="tree")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Tree from RandomForest",datalist_name=datalist_name,name_c="tree")
     })
     getcm<-reactive({
       m<-model
@@ -1949,7 +1958,7 @@ msp_cforest$ui<-function(id,vals){
 
                numericInput(ns("base_size"),"Base size",10),
                numericInput(ns("digits"),"Digits:",3),
-               pickerInput_fromtop(
+               pickerInput_fromtop_live(
                  inputId = ns("palette"),
                  label ="Palette",
                  choices =  vals$colors_img$val,
@@ -2138,7 +2147,8 @@ msp_cforest$server<-function(id,model,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=get_cm()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="CM-Single Treee", name_c=paste0("cm_tree",input$tree))
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="CM-Single Treee",datalist_name=datalist_name,name_c=paste0("cm_tree",input$tree))
     })
 
     output$cm_cforest<-renderUI({
@@ -2198,7 +2208,8 @@ msp_cforest$server<-function(id,model,vals){
       vals$hand_plot<-"generic_replay"
       module_ui_figs("downfigs")
       generic=plotree()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Decision Tree", name_c="dt_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Decision Tree",datalist_name=datalist_name,name_c="dt_plot")
     })
 
   })}
@@ -2550,6 +2561,7 @@ rf_oob_pred<-function(forest, X) {
     res<-apply(predind,1,function(x){
       names(which.max(table(x[!is.na(x)])))
     })
+    res<-factor(res,levels=forest$obsLevels)
     return(res)
   } else{
     preds = predict(forest, X, predict.all=TRUE)
@@ -2768,10 +2780,10 @@ permutation_importance$ui<-function(id){
 
 
               numericInput(ns("sig_feature"),span("+ Sig",tipright("Significance level")), value=0.05,  step=0.05),
-              pickerInput_fromtop(inputId = ns("pal_feature"),
-                                  label = "+ Palette",
-                                  choices =    NULL,
-                                  options=shinyWidgets::pickerOptions(windowPadding="top")),
+              pickerInput_fromtop_live(inputId = ns("pal_feature"),
+                                       label = "+ Palette",
+                                       choices =    NULL,
+                                       options=shinyWidgets::pickerOptions(windowPadding="top")),
               textInput(ns("feat_title"),"+ Title",NULL),
 
               numericInput(ns("cex.title.panel"),"+ Title size",
@@ -2812,8 +2824,8 @@ permutation_importance$ui<-function(id){
                       div(class="inline_pickers",style="color: #05668D",
                           selectizeInput(inputId = ns("var_feature_cm"),label = "+ Variable:",choices =NULL),
 
-                          pickerInput_fromtop(inputId = ns("pal_feature_cm"),label = "+ Palette:",choices =NULL,
-                                              options=shinyWidgets::pickerOptions(windowPadding="top")),
+                          pickerInput_fromtop_live(inputId = ns("pal_feature_cm"),label = "+ Palette:",choices =NULL,
+                                                   options=shinyWidgets::pickerOptions(windowPadding="top")),
                           textInput(ns("title_cm"),"Title", value=NULL)
                       ),
 
@@ -3166,14 +3178,16 @@ permutation_importance$server<-function(id,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=vals$caret_varImp_plot
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Permutation Importance plot", name_c="perm_Imp_plot")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Permutation Importance plot",datalist_name=datalist_name,name_c="perm_Imp_plot")
     })
 
     observeEvent(ignoreInit = T,input$downp_feature_cm,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
       generic<-vals$feature_cm_plot
-      callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Permutation Importance plot", name_c="CM-post-shuff",file=input$var_feature_cm)
+      callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Permutation Importance plot",datalist_name=datalist_name,name_c="CM-post-shuff",file=input$var_feature_cm)
     })
 
 
@@ -3191,6 +3205,7 @@ permutation_importance$server<-function(id,vals){
     observeEvent(ignoreInit = T,input$downp_feature_cm,{
       vals$hand_plot<-"Confusion Matrix Post-Shuffling"
       module_ui_figs("downfigs")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
       mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals, file=input$var_feature_cm)
     })
 
@@ -3272,10 +3287,10 @@ caret_pairs$ui<-function(id){
                      div(
 
                        textInput(ns("ggpair.title"),"Title:",""),
-                       pickerInput_fromtop(inputId = ns("fm_palette"),
-                                           label = 'Palette',
-                                           choices =  NULL,
-                                           options=shinyWidgets::pickerOptions(windowPadding="top")),
+                       pickerInput_fromtop_live(inputId = ns("fm_palette"),
+                                                label = 'Palette',
+                                                choices =  NULL,
+                                                options=shinyWidgets::pickerOptions(windowPadding="top")),
                        numericInput(ns("msp_plot_width"), "Plot width",800),
                        numericInput(ns("msp_plot_height"), "Plot height",600),
                        numericInput(ns("msp_plot_base_size"),"Base size",12),
@@ -3411,8 +3426,9 @@ caret_pairs$server<-function(id,model,vals){
       vals$hand_plot<-"generic_ggmatrix"
       module_ui_figs("downfigs")
       generic=get_ggpair()
-      name_c<-paste0(attr(model,"model_tag"),"_","cm")
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="GGpair", name_c=name_c)
+      name_c<-"ggpair"
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="GGpair",datalist_name=datalist_name,name_c=name_c)
 
 
 
@@ -3461,10 +3477,10 @@ pd$ui<-function(id){
                      div(
 
                        div(
-                         pickerInput_fromtop(inputId = ns("pd_palette"),
-                                             label = "Palette:",
-                                             choices =NULL,
-                                             options=shinyWidgets::pickerOptions(windowPadding="top")),
+                         pickerInput_fromtop_live(inputId = ns("pd_palette"),
+                                                  label = "Palette:",
+                                                  choices =NULL,
+                                                  options=shinyWidgets::pickerOptions(windowPadding="top")),
                          textInput(ns("title_pd"),"Title:", value=NULL),
                          numericInput(ns('title_pd_size'),
                                       "Title size:",12),
@@ -3772,8 +3788,9 @@ pd$server<-function(id,model,vals){
     observeEvent(input$down_plot_pd,ignoreInit = T,{
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
-      name_c=paste0("pd-",model_name)
+      name_c="partial_dependence"
       generic=pd_biplot()
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
       mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Partial Dependendence Plot",  name_c=name_c)
     })
 
@@ -3808,10 +3825,10 @@ msp_nb$ui<-function(id,model){
                      title="Plot options",
                      color="#c3cc74ff",
                      div(
-                       pickerInput_fromtop(inputId = ns("palette"),
-                                           label = 'Palette',
-                                           choices =  NULL,
-                                           options=shinyWidgets::pickerOptions(windowPadding="top")),
+                       pickerInput_fromtop_live(inputId = ns("palette"),
+                                                label = 'Palette',
+                                                choices =  NULL,
+                                                options=shinyWidgets::pickerOptions(windowPadding="top")),
                        numericInput(ns("base_size"),"Base size",12),
                        numericInput(ns("width"), "Plot width",800),
                        numericInput(ns("height"), "Plot height",600),
@@ -3910,8 +3927,9 @@ msp_nb$server<-function(id,model,  vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=msp_nb()
-      name_c<-paste0(attr(model,"model_tag"),"_","densities")
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="NB-Densities", name_c=name_c)
+      name_c<-"Densities"
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="NB-Densities",datalist_name=datalist_name,name_c=name_c)
 
 
     })
@@ -3933,12 +3951,12 @@ confusion_module$ui<-function(id){
                      title="Options",
                      color="#c3cc74ff",
                      div(
-                       selectInput(inputId = ns("caret_cm_type"),
+                       pickerInput(inputId = ns("caret_cm_type"),
                                    label = "+ Type: ",
                                    choices = c("Resampling","finalModel")),
-                       pickerInput_fromtop(inputId = ns("caretpalette"),
-                                           label = "+ Palette",NULL,
-                                           options=shinyWidgets::pickerOptions(windowPadding="top")),
+                       pickerInput_fromtop_live(inputId = ns("caretpalette"),
+                                                label = "+ Palette",NULL,
+                                                options=shinyWidgets::pickerOptions(windowPadding="top")),
                        textInput(ns('cm_title'),"Title","Training"),
 
                        div(
@@ -3963,7 +3981,9 @@ confusion_module$server<-function(id, vals){
   moduleServer(id,function(input,output,session){
 
     ns<-session$ns
-    model<-vals$cur_caret_model
+    model<-reactive({vals$cur_caret_model})
+
+
     observeEvent(vals$newcolhabs,{
       updatePickerInput(session,"caretpalette",
                         choices = vals$colors_img$val,
@@ -3977,40 +3997,42 @@ confusion_module$server<-function(id, vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=vals$caret_cm_train_plot
-      name_c<-paste0(attr(model,"model_tag"),"_","cm")
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix", name_c=name_c)
+      name_c<-"cm"
+      datalist_name<-attr(model(),"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix",datalist_name=datalist_name,name_c=name_c)
 
     })
     observeEvent(ignoreInit = T,input$downtable_cm_train,{
       vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
-      name<-paste(attr(model,"model_tag"),"_","cm")
+      name<-paste(attr(model(),"model_tag"),"_","cm")
       data<-vals$caret_cm_train_table
       mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Confusion Matrix",data=data, name=name)
     })
     output$confusion_caret2<-renderPrint({
-      validate(need(model$modelType=="Classification","Confusion matrices are only valid for classification models."))
+      validate(need(model()$modelType=="Classification","Confusion matrices are only valid for classification models."))
       req(input$caret_cm_type)
       res<-if(input$caret_cm_type=="Resampling"){
-        confusionMatrix(model)
+        confusionMatrix(model())
       } else{
-        confusionMatrix(predict(model),model$trainingData[,'.outcome'])
+        confusionMatrix(predict(model()),model()$trainingData[,'.outcome'])
       }
       vals$caret_cm_train_table<-as.data.frame.matrix(res$table)
       res
     })
     output$confusion_caret <- renderPlot({
       req(input$caretpalette)
-      validate(need(model$modelType=="Classification","Confusion matrices are only valid for classification models."))
-      m<-model
+      validate(need(model()$modelType=="Classification","Confusion matrices are only valid for classification models."))
+      m<-model()
       req(input$caret_cm_type)
       if(input$caret_cm_type=="Resampling"){
         cm<-table(m$pred$pred,m$pred$obs)
-
         res<-plotCM(m, input$caretpalette,  newcolhabs=vals$newcolhabs,title=input$cm_title)
-      } else{
-        cm<-table(predict(model),model$trainingData[,'.outcome'])
+      } else  {
+        train<-getdata_model(m)
+        cm<-table(predict(model()$finalModel),model()$trainingData[,'.outcome'])
         res<-plotCM(cm,input$caretpalette,vals$newcolhabs,title=input$cm_title)
+
       }
       vals$caret_cm_train_plot<-res
       res
@@ -4034,8 +4056,8 @@ confusion_module$server_obspred<-function(id, vals,pred,obs){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=cm_plot()
-
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix", name_c="cm_")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix",datalist_name=datalist_name,name_c="cm")
 
     })
     observeEvent(ignoreInit = T,input$downtable_cm_train,{
@@ -4080,9 +4102,14 @@ model_results$ui<-function(id){
           column(6,class="mp0",
 
                  box_caret(ns('12'),
-                           title="Global metrics",
+                           title="Resampling",
                            div(style="overflow-x: auto",
                                uiOutput(ns('global_metrics'))
+                           )),
+                 box_caret(ns('12f'),
+                           title="Final model:",
+                           div(style="overflow-x: auto",
+                               uiOutput(ns('final_metrics'))
                            )),
                  box_caret(ns('11'),
                            title="Table options",
@@ -4314,8 +4341,9 @@ model_results$server<-function(id,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=plot_train()
-      name_c<-paste0(attr(model(),"model_tag"),"_","Train")
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Training plot", name_c=name_c)
+      name_c<-"train"
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Training plot",datalist_name=datalist_name,name_c=name_c)
 
     })
 
@@ -4324,8 +4352,9 @@ model_results$server<-function(id,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=importance_plot()
-      name_c<-paste0(attr(model(),"model_tag"),"_","varImp")
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Variable Importance", name_c=name_c)
+      name_c<-"varImp"
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Variable Importance",datalist_name=datalist_name,name_c=name_c)
     })
     observeEvent(ignoreInit = T,input$down_table_feat,{
       vals$hand_down<-"generic"
@@ -4459,15 +4488,35 @@ model_results$server<-function(id,vals){
       render_list(result)
 
     })
+
+    output$final_metrics<-renderUI({
+
+      m<-model()
+      if(inherits(m$finalModel,"randomForest")){
+        pred<-rf_oob_pred(m$finalModel,getdata_model(m))
+      } else{
+        pred<-predict(m)
+
+      }
+
+      div(class="half-drop-inline",
+          renderTable(
+            data.frame(rbind(postResample(pred,model()$trainingData[,'.outcome'])))
+          )
+      )
+    })
     output$global_metrics<-renderUI({
       validate(need(inherits(model(),"train"),"No trained  models found"))
       req(input$round_performace)
       m<-model()
       #table<- round(m$results[rownames(m$bestTune),],input$round_performace)
       table<-m$results[rownames(m$bestTune),]
-
-      renderTable(table,digits=input$round_performace)
+      div(
+        class="half-drop-inline",
+        renderTable(table,digits=input$round_performace)
+      )
     })
+
     output$observation_metrics<-renderUI({
       validate(need(inherits(model(),"train"),"No trained  models found"))
       m<-model()
@@ -5090,6 +5139,7 @@ model_predic$ui<-function(id){
                                               "Training"='Training',
                                               "New Data"="Datalist")
                                 )
+
                             ),
 
                             div(class="inline_pickers",style=" margin-left: 10px",
@@ -5200,16 +5250,23 @@ model_predic$server<-function(id,vals){
   moduleServer(id,function(input,output,session){
 
     ns<-session$ns
-    model<-vals$cur_caret_model
+    model<-reactive(vals$cur_caret_model)
 
-    observeEvent(vals$cur_caret_model,{
-      m<-vals$cur_caret_model
+    observe({
+      m<-model()
+      model_tag<-attr(m,"model_tag")
+      shinyjs::toggle('rf_oob',condition=model_tag%in%"rf")
+
+    })
+
+    observeEvent(model(),{
+      m<-model()
 
       updateActionLink(session,"pred_loop",paste("Predict all",attr(m,"model_tag"),"models"))
 
     })
     output$tip_pred<-renderUI({
-      m<-vals$cur_caret_model
+      m<-model()
       model_tag<-attr(m,"model_tag")
       tiphelp(paste0(
         "<p>Run predictions for all <code>",model_tag,"</code> models saved in the training Datalist and combine the results into a single Datalist.</p>"
@@ -5234,8 +5291,8 @@ model_predic$server<-function(id,vals){
       shinyjs::toggle("downp_cmsl_pred",condition=input$predSL_tab=="tab_cm")
 
     })
-    observeEvent(attr(model,'test'),{
-      choices=if(length(attr(model,'test'))==1){c(
+    observeEvent(attr(model(),'test'),{
+      choices=if(length(attr(model(),'test'))==1){c(
         "Training"='Training',
         "New Data"="Datalist"
       )
@@ -5267,7 +5324,7 @@ model_predic$server<-function(id,vals){
     observeEvent(ignoreInit = T,input$down_metrics,{
       vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
-      name<-paste(attr(model,"model_tag"),"_","pred_metrics")
+      name<-paste(attr(model(),"model_tag"),"_","pred_metrics")
       data<-vals$sup_metrics
       mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Prediction metrics",data=data, name=name)
     })
@@ -5276,7 +5333,7 @@ model_predic$server<-function(id,vals){
     observeEvent(ignoreInit = T,input$dowcenter_cmsl_pred,{
       vals$hand_down<-"generic"
       module_ui_downcenter("downcenter")
-      name<-paste(attr(model,"model_tag"),"_","obs_perform")
+      name<-paste(attr(model(),"model_tag"),"_","obs_perform")
       data<-vals$svm_cm_test
       mod_downcenter <- callModule(module_server_downcenter, "downcenter",  vals=vals, message="Download Observation Performace",data=data, name=name)
     })
@@ -5284,18 +5341,19 @@ model_predic$server<-function(id,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=vals$svm_cm_pred
-      name_c<-paste0(attr(model,"model_tag"),"_","pred_cm")
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix - Predictions", name_c=name_c)
+      name_c<-"cm_pred"
+      datalist_name<-attr(model(),"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Confusion Matrix - Predictions",datalist_name=datalist_name,name_c=name_c)
 
     })
     output$confusion_svm2_pred<-renderPrint({
-      req(model$modelType=="Classification")
+      req(model()$modelType=="Classification")
       res<-confusionMatrix(get_cm_pred())
       vals$svm_cm_test<-  as.data.frame.matrix(res$table)
       res
     })
     observe({
-      shinyjs::toggle('down_cm_btn',condition=model$modelType=="Classification")
+      shinyjs::toggle('down_cm_btn',condition=model()$modelType=="Classification")
     })
     get_cm_pred<-reactive({
 
@@ -5305,8 +5363,8 @@ model_predic$server<-function(id,vals){
       conf
     })
     output$confusion_sl_pred<-renderUI({
-      req(model)
-      req(model$modelType=="Classification")
+      req(model())
+      req(model()$modelType=="Classification")
 
       req(input$svmpalette_pred)
       conf<-get_cm_pred()
@@ -5326,7 +5384,7 @@ model_predic$server<-function(id,vals){
       req(predictionSL())
       req(length(input$svmpred_which)>0)
 
-      m<-model
+      m<-model()
       req(m)
       pred<-predictionSL()[,1]
       # x_t<-attr(m,"test")
@@ -5359,7 +5417,7 @@ model_predic$server<-function(id,vals){
 
       req(length(obs)==length(pred))
 
-      m<-model
+      m<-model()
       NULL
 
       table<-stats_ml(obs,pred,m)
@@ -5378,7 +5436,7 @@ model_predic$server<-function(id,vals){
 
 
       }
-      validate(need(inherits(model,"train"),"No trained  models found"))
+      validate(need(inherits(model(),"train"),"No trained  models found"))
 
       vals$sup_metrics<-table<-errors_predictionSL()
       div(
@@ -5389,17 +5447,17 @@ model_predic$server<-function(id,vals){
 
     })
     output$sl_pred_pal<-renderUI({
-      req(model)
-      req(model$modelType=="Classification")
+      req(model())
+      req(model()$modelType=="Classification")
       lab2<-span("+",tipify(icon("fas fa-question-circle"),"Confusion Matrix Palette"),"Palette", "right")
 
       div(
         textInput(ns("svm_cmpred_title"),"+ CM Title",gettile_cmpred()),
-        pickerInput_fromtop(inputId = ns("svmpalette_pred"),
-                            label = lab2,
-                            choices =     vals$colors_img$val,
-                            choicesOpt = list(content =     vals$colors_img$img),
-                            options=shinyWidgets::pickerOptions(windowPadding="top"))
+        pickerInput_fromtop_live(inputId = ns("svmpalette_pred"),
+                                 label = lab2,
+                                 choices =     vals$colors_img$val,
+                                 choicesOpt = list(content =     vals$colors_img$img),
+                                 options=shinyWidgets::pickerOptions(windowPadding="top"))
 
 
       )
@@ -5418,14 +5476,14 @@ model_predic$server<-function(id,vals){
 
     getobssvm<-reactive({
       req(input$predSL_new)
-      req(model)
-      sup_test<-attr(model,"supervisor")
+      req(model())
+      sup_test<-attr(model(),"supervisor")
 
       datalist<-vals$saved_data
-      if(model$modelType=="Classification"){
+      if(model()$modelType=="Classification"){
         datalist=lapply(datalist,function(x) attr(x,"factors"))}
 
-      m<-model
+      m<-model()
       res0<-
         sapply(datalist, function (x){
           any(colnames(x)==sup_test)&
@@ -5443,7 +5501,7 @@ model_predic$server<-function(id,vals){
 
     output$sl_observed<-renderUI({
 
-      sup_test<-attr(model,"supervisor")
+      sup_test<-attr(model(),"supervisor")
       from<-paste0(" ",input$svmpred_which)
       if(input$svmpred_which=="Datalist"){
         req(length(getobssvm())>0)
@@ -5463,7 +5521,7 @@ model_predic$server<-function(id,vals){
       req(input$svmpred_which=="Datalist")
       req(getobssvm()%in%names(vals$saved_data))
       choices<-c(names(vals$saved_data[getobssvm()]))
-      sup_test<-attr(model,"supervisor")
+      sup_test<-attr(model(),"supervisor")
       div(
         style="margin-left: 70px",
         pickerInput_fromtop_live(ns("predSL_newY"),NULL,choices),
@@ -5487,7 +5545,7 @@ model_predic$server<-function(id,vals){
         }
       )
       datalist_comp<-vals$saved_data
-      m<-model
+      m<-model()
       Y<-which(colnames(m$trainingData)==".outcome")
       res0<-unlist(
         lapply(datalist_comp, function (x){
@@ -5518,9 +5576,9 @@ model_predic$server<-function(id,vals){
     get_new_data<-reactive({
 
       req(input$svmpred_which)
-      m<-model
+      m<-model()
       data_o<-vals$saved_data[[vals$cur_data_sl]]
-      req(model)
+      req(model())
       if(input$svmpred_which=="Partition"){
         newdata<-attr(m,"test")
         newdata<-data_migrate(data_o,newdata)
@@ -5558,8 +5616,11 @@ model_predic$server<-function(id,vals){
     observeEvent(input$run_pred,ignoreInit = T,{
 
       validate(need(!anyNA(get_new_data()),"NAs not allowed in the prediction Datalist"))
-      m<-model
+      m<-model()
+
       sl_pred <- predict(m,newdata = get_new_data())
+
+
       res<-data.frame(Predictions= sl_pred)
 
 
@@ -5590,7 +5651,7 @@ model_predic$server<-function(id,vals){
 
 
     output$svmtab_pred<-renderUI({
-      validate(need(inherits(model,"train"),"No trained  models found"))
+      validate(need(inherits(model(),"train"),"No trained  models found"))
 
       table<-vals$svmtab_pred<-predictionSL()
       div(class="half-drop-inline",
@@ -5606,7 +5667,7 @@ model_predic$server<-function(id,vals){
 
 
     output$pred_model_inputs<-renderUI({
-      m<-model
+      m<-model()
 
       datalist<-attr(m,"Datalist")
       model_tag<-attr(m,"model_tag")
@@ -5647,7 +5708,7 @@ model_predic$server<-function(id,vals){
 
 
 
-          m<-model
+          m<-model()
           data_x<-attr(m,"Datalist")
 
 
@@ -5670,6 +5731,7 @@ model_predic$server<-function(id,vals){
             m<-models[[i]]
             x<-m$trainingData
             preds<-predict(m,newdata=newdata)
+
             var=attr(m,"supervisor")
             if(m$modelType=="Classification"){
               preds<-factor(preds,levels=m$levels)
@@ -5730,7 +5792,7 @@ model_predic$server<-function(id,vals){
 
       req(predictionSL())
       req(input$svmpred_which)
-      m<-model
+      m<-model()
       data<-predictionSL()
       supervisor<-attr(m,"supervisor")
       model_tag<-attr(m,"model_tag")
@@ -6126,14 +6188,17 @@ fs$server<-function(id,vals){
       vals$hand_plot<-"generic_gg"
       module_ui_figs("downfigs")
       generic=plot(run_ga()) + theme_bw()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Fit plot - rfGA", name_c="fitplot_rfGA")
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="Fit plot - rfGA",datalist_name=datalist_name,name_c="fitplot_rfGA")
     })
     observeEvent(ignoreInit = T,input$download_plot2,{
 
       vals$hand_plot<-"generic_replay"
       module_ui_figs("downfigs")
       generic=plot2()
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="perfplot-rfGA", name_c="rfGA_plot1")
+
+      datalist_name<-attr(vals$cur_caret_model,"model_name")
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message="perfplot-rfGA",datalist_name=datalist_name,name_c="rfGA_plot1")
     })
     observeEvent(input$create_dl,ignoreInit = T,{
       opt<-run_ga()$optVariables
@@ -6183,99 +6248,99 @@ caret_models$ui<-function(id){
     ),
 
 
-column(12,class="mp0 nav_caret",
-       tabsetPanel(NULL,id=ns("tab"),
-                   tabPanel("1. Training",value="tab1",
-                            div(style="display: flex;",
+    column(12,class="mp0 nav_caret",
+           tabsetPanel(NULL,id=ns("tab"),
+                       tabPanel("1. Training",value="tab1",
+                                div(style="display: flex;",
+                                    div(
+                                      uiOutput(ns('pkg_installed')),
+                                      uiOutput(ns('validate_twoclass')),
+                                      #uiOutput(ns('prin_model_fit')),
+                                    ),
+                                    uiOutput(ns("tab1_out"))
+
+
+
+                                )),
+                       tabPanel("2. Results",value="tab2",
+
+                                model_results$ui(ns("caret_results")),
+                                uiOutput(ns('tab2_out'))),
+                       tabPanel("3. Predict",value="tab3",
                                 div(
-                                  uiOutput(ns('pkg_installed')),
-                                  uiOutput(ns('validate_twoclass')),
-                                  #uiOutput(ns('prin_model_fit')),
-                                ),
-                                uiOutput(ns("tab1_out"))
+                                  model_predic$ui(ns("caret_pred")),
+                                  uiOutput(ns('tab3_out'))
+                                ))
+
+           )),
+
+    column(12, class="mp0",id=ns('panel_train'),
+           div(class="mp0 train_button",
+               actionButton(ns("run_train"),span("Train",icon("fas fa-angles-right"))),
 
 
-
-                            )),
-                   tabPanel("2. Results",value="tab2",
-
-                            model_results$ui(ns("caret_results")),
-                            uiOutput(ns('tab2_out'))),
-                   tabPanel("3. Predict",value="tab3",
-                            div(
-                              model_predic$ui(ns("caret_pred")),
-                              uiOutput(ns('tab3_out'))
-                            ))
-
-       )),
-
-column(12, class="mp0",id=ns('panel_train'),
-       div(class="mp0 train_button",
-           actionButton(ns("run_train"),span("Train",icon("fas fa-angles-right"))),
-
-
-       ),
-       column(4,class="mp0",
-              box_caret(ns('1'),
-                        title="Tuning",
-                        tip=tipright("<p>Choose the tuning search method using this panel.</p><p>If <code>Grid</code> or <code>Random</code> is selected, the app will create a tuning grid using the <code>grid</code> function assigned to the model within the caret package.</p><p>Select <code>custom-grid</code> to define your own tuning parameters, and IMESc will generate the corresponding combinations.</p>"),
-                        div(id=ns('box1_content'),
-                            panel_box_caret1$ui(ns("panel_box_caret1"))
-                        )
-              ),
-              div(
-                id=ns('grid_box'),
-                box_caret(ns('2'),
-                          div(id=ns('box2_content'),
-                              panel_box_caret2$ui(ns("grid")),
-                              uiOutput(ns("box2_output"))
-                          ))
-              ),
-              box_caret(ns('3'),
-                        title="Model parameters",
-                        tip=tipright("Specify model-specific parameters that are not included in the tuning search"),
-                        div(id=ns('box3_content'),
-                            uiOutput(ns("panel_box_caret3"))
-                        )),
-
-              box_caret(ns('4'),
-                        title="Resampling",
-                        tip=tipright("<p>Use this panel to specify resampling parameters, which determine how the data is repeatedly sampled and used for model validation. This includes selecting the resampling method (e.g., cross-validation, bootstrapping) and setting the number of repeats.</p>"),
-                        div(id=ns('box4_content'),
-                            panel_box_caret4$ui(ns("panel_box_caret4"))
-                        ))
-       ),
-       column(7,class='mp0',
-              uiOutput(ns("training_failed")),
-              uiOutput(ns("training_failed0")),
-              div(id=ns("use_wei"),
-                  box_caret(ns("6"),
-                            title=inline(div(class="check_title",
-                                             checkboxInput(ns("wei_use"),span("Use weights",tipright("Use case weights")),F)
-                            )),
-                            div(style="padding: 10px",
-                                uiOutput(ns('panel_wei')),
+           ),
+           column(4,class="mp0",
+                  box_caret(ns('1'),
+                            title="Tuning",
+                            tip=tipright("<p>Choose the tuning search method using this panel.</p><p>If <code>Grid</code> or <code>Random</code> is selected, the app will create a tuning grid using the <code>grid</code> function assigned to the model within the caret package.</p><p>Select <code>custom-grid</code> to define your own tuning parameters, and IMESc will generate the corresponding combinations.</p>"),
+                            div(id=ns('box1_content'),
+                                panel_box_caret1$ui(ns("panel_box_caret1"))
                             )
-                  )),
-              box_caret(ns("5"),class="train_box box_deep",
-                        title="Summary",
-                        tip=tipright("<p>This panel provides a summary of the current selection of the model.</p><p>It serves as a quick reference for the user to review and confirm their chosen settings before running the analysis.</p>"),
-                        div(style="padding: 10px",
-                            div(style="position: absolute; top: 0px;right: 0px; padding: 20px",uiOutput(ns('print_train'))),
-                            uiOutput(ns("validate_train")),
-                            uiOutput(ns('panel_green')),
-                        )
-              ),
+                  ),
+                  div(
+                    id=ns('grid_box'),
+                    box_caret(ns('2'),
+                              div(id=ns('box2_content'),
+                                  panel_box_caret2$ui(ns("grid")),
+                                  uiOutput(ns("box2_output"))
+                              ))
+                  ),
+                  box_caret(ns('3'),
+                            title="Model parameters",
+                            tip=tipright("Specify model-specific parameters that are not included in the tuning search"),
+                            div(id=ns('box3_content'),
+                                uiOutput(ns("panel_box_caret3"))
+                            )),
 
-              box_caret(ns('6b'),
-                        title="Current tuning",
-                        div(style="padding: 10px;",
-                            uiOutput(ns('print_interactions')),
-                            uiOutput(ns("print_grid"))
-                        ))
-       )
+                  box_caret(ns('4'),
+                            title="Resampling",
+                            tip=tipright("<p>Use this panel to specify resampling parameters, which determine how the data is repeatedly sampled and used for model validation. This includes selecting the resampling method (e.g., cross-validation, bootstrapping) and setting the number of repeats.</p>"),
+                            div(id=ns('box4_content'),
+                                panel_box_caret4$ui(ns("panel_box_caret4"))
+                            ))
+           ),
+           column(7,class='mp0',
+                  uiOutput(ns("training_failed")),
+                  uiOutput(ns("training_failed0")),
+                  div(id=ns("use_wei"),
+                      box_caret(ns("6"),
+                                title=inline(div(class="check_title",
+                                                 checkboxInput(ns("wei_use"),span("Use weights",tipright("Use case weights")),F)
+                                )),
+                                div(style="padding: 10px",
+                                    uiOutput(ns('panel_wei')),
+                                )
+                      )),
+                  box_caret(ns("5"),class="train_box box_deep",
+                            title="Summary",
+                            tip=tipright("<p>This panel provides a summary of the current selection of the model.</p><p>It serves as a quick reference for the user to review and confirm their chosen settings before running the analysis.</p>"),
+                            div(style="padding: 10px",
+                                div(style="position: absolute; top: 0px;right: 0px; padding: 20px",uiOutput(ns('print_train'))),
+                                uiOutput(ns("validate_train")),
+                                uiOutput(ns('panel_green')),
+                            )
+                  ),
 
-)
+                  box_caret(ns('6b'),
+                            title="Current tuning",
+                            div(style="padding: 10px;",
+                                uiOutput(ns('print_interactions')),
+                                uiOutput(ns("print_grid"))
+                            ))
+           )
+
+    )
 
   )
 
@@ -7112,22 +7177,22 @@ caret_train$server<-function(id,vals=NULL){
       yon<-input$yloop
       req(length(yon)>0)
       div(
-div(
-  div(class="half-drop-inline",style="margin-top: 30px",
-      pickerInput_fromtop(
-        ns("yloop_partition"),
-        span("Partition:",tiphelp("Use a global partition defined in the Model Setup panel, or specify them individually.")),
-        choices=c(value_partition,"Variable-specific"="Custom"),
-        selected=vals$cur_yloop_partition
-      ),
-  ),
-  div(
-    class="picker_table",
-    uiOutput(ns("yloop_part_labels")),
-    uiOutput(ns("loop_part_pickers"))
-  )
+        div(
+          div(class="half-drop-inline",style="margin-top: 30px",
+              pickerInput_fromtop(
+                ns("yloop_partition"),
+                span("Partition:",tiphelp("Use a global partition defined in the Model Setup panel, or specify them individually.")),
+                choices=c(value_partition,"Variable-specific"="Custom"),
+                selected=vals$cur_yloop_partition
+              ),
+          ),
+          div(
+            class="picker_table",
+            uiOutput(ns("yloop_part_labels")),
+            uiOutput(ns("loop_part_pickers"))
+          )
 
-)
+        )
       )
     })
 
@@ -7855,23 +7920,23 @@ div(
       choices<-names(vals$saved_data)
       div(
 
-div(class="data_x",
-    uiOutput(ns("data_x_active")),
-    pickerInput_fromtop_live(ns("data_x"),
-                             span("~ Training Datalist",tiphelp("Choose the Datalist containing your independent variables (X).")),
-                             selected=vals$cur_data_sl,
-                             choices=choices,
-                             choicesOpt  =list(
-                               content=tips
-                             ),
-                             options=shinyWidgets::pickerOptions(
-                               header=uiOutput(ns("sho_saved_models"))
-                             )
+        div(class="data_x",
+            uiOutput(ns("data_x_active")),
+            pickerInput_fromtop_live(ns("data_x"),
+                                     span("~ Training Datalist",tiphelp("Choose the Datalist containing your independent variables (X).")),
+                                     selected=vals$cur_data_sl,
+                                     choices=choices,
+                                     choicesOpt  =list(
+                                       content=tips
+                                     ),
+                                     options=shinyWidgets::pickerOptions(
+                                       header=uiOutput(ns("sho_saved_models"))
+                                     )
 
 
 
-    )
-)
+            )
+        )
       )
     })
 
@@ -7968,13 +8033,13 @@ caret_model$server<-function(id,vals){
     output$model<-renderUI({
 
       div(
-pickerInput_fromtop(ns("model"),span("Model",tipright("Select the machine learning algorithm for model training. If there are saved models corresponding to the selected Training Datalist, they will be displayed in the Custom Name dropdown")),
-                    options=shinyWidgets::pickerOptions(liveSearch =T,windowPadding="top"),
-                    choices =grupos_modelos(),
-                    selected=vals$cmodel,
-                    choicesOpt =list(content =get_model_subtext())
+        pickerInput_fromtop(ns("model"),span("Model",tipright("Select the machine learning algorithm for model training. If there are saved models corresponding to the selected Training Datalist, they will be displayed in the Custom Name dropdown")),
+                            options=shinyWidgets::pickerOptions(liveSearch =T,windowPadding="top"),
+                            choices =grupos_modelos(),
+                            selected=vals$cmodel,
+                            choicesOpt =list(content =get_model_subtext())
 
-)
+        )
       )
     })
 
@@ -8074,5 +8139,4 @@ pickerInput_fromtop(ns("model"),span("Model",tipright("Select the machine learni
 
   })
 }
-
 

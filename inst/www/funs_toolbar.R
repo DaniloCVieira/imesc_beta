@@ -107,15 +107,7 @@ fixed_dt<-function(data,scrollY = "400px",scrollX = TRUE,dom = 't',
   }
 div(
 
-  tags$style(HTML("
-.dt_small td.dt-right {
-width: 100% !important
-}
-.dt_small .dataTables_scroll,.dt_small .dataTables_wrapper {
-text-align: right;
-width: min-content;
-}
-")),
+
 div(class="dt_small",
   DT::renderDataTable({
     dt<-DT::datatable(
@@ -796,7 +788,7 @@ get_selected_from_choices<-function(selected, choices){
       selected<-NULL
     }
   }
-  selected
+  selected[selected%in%choices]
 }
 
 
@@ -806,7 +798,7 @@ get_all_selected_from_choices<-function(selected, choices){
       selected<-NULL
     }
   }
-  selected
+  selected[selected%in%choices]
 }
 
 

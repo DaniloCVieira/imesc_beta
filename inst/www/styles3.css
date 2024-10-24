@@ -858,3 +858,29 @@ font-size: 14px
 min-height:70px;
 
 }
+
+
+.dt_small td.dt-right {
+width: 100% !important
+}
+.dt_small .dataTables_scroll,.dt_small .dataTables_wrapper {
+text-align: right;
+width: min-content;
+}
+.icon_summary{
+    padding-left: 5px;
+ padding-right: 10px;
+ padding-top: 10px;
+    box-sizing: content-box;
+    border: 0px solid;
+    border-radius: 0px;
+
+    font-size: 10px;
+    color: #696969;
+ display: flex;
+align-items: flex-end;
+ gap: 3px
+    }
+.text_summary{
+color:RoyalBlue
+}

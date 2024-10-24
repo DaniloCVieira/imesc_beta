@@ -153,7 +153,7 @@ mod_comp_plot_options$ui<-function(id){
                             label = "+ Fill",
                             choices =c("Y"="supervisor",'Model type'="model_tag","Model name"='x',"Uniform"="uniform")),
 
-        pickerInput_fromtop(inputId = ns("gg_palette"),
+        pickerInput_fromtop_live(inputId = ns("gg_palette"),
                             label = "+ Palette",
                             choices =NULL),
         numericInput(ns("gg_fill_lighten"),"+ Lighten:", value=0.3,step=0.1),
@@ -213,7 +213,8 @@ mod_comp_plot_options$server<-function(id,vals,type="density"){
       }
       module_ui_figs("downfigs")
       generic=vals$box_metrics
-      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message=type, name_c=paste0(vals$cur_data,"_",vals$cur_comp,type,'_'))
+      datalist_name<-vals$cur_data
+      mod_downcenter<-callModule(module_server_figs,"downfigs", vals=vals,generic=generic,message=type, name_c=paste0(vals$cur_comp,type,'_',  datalist_name=datalist_name))
     })
 
     getsolid_col<-reactive({
