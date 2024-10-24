@@ -19,7 +19,7 @@ RoxygenNote: 7.3.2
 Depends: R (>= 3.5.0),  aweSOM
 Imports: 
     ade4,
-shinyTree,
+    shinyTree,
     base,
     base64enc,
     beepr,
