@@ -16,9 +16,10 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 RoxygenNote: 7.3.2
-Depends: R (>= 3.5.0), shinyTree, aweSOM
+Depends: R (>= 3.5.0),  aweSOM
 Imports: 
     ade4,
+shinyTree,
     base,
     base64enc,
     beepr,
