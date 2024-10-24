@@ -591,7 +591,7 @@ bmu_plot<-function(m,hexs,points_tomap=NULL,bp=NULL,points=T,points_size=2,point
                    var_pie_transp=0.1,
                    n_var_pie=5,
                    var_pie_layer=1,
-                   pie_variables=1:2,text_repel=F,max.overlaps=10,show_legend=T,points_legend="Observations",neuron_legend=NULL,...){
+                   pie_variables=1:2,text_repel=F,max.overlaps=10,show_legend=T,points_legend="Observations",neuron_legend=NULL,vfm_max.overlaps=10,...){
 
   if(!is.factor(points_tomap$point)){
     points_tomap$point<-factor(points_tomap$point)
@@ -742,7 +742,7 @@ bmu_plot<-function(m,hexs,points_tomap=NULL,bp=NULL,points=T,points_size=2,point
     colbg.var<-adjustcolor(colbg.var, col.bg.var.alpha)
     unit(1,"points")
 
-    p<-p+ggrepel::geom_label_repel(size = cex.var+3,data=bp, aes(x,y,label=id), fill=colbg.var,colour=coltext, seed=1)
+    p<-p+ggrepel::geom_label_repel(size = cex.var+3,data=bp, aes(x,y,label=id), fill=colbg.var,colour=coltext, seed=1,max.overlaps=vfm_max.overlaps)
 
   }
 

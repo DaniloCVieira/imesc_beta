@@ -288,8 +288,8 @@ table_results_tab3$ui<-function(id){
         div(
           div(id=ns("ss1_pclus_points_inputs"),
               pickerInput_fromtop_live(inputId = ns("ss1_pclus_points_palette"),
-                                  label ="Palette",
-                                  choices = NULL),
+                                       label ="Palette",
+                                       choices = NULL),
               pickerInput_fromtop(ns("ss1_pclus_points_factor"),"Factor",
                                   choices = NULL),
               pickerInput_fromtop(inputId = ns("ss1_pclus_symbol"),
@@ -310,8 +310,8 @@ table_results_tab3$ui<-function(id){
         ),
         div(id=ns('ss1_pclus_text_inputs'),
             pickerInput_fromtop_live(inputId = ns("ss1_pclus_text_palette"),
-                                label ="Palette",
-                                choices =  NULL),
+                                     label ="Palette",
+                                     choices =  NULL),
             pickerInput_fromtop(ns("ss1_pclus_text_factor"),"Factor",
                                 choices = NULL),
             numericInput(ns("ss1_pclus_text_size"),"Size",value = 1,min = 0.1,max = 3,step = .1),
@@ -329,13 +329,19 @@ table_results_tab3$ui<-function(id){
         ),
         tip = actionLink(ns("ss1_varfacmap"), tipify(icon(verify_fa = FALSE,name=NULL,class="fas fa-question-circle"), "Click for more details")),
         div(id=ns('ss1_varfac_out'),
+
             pickerInput_fromtop(ns("ss1_vfm_type"),"Show correlation:",
                                 choices =list("Highest"='var', "Chull"="cor")
 
             ),
+            pickerInput_fromtop(ns("vfm_layer"),"Layer:",
+                                choices =NULL,multiple=T),
 
             div(id=ns('ss1_vfm_out'),
                 div(tipify(numericInput(ns("ss1_npic"), "Number", value = 10, min = 2),"Number of variables to display")),
+                div(numericInput(ns("vfm_max.overlaps"), "Max.Overlap", value = 10, min = 1)),
+
+
                 numericInput(ns("ss1_pclus.cex.var"), "Size", value = 1, min = 2),
                 pickerInput_fromtop(inputId = ns("ss1_p.clus.col.text"),
                                     label = "Color",
@@ -455,7 +461,6 @@ table_results_tab1$server<-function(id,vals){
     data_x<-reactive({
       attr(current_som_model(),"Datalist")[1]
     })
-
 
 
 
@@ -725,6 +730,14 @@ table_results_tab3$server<-function(id,vals){
       req(inherits(vals$cur_kohonen,"kohonen"))
       vals$cur_kohonen
     })
+
+    observeEvent(current_som_model(),{
+      m<-current_som_model()
+      choices=names(m$data)
+      updatePickerInput(session,'vfm_layer',choices=choices,selected=choices)
+    })
+
+
     data_x<-reactive({
       attr(current_som_model(),"Datalist")[1]
     })
@@ -958,6 +971,9 @@ table_results_tab3$server<-function(id,vals){
     ss1_bp_som<-reactive({
       iind=ss1_indicate_hc()
       m<-current_som_model()
+      req(input$vfm_layer)
+      m$data<-m$data[input$vfm_layer]
+      m$codes<-m$codes[input$vfm_layer]
       bp<-getbp_som2(m=m,indicate=iind$indicate,npic=iind$npic,hc=vals$cutsom)
       vals$biplot_som<-bp
       bp
@@ -1051,7 +1067,8 @@ table_results_tab3$server<-function(id,vals){
                  max.overlaps=input$max.overlaps,
                  show_legend=input$show_legend,
                  points_legend=input$ss1_points_legend,
-                 neuron_legend=input$ss1_neuron_legend
+                 neuron_legend=input$ss1_neuron_legend,
+                 vfm_max.overlaps=input$vfm_max.overlaps
       )
 
       args
@@ -1119,14 +1136,14 @@ table_results_tab3$server<-function(id,vals){
 
     ")),
 
-    div(
-      column(12,
-             h4("Variable factor map"),
-             p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
-             p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
-      )
+        div(
+          column(12,
+                 h4("Variable factor map"),
+                 p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
+                 p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
+          )
 
-    )
+        )
       )
 
     })
@@ -1534,8 +1551,8 @@ table_predict_som$ui<-function(id){
             div(
               div(id=ns("ss2_pclus_points_inputs"),
                   pickerInput_fromtop_live(inputId = ns("ss2_pclus_points_palette"),
-                                      label ="Palette",
-                                      choices = NULL),
+                                           label ="Palette",
+                                           choices = NULL),
                   pickerInput_fromtop(ns("ss2_pclus_points_factor"),"Factor",
                                       choices = NULL),
                   pickerInput_fromtop(inputId = ns("ss2_pclus_symbol"),
@@ -1554,8 +1571,8 @@ table_predict_som$ui<-function(id){
             ),
             div(id=ns('ss2_pclus_text_inputs'),
                 pickerInput_fromtop_live(inputId = ns("ss2_pclus_text_palette"),
-                                    label ="Palette",
-                                    choices =  NULL),
+                                         label ="Palette",
+                                         choices =  NULL),
                 pickerInput_fromtop(ns("ss2_pclus_text_factor"),"Factor",
                                     choices = NULL),
                 numericInput(ns("ss2_pclus_text_size"),"Size",value = 1,min = 0.1,max = 3,step = .1)
@@ -2474,14 +2491,14 @@ table_predict_som$server<-function(id,vals){
 
     ")),
 
-    div(
-      column(12,
-             h4("Variable factor map"),
-             p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
-             p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
-      )
+        div(
+          column(12,
+                 h4("Variable factor map"),
+                 p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
+                 p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
+          )
 
-    )
+        )
       )
 
     })
@@ -2583,83 +2600,83 @@ padding-left: 3px;
                     padding: 0px;
     }"
     )),
-div(
-  #actionLink(ns("save_bug"),"save bug",style="font-size:10px"),
-
-  column(8,class="mp0",
-         box_caret(ns("box_setup1"),
-                   color="#374061ff",
-                   inline=F,
-                   title="Model Setup",
-                   button_title =
-                     switchInput(ns("mysupersom"),"supersom",size="mini", inline=T,labelWidth="75px",handleWidth="30px"),
-
-                   div(
-
-                     div(style="vertical-align: text-top;display: flex;",
-                         div(style="display: flex;",
-                             div(
-                               uiOutput(ns("data_som_out")),
-
-                             ),
-                             div(style="margin-top: 25px",
-                                 uiOutput(ns("saved_som_print")))
-                         ),
-                         uiOutput(ns("supersom_layers")),
-                         popify(
-                           div(class="save_changes",style="margin-top: 25px",
-                               bsButton(ns("tools_savesom"), div(icon("fas fa-save")),style  = "animation: glowing 1000ms infinite;", type="action",value=FALSE)
-                           )
-                           , NULL, "Save the som model in the Datalist"
-                         )
-                     )
-                   )
-
-         )
-  ),
-
-  column(4,class="mp0",id=ns('som_models_panel'),
-         uiOutput(ns("som_models_panel"))
-  ),
-
-  column(4,class="mp0",id=ns('partition_panel'),
-         box_caret(ns('box_setup3'),
-                   title="Partition",
-                   color="#374061ff",
-                   inline = F,
-                   button_title =
-                     switchInput(ns("usepartition"),"Use partition",size="mini", inline=T,labelWidth="75px",handleWidth="30px"),
-
-
-                   div(id=ns("partition_on"),class="inline_pickers",
-                       uiOutput(ns("data_somY_out"))
-
-                   )))
-)),
-
-column(12,class="mp0",tabsetPanel(
-  id = ns("som_tab"),
-
-  #selected='som_tab3',
-
-  tabPanel(
-    value = "som_tab1",
-
-    strong("1. Training"),
     div(
-      div(
-        column(
-          6,class="mp0",
-          box_caret(
-            ns("box_setup4"),inline=F,
-            color="#c3cc74ff",
-            title="1.1. Set the grid",
-            tip=span(actionLink(ns("somgridhelp"), tipify(icon("fas fa-question-circle"), "Click for more details")),
-                     actionLink(ns("resettopo"), icon("fas fa-undo"),style="position: absolute;right: 20px;top: 4px")),
-            div(
-              tags$style(
-                HTML(
-                  "
+      #actionLink(ns("save_bug"),"save bug",style="font-size:10px"),
+
+      column(8,class="mp0",
+             box_caret(ns("box_setup1"),
+                       color="#374061ff",
+                       inline=F,
+                       title="Model Setup",
+                       button_title =
+                         switchInput(ns("mysupersom"),"supersom",size="mini", inline=T,labelWidth="75px",handleWidth="30px"),
+
+                       div(
+
+                         div(style="vertical-align: text-top;display: flex;",
+                             div(style="display: flex;",
+                                 div(
+                                   uiOutput(ns("data_som_out")),
+
+                                 ),
+                                 div(style="margin-top: 25px",
+                                     uiOutput(ns("saved_som_print")))
+                             ),
+                             uiOutput(ns("supersom_layers")),
+                             popify(
+                               div(class="save_changes",style="margin-top: 25px",
+                                   bsButton(ns("tools_savesom"), div(icon("fas fa-save")),style  = "animation: glowing 1000ms infinite;", type="action",value=FALSE)
+                               )
+                               , NULL, "Save the som model in the Datalist"
+                             )
+                         )
+                       )
+
+             )
+      ),
+
+      column(4,class="mp0",id=ns('som_models_panel'),
+             uiOutput(ns("som_models_panel"))
+      ),
+
+      column(4,class="mp0",id=ns('partition_panel'),
+             box_caret(ns('box_setup3'),
+                       title="Partition",
+                       color="#374061ff",
+                       inline = F,
+                       button_title =
+                         switchInput(ns("usepartition"),"Use partition",size="mini", inline=T,labelWidth="75px",handleWidth="30px"),
+
+
+                       div(id=ns("partition_on"),class="inline_pickers",
+                           uiOutput(ns("data_somY_out"))
+
+                       )))
+    )),
+
+    column(12,class="mp0",tabsetPanel(
+      id = ns("som_tab"),
+
+      #selected='som_tab3',
+
+      tabPanel(
+        value = "som_tab1",
+
+        strong("1. Training"),
+        div(
+          div(
+            column(
+              6,class="mp0",
+              box_caret(
+                ns("box_setup4"),inline=F,
+                color="#c3cc74ff",
+                title="1.1. Set the grid",
+                tip=span(actionLink(ns("somgridhelp"), tipify(icon("fas fa-question-circle"), "Click for more details")),
+                         actionLink(ns("resettopo"), icon("fas fa-undo"),style="position: absolute;right: 20px;top: 4px")),
+                div(
+                  tags$style(
+                    HTML(
+                      "
 
 .som_train {
 width: 100%;
@@ -2679,108 +2696,108 @@ max-width: 100px;
 
 }
 "
+                    )
+                  ),
+                  div(checkboxInput(ns("sugtopo"), span('suggested topology',tipify(actionLink(ns("sugtopohelp"), icon("fas fa-question-circle")), "Click for more details")), value =T)),
+                  div(
+                    id = ns("topocontrol"),
+                    div(
+                      style=" ;",class="inline_pickers2 som_grid",
+                      numericInput(ns("xdim"),"xdim",value =5,min = 0,step = 1,width="70px"),
+                      numericInput(ns("ydim"),"ydim",value = 5,min = 0,step = 1,width="70px"),
+                      pickerInput_fromtop(ns("topo"),"Topology",choices = c("hexagonal", "rectangular")),
+                      pickerInput_fromtop(ns("neighbourhood.fct"),label ="neigh.fct" ,choices = c("gaussian","bubble")),
+                      pickerInput_fromtop(ns("toroidal"),label = "toroidal",choices = c(F, T))
+                    ),
+                    div(
+                      style="text-align: center; width: 350px",
+                      uiOutput(ns("showgrid"))
+                    )
+
+                  )
+
+
+
                 )
-              ),
-div(checkboxInput(ns("sugtopo"), span('suggested topology',tipify(actionLink(ns("sugtopohelp"), icon("fas fa-question-circle")), "Click for more details")), value =T)),
-div(
-  id = ns("topocontrol"),
-  div(
-    style=" ;",class="inline_pickers2 som_grid",
-    numericInput(ns("xdim"),"xdim",value =5,min = 0,step = 1,width="70px"),
-    numericInput(ns("ydim"),"ydim",value = 5,min = 0,step = 1,width="70px"),
-    pickerInput_fromtop(ns("topo"),"Topology",choices = c("hexagonal", "rectangular")),
-    pickerInput_fromtop(ns("neighbourhood.fct"),label ="neigh.fct" ,choices = c("gaussian","bubble")),
-    pickerInput_fromtop(ns("toroidal"),label = "toroidal",choices = c(F, T))
-  ),
-  div(
-    style="text-align: center; width: 350px",
-    uiOutput(ns("showgrid"))
-  )
 
-)
+              )
 
+            ),
+            column(6,class="mp0",
+                   box_caret(
+                     ns("box_setup5"),
+                     color="#c3cc74ff",
+                     inline=F,
+                     title="1.2. Set the training parameters",
+                     tip=span(actionLink(ns("supersomhelp"), tipify(
+                       icon("fas fa-question-circle"), "Click for more details"
+                     )),actionLink(ns("resetsom"), icon("fas fa-undo"),style="position: absolute;right: 20px;top: 4px")),
+                     div(
+                       div(class="inline_pickers2 som_train",
+                           pickerInput_fromtop(ns("distmethod"),div(style="",strong("dist.fcts",tipify(icon("fas fa-question-circle"),"Distance measure between each neuron and input data"))),
+                                               choices = c("BrayCurtis","euclidean","sumofsquares","manhattan","tanimoto")),
+                           pickerInput_fromtop(ns("normalizeDataLayers"),"normalizeLayers",
+                                               choices = c("TRUE","FALSE")),
+                           numericInput(ns("rlen"),strong("rlen",tipify(icon("fas fa-question-circle"),"The number of times the complete dataset will be presented to the network")),value =500,min = 1,step = 1),
+                           numericInput(ns("seed"), strong("seed",tipify(icon("fas fa-question-circle"),"A numeric value. If supplied, it ensure that you get the same result if you start with that same seed each time you run the som analysis.")), value =NA, min=0, step=1)
+                       ),
+                       div(align = "center",
+                           br(),
+                           actionButton(
+                             ns("trainSOM"),
+                             h4(icon("fas fa-braille"),"train SOM",icon("fas fa-arrow-circle-right")), style = "background: #05668D; color: white")
+                       ),
 
-
-            )
-
-          )
-
-        ),
-column(6,class="mp0",
-       box_caret(
-         ns("box_setup5"),
-         color="#c3cc74ff",
-         inline=F,
-         title="1.2. Set the training parameters",
-         tip=span(actionLink(ns("supersomhelp"), tipify(
-           icon("fas fa-question-circle"), "Click for more details"
-         )),actionLink(ns("resetsom"), icon("fas fa-undo"),style="position: absolute;right: 20px;top: 4px")),
-         div(
-           div(class="inline_pickers2 som_train",
-               pickerInput_fromtop(ns("distmethod"),div(style="",strong("dist.fcts",tipify(icon("fas fa-question-circle"),"Distance measure between each neuron and input data"))),
-                                   choices = c("BrayCurtis","euclidean","sumofsquares","manhattan","tanimoto")),
-               pickerInput_fromtop(ns("normalizeDataLayers"),"normalizeLayers",
-                                   choices = c("TRUE","FALSE")),
-               numericInput(ns("rlen"),strong("rlen",tipify(icon("fas fa-question-circle"),"The number of times the complete dataset will be presented to the network")),value =500,min = 1,step = 1),
-               numericInput(ns("seed"), strong("seed",tipify(icon("fas fa-question-circle"),"A numeric value. If supplied, it ensure that you get the same result if you start with that same seed each time you run the som analysis.")), value =NA, min=0, step=1)
-           ),
-           div(align = "center",
-               br(),
-               actionButton(
-                 ns("trainSOM"),
-                 h4(icon("fas fa-braille"),"train SOM",icon("fas fa-arrow-circle-right")), style = "background: #05668D; color: white")
-           ),
-
-           div(
-             span(class="finesom_btn",
-                  tipify(actionLink(ns("finesom"),"Fine tuning*"),"show all parameters available")
-             )),
-           div(id=ns("finetuning_som"),
-               div(id="finesom_out",class="map_control_style2",
+                       div(
+                         span(class="finesom_btn",
+                              tipify(actionLink(ns("finesom"),"Fine tuning*"),"show all parameters available")
+                         )),
+                       div(id=ns("finetuning_som"),
+                           div(id="finesom_out",class="map_control_style2",
 
 
-                   div(style="display: flex",
-                       numericInput(ns("a1"),
-                                    label =span(tiphelp("Learning rate: two numbers indicating the amount of change. Not used for the batch algorithm.","left"), "Alpha:"),value = 0.05,step = 0.01),
-                       numericInput(ns("a2"),label = NULL,value = 0.01,step = 0.01)
-                   ),
+                               div(style="display: flex",
+                                   numericInput(ns("a1"),
+                                                label =span(tiphelp("Learning rate: two numbers indicating the amount of change. Not used for the batch algorithm.","left"), "Alpha:"),value = 0.05,step = 0.01),
+                                   numericInput(ns("a2"),label = NULL,value = 0.01,step = 0.01)
+                               ),
 
-                   div(style="display: flex",
-                       numericInput(ns("r1"),
-                                    label = span(tiphelp("the start and stop of the radius of the neighbourhood.  the radius will change linearly; as soon as the neighbourhood gets smaller than one only the winning unit will be updated.","left"),"Radius:"),value = 0),
-                       numericInput(ns("r2"),
-                                    label = NULL,value = 0,step = 0.01 )
-                   ),
-                   pickerInput_fromtop(ns("mode"), span(tiphelp("type of learning algorithm","left"),"mode"), choices = c("online","batch", "pbatch")),
-                   numericInput(ns("maxna"),span("maxNA.fraction", tiphelp("the maximal fraction of values that may be NA to prevent the row to be removed. Not applicable for BrayCurtis.","right")),value = 0.001,step = 0.01)
-               )
+                               div(style="display: flex",
+                                   numericInput(ns("r1"),
+                                                label = span(tiphelp("the start and stop of the radius of the neighbourhood.  the radius will change linearly; as soon as the neighbourhood gets smaller than one only the winning unit will be updated.","left"),"Radius:"),value = 0),
+                                   numericInput(ns("r2"),
+                                                label = NULL,value = 0,step = 0.01 )
+                               ),
+                               pickerInput_fromtop(ns("mode"), span(tiphelp("type of learning algorithm","left"),"mode"), choices = c("online","batch", "pbatch")),
+                               numericInput(ns("maxna"),span("maxNA.fraction", tiphelp("the maximal fraction of values that may be NA to prevent the row to be removed. Not applicable for BrayCurtis.","right")),value = 0.001,step = 0.01)
+                           )
 
-           )
-         )
+                       )
+                     )
 
-       )
-),
-bsTooltip(ns('resettopo'),"Reset parameters"),
-bsTooltip(ns('resetsom'),"Reset parameters")
+                   )
+            ),
+            bsTooltip(ns('resettopo'),"Reset parameters"),
+            bsTooltip(ns('resetsom'),"Reset parameters")
 
-      ))
+          ))
 
-  ),
-tabPanel(
-  value = "som_tab2",
-  strong("2. Results"),
-  div(table_results_som$ui(ns("som-results")),
-      uiOutput(ns('tab_result_out')))
+      ),
+      tabPanel(
+        value = "som_tab2",
+        strong("2. Results"),
+        div(table_results_som$ui(ns("som-results")),
+            uiOutput(ns('tab_result_out')))
 
-),
-tabPanel(
-  value = "som_tab3",style="background: white",
-  strong("3. Predict"),
-  div(table_predict_som$ui(ns("som-predict")),
-      uiOutput(ns('tab_predict_out')))
-)
+      ),
+      tabPanel(
+        value = "som_tab3",style="background: white",
+        strong("3. Predict"),
+        div(table_predict_som$ui(ns("som-predict")),
+            uiOutput(ns('tab_predict_out')))
+      )
 
-))
+    ))
 
   )
 
@@ -3055,15 +3072,15 @@ imesc_supersom$server<-function (id,vals ){
 
     ")),
 
-    div(column(12,
-               p("This functionality uses the ",code('somgrid')," function from the",
-                 code("kohonen"),"package."),
-               p(icon("fas fa-exclamation-circle"),"All arguments are passed to the function;"),
-               p(icon("fas fa-exclamation-circle"), "Arguments are described 'in the ",actionLink(ns("somgridh"),"help page")," of the function;")
-    ),
-    column(12,
-           htmlOutput(ns("somgridhelp"))
-    )))
+        div(column(12,
+                   p("This functionality uses the ",code('somgrid')," function from the",
+                     code("kohonen"),"package."),
+                   p(icon("fas fa-exclamation-circle"),"All arguments are passed to the function;"),
+                   p(icon("fas fa-exclamation-circle"), "Arguments are described 'in the ",actionLink(ns("somgridh"),"help page")," of the function;")
+        ),
+        column(12,
+               htmlOutput(ns("somgridhelp"))
+        )))
     })
     output$textvarfacmap<-renderUI({
 
@@ -3084,14 +3101,14 @@ imesc_supersom$server<-function (id,vals ){
 
     ")),
 
-    div(
-      column(12,
-             h4("Variable factor map"),
-             p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
-             p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
-      )
+        div(
+          column(12,
+                 h4("Variable factor map"),
+                 p("The chart is very similar to the variable factor map obtained from the principal component analysis (PCA). It calculates the weighted correlation for each variable using the coordinates (x, y) of the neurons and their weights (number of instances). The codebooks vectors of the cells correspond to an estimation of the conditional averages, calculating their variance for each variable is equivalent to estimating the between-node variance of the variable, and hence their relevance."),
+                 p("The ",code("most important correlations")," option returns",code("npic")," variables with the highest variance, whereas ",code("Chull correlations")," returns",code("npic")," variables with the highest correlation considering the convex hull, while also ensuring that the points are ordered by their proximity to codebook center")
+          )
 
-    )
+        )
       )
 
     })
@@ -3112,14 +3129,14 @@ imesc_supersom$server<-function (id,vals ){
 
     ")),
 
-    div(column(12,
-               p("This functionality uses the ",code('som')," function from the",
-                 actionLink(ns("kohonen"),"kohonen"),"package."),
-               p(icon("fas fa-exclamation-circle"), "arguments are described 'in the ",actionLink(ns("supersomh"),"help page")," of the function;")
-    ),
-    column(12,
-           htmlOutput(ns("supersomhelp"))
-    )))
+        div(column(12,
+                   p("This functionality uses the ",code('som')," function from the",
+                     actionLink(ns("kohonen"),"kohonen"),"package."),
+                   p(icon("fas fa-exclamation-circle"), "arguments are described 'in the ",actionLink(ns("supersomh"),"help page")," of the function;")
+        ),
+        column(12,
+               htmlOutput(ns("supersomhelp"))
+        )))
 
     })
     savereac<-reactive({
@@ -3705,16 +3722,16 @@ imesc_supersom$server<-function (id,vals ){
 
     ")),
 
-    div(column(12,
-               'The number of map nodes and the side length ratio is performed with the following steps (Vesanto, 2000 ):',
-               column(12, style="margin-left: 10px; margin-top: 5px;",
-                      p(strong("1."),"Determine the number of map nodes using the heuristic recommendation:",withMathJax(helpText(
-                        "$$ M = 5{\\sqrt{N}}$$"
-                      )),"where N is the number of observations in the input data set ( Vesanto, 2000 ),"),
-                      p(strong("2."),"Determine the eigenvectors and eigenvalues in the data from the autocorrelation matrix,"),
-                      p(strong("3."),"Set the ratio between the two sides of the grid equivalent to the ratio between the two largest eigenvalues, and "),
-                      p(strong("4."),"Scale the side lengths so that their product (xdim * ydim) is as close as possible to the number of map units determined above."))
-    )))
+          div(column(12,
+                     'The number of map nodes and the side length ratio is performed with the following steps (Vesanto, 2000 ):',
+                     column(12, style="margin-left: 10px; margin-top: 5px;",
+                            p(strong("1."),"Determine the number of map nodes using the heuristic recommendation:",withMathJax(helpText(
+                              "$$ M = 5{\\sqrt{N}}$$"
+                            )),"where N is the number of observations in the input data set ( Vesanto, 2000 ),"),
+                            p(strong("2."),"Determine the eigenvectors and eigenvalues in the data from the autocorrelation matrix,"),
+                            p(strong("3."),"Set the ratio between the two sides of the grid equivalent to the ratio between the two largest eigenvalues, and "),
+                            p(strong("4."),"Scale the side lengths so that their product (xdim * ydim) is as close as possible to the number of map units determined above."))
+          )))
 
       })
 

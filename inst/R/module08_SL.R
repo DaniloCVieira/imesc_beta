@@ -4027,10 +4027,12 @@ confusion_module$server<-function(id, vals){
       req(input$caret_cm_type)
       if(input$caret_cm_type=="Resampling"){
         cm<-table(m$pred$pred,m$pred$obs)
+
         res<-plotCM(m, input$caretpalette,  newcolhabs=vals$newcolhabs,title=input$cm_title)
       } else  {
         train<-getdata_model(m)
         cm<-table(predict(model()$finalModel),model()$trainingData[,'.outcome'])
+        cm<-cm/sum(cm)*100
         res<-plotCM(cm,input$caretpalette,vals$newcolhabs,title=input$cm_title)
 
       }
@@ -5369,6 +5371,7 @@ model_predic$server<-function(id,vals){
       req(input$svmpalette_pred)
       conf<-get_cm_pred()
       div(
+
         renderPlot({
           res<-plotCM(conf/sum(conf)*100, input$svmpalette_pred,  newcolhabs=vals$newcolhabs,round_cm=input$round_predictionSL,title=input$svm_cmpred_title)
           vals$svm_cm_pred<-res

@@ -369,7 +369,8 @@ clockvar<-function(df3,species_n,species_type){
   }
 }
 #' @export
-ggrda<-function(model, base_size=12, theme='theme_bw', title="Redundancy analysis", show_intercept=T, constr=F, points=T, points_factor=NULL, points_palette=colorRampPalette("black"), points_shape=16, points_size=4, text=T, text_factor=NULL, text_palette=colorRampPalette("gray"), text_size=4, biplot=T, biplot_n=5,  biplot_size=4, biplot_color="blue", biplot_arrow_color="blue", species=T, species_n=5,  species_plot="text", species_size=4, species_shape=3, species_color="red",scale_shape=F,expandX=0.1,expandY=0.1){
+ggrda<-function(model, base_size=12, theme='theme_bw', title="Redundancy analysis", show_intercept=T, constr=F, points=T, points_factor=NULL, points_palette=colorRampPalette("black"), points_shape=16, points_size=4, text=T, text_factor=NULL, text_palette=colorRampPalette("gray"), text_size=4, biplot=T, biplot_n=5,  biplot_size=4, biplot_color="blue", biplot_arrow_color="blue", species=T, species_n=5,  species_plot="text", species_size=4, species_shape=3, species_color="red",scale_shape=F,expandX=0.1,expandY=0.1,legend_points="",legend_response="",show_response_legend=T,
+                show_points_legend=T){
 
   {
 
@@ -429,7 +430,7 @@ ggrda<-function(model, base_size=12, theme='theme_bw', title="Redundancy analysi
 
     }
     col_points=points_palette(nlevels(df1$points_factor))
-    p<-p+geom_point(aes(x,y,color=points_factor, shape=shape), data=df1,size=points_size,show.legend=show.legend, shape=points_shape)+   scale_color_manual(colnames(points_factor),values=col_points)
+    p<-p+geom_point(aes(x,y,color=points_factor, shape=shape), data=df1,size=points_size,show.legend=show.legend, shape=points_shape)+   scale_color_manual(colnames(points_factor),values=col_points,name=legend_points)
   } else{
     col_points=NA
   }
@@ -441,7 +442,7 @@ ggrda<-function(model, base_size=12, theme='theme_bw', title="Redundancy analysi
     df3<-biplot_chull(df3,biplot_n=species_n)
     df3$points_factor<-factor("Response variables")
     if(species_plot=="points"){
-      p<-p+geom_point(aes(x,y, shape=shape, color=points_factor),data=df3, color=species_color, size=species_size, fill = 'red')+ scale_shape_identity(name="",guide="legend", labels="Response") +  guides(
+      p<-p+geom_point(aes(x,y, shape=shape, color=points_factor),data=df3, color=species_color, size=species_size, fill = 'red')+ scale_shape_identity(name="",guide="legend", labels=legend_response) +  guides(
         color=guide_legend(order=1),
         shape = guide_legend(
           order=2,override.aes = list(linetype = c(1), shape = c(species_shape), label=NA)
@@ -498,6 +499,14 @@ ggrda<-function(model, base_size=12, theme='theme_bw', title="Redundancy analysi
   if(length(unique(col_points))==1){
     p<-p+guides(color="none")
   }
+
+  if(isFALSE(show_points_legend)){
+    p<-p+guides(color="none")
+  }
+  if(isFALSE(show_response_legend)){
+    p<-p+guides(shape="none")
+  }
+
   return(p)
 }
 #' @export

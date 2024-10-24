@@ -3243,6 +3243,8 @@ desctools_tab8$ui<-function(id){
 
                                    width = "100px"),
                numericInput (ns('rda_points_size') ,"Size:",value=2),
+               checkboxInput(ns("show_points_legend"),"Show legend",T),
+               textInput(ns("rda_legend_points"),"Legend title:","")
 
              )
 
@@ -3316,7 +3318,8 @@ desctools_tab8$ui<-function(id){
                numericInput(ns('rda_species_n') ,"sp number:",value=10),
 
                numericInput(ns('rda_species_size') ,"Size:",value=2),
-
+               checkboxInput(ns("show_response_legend"),"Show legend",T),
+               textInput(ns("rda_legend_response"),"Legend title:","Response")
              )
            ))
 
@@ -3516,7 +3519,11 @@ desctools_tab8$server<-function(id,vals){
         biplot=input$rda_biplot,
         species=input$rda_species,
         expandX=input$rda_expandX,
-        expandY=input$rda_expandY
+        expandY=input$rda_expandY,
+        legend_points=input$rda_legend_points,
+        legend_response=input$rda_legend_response,
+        show_response_legend=input$show_response_legend,
+        show_points_legend=input$show_points_legend
 
       )
 
@@ -3646,7 +3653,7 @@ desctools_tab8$server<-function(id,vals){
 
                         runval$rda<-"save_changes_nice"
                       })
-    inputs_rda<-c('rda_base_size','rda_theme','rda_title','rda_expandX','rda_expandY','rda_show_intercept','rda_points','rda_points_palette','rda_points_shape','rda_points_size','rda_text_palette','rda_text_factor','rda_text_size','rda_biplot_n','rda_biplot_color','rda_biplot_arrow_color','rda_biplot_size')
+    inputs_rda<-c('rda_base_size','rda_theme','rda_title','rda_expandX','rda_expandY','rda_show_intercept','rda_points','rda_points_palette','rda_points_shape','rda_points_size','rda_text_palette','rda_text_factor','rda_text_size','rda_biplot_n','rda_biplot_color','rda_biplot_arrow_color','rda_biplot_size','rda_legend_points','rda_legend_response','show_response_legend','show_points_legend')
     restored<-reactiveVal(NULL)
     observe({
       req(is.null(restored()))
@@ -3934,6 +3941,9 @@ desctools_tab9$ui<-function(id){
 
                                          width = "100px"),
                      numericInput (ns('segrda_points_size') ,"Size:",value=2),
+                     checkboxInput(ns("show_points_legend"),"Show legend",T),
+                     textInput(ns("segrda_legend_points"),"Legend title:","")
+
 
                    )
 
@@ -4007,7 +4017,8 @@ desctools_tab9$ui<-function(id){
                      numericInput(ns('segrda_species_n') ,"sp number:",value=10),
 
                      numericInput(ns('segrda_species_size') ,"Size:",value=2),
-
+                     checkboxInput(ns("show_response_legend"),"Show legend",T),
+                     textInput(ns("segrda_legend_response"),"Legend title:","Response")
                    )
                  ))
 
@@ -4218,7 +4229,7 @@ desctools_tab9$server<-function(id,vals){
 
 
 
-    inputs_segrda<-c('segrda_base_size','segrda_theme','segrda_title','segrda_expandX','segrda_expandY','segrda_show_intercept','segrda_points','segrda_points_palette','segrda_points_shape','segrda_points_size','segrda_text_palette','segrda_text_factor','segrda_text_size','segrda_biplot_n','segrda_biplot_color','segrda_biplot_arrow_color','segrda_biplot_size')
+    inputs_segrda<-c('segrda_base_size','segrda_theme','segrda_title','segrda_expandX','segrda_expandY','segrda_show_intercept','segrda_points','segrda_points_palette','segrda_points_shape','segrda_points_size','segrda_text_palette','segrda_text_factor','segrda_text_size','segrda_biplot_n','segrda_biplot_color','segrda_biplot_arrow_color','segrda_biplot_size','segrda_legend_points','segrda_legend_response','show_points_legend','show_response_legend')
 
     restored<-reactiveVal(NULL)
     observe({
@@ -4314,7 +4325,11 @@ desctools_tab9$server<-function(id,vals){
         biplot=input$segrda_biplot,
         species=input$segrda_species,
         expandX=input$segrda_expandX,
-        expandY=input$segrda_expandY
+        expandY=input$segrda_expandY,
+        legend_points=input$segrda_legend_points,
+        legend_response=input$segrda_legend_response,
+        show_points_legend=input$show_points_legend,
+        show_response_legend=input$show_response_legend
 
       )
 
